@@ -40,7 +40,17 @@ public class LocationForegroundService : Service
     private static int clientCount;
 
     /// <summary>
-    /// Zgłasza kolejnego użytkownika i uruchamia usługę pierwszoplanową, jeśli jest pierwszy. Błąd uruchomienia jest logowany i nie przerywa działania aplikacji.
+    /// Informacja, że system uruchamia usługę, ale ta jeszcze nie przeszła na pierwszy plan. Zatrzymanie usługi w tym czasie kończy się wyjątkiem systemu.
+    /// </summary>
+    private static bool startPending;
+
+    /// <summary>
+    /// Informacja, że ostatni użytkownik zakończył korzystanie, zanim usługa przeszła na pierwszy plan, więc usługa ma się zatrzymać zaraz po przejściu.
+    /// </summary>
+    private static bool stopWhenStarted;
+
+    /// <summary>
+    /// Zgłasza kolejnego użytkownika i uruchamia usługę pierwszoplanową, jeśli jest pierwszy. Gdy poprzednie uruchomienie jeszcze trwa, anuluje odroczone zatrzymanie. Błąd uruchomienia jest logowany i nie przerywa działania aplikacji.
     /// </summary>
     public static void Start()
     {
@@ -52,6 +62,16 @@ public class LocationForegroundService : Service
             {
                 return;
             }
+
+            if (startPending)
+            {
+                stopWhenStarted = false;
+
+                return;
+            }
+
+            startPending = true;
+            stopWhenStarted = false;
         }
 
         Context context = Android.App.Application.Context;
@@ -71,11 +91,16 @@ public class LocationForegroundService : Service
         catch (Java.Lang.Exception exception)
         {
             Log.Warn(LogTag, "Nie udało się uruchomić usługi lokalizacji: " + exception.Message);
+
+            lock (ClientsLock)
+            {
+                startPending = false;
+            }
         }
     }
 
     /// <summary>
-    /// Zgłasza zakończenie korzystania z usługi i zatrzymuje ją, gdy nie ma już innych użytkowników.
+    /// Zgłasza zakończenie korzystania z usługi i zatrzymuje ją, gdy nie ma już innych użytkowników. Jeśli usługa jeszcze nie przeszła na pierwszy plan, zatrzymanie jest odraczane do tej chwili.
     /// </summary>
     public static void Stop()
     {
@@ -90,6 +115,13 @@ public class LocationForegroundService : Service
 
             if (clientCount > 0)
             {
+                return;
+            }
+
+            if (startPending)
+            {
+                stopWhenStarted = true;
+
                 return;
             }
         }
@@ -121,6 +153,8 @@ public class LocationForegroundService : Service
     {
         Log.Info(LogTag, "LocationForegroundService.OnStartCommand");
 
+        bool enteredForeground = false;
+
         try
         {
             Notification notification = BuildNotification();
@@ -133,14 +167,42 @@ public class LocationForegroundService : Service
             {
                 StartForeground(NotificationId, notification);
             }
+
+            enteredForeground = true;
         }
-        catch (Java.Lang.Exception exception)
+        catch (Exception exception)
         {
             Log.Warn(LogTag, "Nie udało się przejść na pierwszy plan: " + exception.Message);
+        }
+
+        bool stopNow;
+
+        lock (ClientsLock)
+        {
+            startPending = false;
+            stopNow = stopWhenStarted || !enteredForeground;
+            stopWhenStarted = false;
+        }
+
+        if (stopNow)
+        {
             StopSelf();
         }
 
         return StartCommandResult.NotSticky;
+    }
+
+    /// <summary>
+    /// Zeruje znacznik trwającego uruchomienia, aby zatrzymanie usługi nie było odraczane w nieskończoność po jej zniszczeniu.
+    /// </summary>
+    public override void OnDestroy()
+    {
+        lock (ClientsLock)
+        {
+            startPending = false;
+        }
+
+        base.OnDestroy();
     }
 
     /// <summary>
