@@ -345,6 +345,11 @@ public sealed class MapController
     private bool isolateSelected;
 
     /// <summary>
+    /// Informacja, czy rysowane są wyłącznie samoloty oznaczone w bazie jako wojskowe.
+    /// </summary>
+    private bool militaryOnly;
+
+    /// <summary>
     /// Pozycje samolotów narysowanych w ostatniej klatce, używane do rozpoznawania dotknięć. Lista jest podmieniana co klatkę.
     /// </summary>
     private IReadOnlyList<(string Hex, float X, float Y)> screenHits = Array.Empty<(string Hex, float X, float Y)>();
@@ -813,6 +818,41 @@ public sealed class MapController
     }
 
     /// <summary>
+    /// Informacja, czy na mapie widać wyłącznie samoloty oznaczone jako wojskowe.
+    /// </summary>
+    public bool IsMilitaryOnly
+    {
+        get
+        {
+            lock (stateLock)
+            {
+                return militaryOnly;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Włącza lub wyłącza filtr pokazujący wyłącznie samoloty wojskowe.
+    /// </summary>
+    /// <param name="militaryCount">Liczba samolotów wojskowych w ostatnich danych.</param>
+    /// <returns>True, gdy filtr jest teraz włączony.</returns>
+    public bool ToggleMilitaryOnly(out int militaryCount)
+    {
+        bool enabled;
+
+        lock (stateLock)
+        {
+            militaryOnly = !militaryOnly;
+            enabled = militaryOnly;
+            militaryCount = latestAircraft.Count(item => item.IsMilitary);
+        }
+
+        SelectionChanged?.Invoke();
+
+        return enabled;
+    }
+
+    /// <summary>
     /// Włącza lub wyłącza tryb zaznaczania wielu samolotów.
     /// </summary>
     /// <returns>True, gdy tryb jest teraz włączony.</returns>
@@ -1212,6 +1252,7 @@ public sealed class MapController
         string? followed;
         IReadOnlySet<string> selection;
         bool isolated;
+        bool onlyMilitary;
 
         DateTime frameStartUtc = DateTime.UtcNow;
         double deltaSeconds = Math.Min(MaxFrameSeconds, (frameStartUtc - lastFrameUtc).TotalSeconds);
@@ -1235,6 +1276,7 @@ public sealed class MapController
             followed = followedHex;
             selection = selectedHexes;
             isolated = isolateSelected;
+            onlyMilitary = militaryOnly;
         }
 
         double elapsedSeconds = (DateTime.UtcNow - snapshotTimestampUtc).TotalSeconds;
@@ -1363,7 +1405,7 @@ public sealed class MapController
 
         foreach (Aircraft item in snapshot)
         {
-            if (isolated && !selection.Contains(item.Hex))
+            if ((isolated && !selection.Contains(item.Hex)) || (onlyMilitary && !item.IsMilitary))
             {
                 continue;
             }

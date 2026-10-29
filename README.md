@@ -53,6 +53,11 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 - **M** włącza tryb zaznaczania wielu samolotów: dotknięcia dodają lub odejmują samoloty.
 - **I** pokazuje tylko zaznaczone samoloty (reszta i ich ślady znika). Ponowne dotknięcie przywraca wszystkie.
 
+**Filtr samolotów wojskowych**
+- Przycisk z sylwetką myśliwca (pod przyciskiem etykiet) pokazuje na mapie wyłącznie samoloty, które baza oznacza jako wojskowe (flaga `dbFlags` z API ADS-B). Ponowne dotknięcie przywraca wszystkie. Po włączeniu aplikacja podaje, ile takich samolotów jest w zasięgu.
+- Filtr działa do zamknięcia aplikacji i nie jest zapamiętywany. Można go łączyć z zaznaczaniem i izolacją.
+- Flaga pochodzi z zewnętrznej bazy i bywa niedokładna: część wojskowych samolotów nie jest oznaczona, a część cywilnych (np. samoloty rządowe) może być oznaczona jako wojskowe.
+
 **Android Auto**
 - Mapa z samolotami na ekranie samochodu, przyciski przybliżania i oddalania, centrowanie na pozycji, przesuwanie, wyszukiwarka samolotów.
 
@@ -61,7 +66,7 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 | Element | Gdzie |
 |---|---|
 | Menu (trzy kreski) | prawy górny róg: „Szukaj samolotu” i „Ustawienia” |
-| `I`, `M` i przycisk etykiet | prawy górny róg, pod menu |
+| `I`, `M`, etykiety i filtr wojskowych | prawy górny róg, pod menu |
 | `+`, `−`, „center” | prawy dolny róg |
 | Wersja aplikacji | lewy dolny róg mapy |
 | Atrybucja OSM | prawy dolny róg mapy |

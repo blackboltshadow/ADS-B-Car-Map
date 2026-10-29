@@ -1,3 +1,4 @@
+using System.Globalization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Services;
@@ -58,6 +59,11 @@ public class MainActivity : Activity
     /// Przycisk pokazujący i ukrywający etykiety z opisem samolotów.
     /// </summary>
     private ImageButton? labelsButton;
+
+    /// <summary>
+    /// Przycisk filtra pokazującego wyłącznie samoloty wojskowe.
+    /// </summary>
+    private ImageButton? militaryButton;
 
     /// <summary>
     /// Karta głównego zaznaczonego samolotu.
@@ -240,7 +246,10 @@ public class MainActivity : Activity
         labelsButton = CreateRoundButton(Resource.Drawable.ic_labels, "Pokaż lub ukryj etykiety samolotów");
         labelsButton.Click += (sender, args) => OnLabelsClicked();
 
-        foreach (View button in new View[] { isolateButton, multiSelectButton, labelsButton })
+        militaryButton = CreateRoundButton(Resource.Drawable.ic_fighter, "Tylko samoloty wojskowe");
+        militaryButton.Click += (sender, args) => OnMilitaryClicked();
+
+        foreach (View button in new View[] { isolateButton, multiSelectButton, labelsButton, militaryButton })
         {
             LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(Dp(48), Dp(48));
             buttonParams.SetMargins(0, Dp(6), 0, Dp(6));
@@ -371,10 +380,26 @@ public class MainActivity : Activity
     }
 
     /// <summary>
-    /// Podświetla przyciski „I”, „M” i etykiet, gdy odpowiadające im tryby są włączone.
+    /// Włącza lub wyłącza filtr samolotów wojskowych i podaje, ile ich jest w ostatnich danych.
+    /// </summary>
+    private void OnMilitaryClicked()
+    {
+        bool enabled = controller.ToggleMilitaryOnly(out int militaryCount);
+        string message = !enabled
+            ? "Wszystkie samoloty"
+            : militaryCount > 0
+                ? string.Format(CultureInfo.InvariantCulture, "Tylko wojskowe: {0} w zasięgu", militaryCount)
+                : "Tylko wojskowe: żadnego w zasięgu";
+
+        Toast.MakeText(this, message, ToastLength.Short)?.Show();
+    }
+
+    /// <summary>
+    /// Podświetla przyciski „I”, „M”, etykiet i filtra wojskowych, gdy odpowiadające im tryby są włączone.
     /// </summary>
     private void UpdateModeButtons()
     {
+        militaryButton?.SetBackgroundResource(controller.IsMilitaryOnly ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
         isolateButton?.SetBackgroundResource(controller.IsIsolated ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
         multiSelectButton?.SetBackgroundResource(controller.IsMultiSelect ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
         labelsButton?.SetBackgroundResource(AppSettings.ShowLabels ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
