@@ -32,7 +32,7 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 - **Ikona zależna od rodzaju:** samolot pasażerski, szerokokadłubowy, mały odrzutowiec, turbośmigłowiec, awionetka, śmigłowiec, myśliwiec, wojskowy transportowiec, szybowiec, balon, dron, obiekt naziemny. Rodzaj wynika z kategorii nadajnika ADS-B, znacznika wojskowego i kodu typu ICAO.
 - **Kolor zależny od wysokości:** szary na ziemi, a w powietrzu przejście od pomarańczowego przez żółty, zielony i niebieski do fioletowego.
 - **Ślad lotu:** linia za samolotem w kolorze wysokości, coraz bardziej przezroczysta ku przeszłości.
-- **Etykieta:** znak wywoławczy i poziom lotu (np. `LOT281 FL350`), a pod spodem typ i trasa (np. `B738 WAW→LHR`).
+- **Etykieta:** znak wywoławczy i poziom lotu (np. `LOT281 FL350`), a pod spodem typ i trasa (np. `B738 WAW→LHR`). Etykiety są domyślnie **ukryte** (mapa jest wtedy czytelniejsza, a aplikacja nie pobiera tras dla każdego samolotu na ekranie). Włączysz je przyciskiem z ikoną etykiety pod „M” albo w ustawieniach; wybór jest zapamiętywany i obowiązuje też w Android Auto. Szczegóły samolotu zawsze widać na jego karcie po dotknięciu.
 - Trasa i linia lotnicza są pobierane w tle z adsbdb (po jednym zapytaniu na sekundę).
 
 **Karta samolotu**
@@ -61,7 +61,7 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 | Element | Gdzie |
 |---|---|
 | Menu (trzy kreski) | prawy górny róg: „Szukaj samolotu” i „Ustawienia” |
-| `I` i `M` | prawy górny róg, pod menu |
+| `I`, `M` i przycisk etykiet | prawy górny róg, pod menu |
 | `+`, `−`, „center” | prawy dolny róg |
 | Wersja aplikacji | lewy dolny róg mapy |
 | Atrybucja OSM | prawy dolny róg mapy |
@@ -97,6 +97,7 @@ Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązuj�
 | Krycie obwódki | 140 | 0–255 | |
 | Przyciemnienie mapy | 90 | 0–220 | krycie czarnej warstwy nad kafelkami (0 wyłącza), im więcej, tym ciemniejsza mapa |
 | Obwódka samolotów [dp] | 1,2 | 0–6 | ciemna obwódka wokół ikon (0 wyłącza) |
+| Etykiety samolotów | 0 | 0–1 | 0 ukrywa etykiety, 1 pokazuje (to samo robi przycisk na mapie) |
 | Wielkość etykiet [dp] | 13 | 6–40 | |
 | Progi kolorów wysokości [m] | 300 / 1200 / 3000 / 6000 / 12000 | 0–20000 | granice pomarańczowego, żółtego, zielonego, niebieskiego i fioletowego |
 

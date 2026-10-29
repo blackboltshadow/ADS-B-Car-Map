@@ -1,6 +1,7 @@
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Services;
+using AdsbCarMap.Settings;
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
@@ -52,6 +53,11 @@ public class MainActivity : Activity
     /// Przycisk trybu zaznaczania wielu samolotów.
     /// </summary>
     private TextView? multiSelectButton;
+
+    /// <summary>
+    /// Przycisk pokazujący i ukrywający etykiety z opisem samolotów.
+    /// </summary>
+    private ImageButton? labelsButton;
 
     /// <summary>
     /// Karta głównego zaznaczonego samolotu.
@@ -111,6 +117,7 @@ public class MainActivity : Activity
     {
         base.OnResume();
 
+        UpdateModeButtons();
         cardRefreshRunnable = new Java.Lang.Runnable(CardRefreshTick);
         handler.Post(cardRefreshRunnable);
     }
@@ -230,7 +237,10 @@ public class MainActivity : Activity
         LinearLayout modeColumn = new LinearLayout(this);
         modeColumn.Orientation = Orientation.Vertical;
 
-        foreach (TextView button in new TextView[] { isolateButton, multiSelectButton })
+        labelsButton = CreateRoundButton(Resource.Drawable.ic_labels, "Pokaż lub ukryj etykiety samolotów");
+        labelsButton.Click += (sender, args) => OnLabelsClicked();
+
+        foreach (View button in new View[] { isolateButton, multiSelectButton, labelsButton })
         {
             LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(Dp(48), Dp(48));
             buttonParams.SetMargins(0, Dp(6), 0, Dp(6));
@@ -345,12 +355,29 @@ public class MainActivity : Activity
     }
 
     /// <summary>
-    /// Podświetla przyciski „I” i „M”, gdy odpowiadające im tryby są włączone.
+    /// Przełącza widoczność etykiet z opisem samolotów i zapisuje wybór w ustawieniach.
+    /// </summary>
+    private void OnLabelsClicked()
+    {
+        bool show = !AppSettings.ShowLabels;
+        Dictionary<SettingDefinition, double> values = new Dictionary<SettingDefinition, double>
+        {
+            { AppSettings.ShowLabelsSetting, show ? 1.0 : 0.0 },
+        };
+
+        AppSettings.Save(values);
+        UpdateModeButtons();
+        Toast.MakeText(this, show ? "Etykiety samolotów: widoczne" : "Etykiety samolotów: ukryte", ToastLength.Short)?.Show();
+    }
+
+    /// <summary>
+    /// Podświetla przyciski „I”, „M” i etykiet, gdy odpowiadające im tryby są włączone.
     /// </summary>
     private void UpdateModeButtons()
     {
         isolateButton?.SetBackgroundResource(controller.IsIsolated ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
         multiSelectButton?.SetBackgroundResource(controller.IsMultiSelect ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
+        labelsButton?.SetBackgroundResource(AppSettings.ShowLabels ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
     }
 
     /// <summary>

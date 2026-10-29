@@ -89,6 +89,11 @@ public static class AppSettings
     public static readonly SettingDefinition AircraftOutlineWidthSetting = new SettingDefinition("aircraft_outline_dp", "Obwódka samolotów [dp]", 1.2, 0.0, 6.0, false);
 
     /// <summary>
+    /// Przełącznik widoczności etykiet z opisem samolotów: 0 ukrywa, 1 pokazuje.
+    /// </summary>
+    public static readonly SettingDefinition ShowLabelsSetting = new SettingDefinition("show_labels", "Etykiety samolotów (0 = ukryte, 1 = widoczne)", 0.0, 0.0, 1.0, true);
+
+    /// <summary>
     /// Wielkość tekstu etykiet samolotów w dp.
     /// </summary>
     public static readonly SettingDefinition LabelTextSizeSetting = new SettingDefinition("label_text_dp", "Wielkość etykiet [dp]", 13.0, 6.0, 40.0, false);
@@ -138,6 +143,7 @@ public static class AppSettings
         TrailOutlineAlphaSetting,
         MapDimSetting,
         AircraftOutlineWidthSetting,
+        ShowLabelsSetting,
         LabelTextSizeSetting,
         AltitudeOrangeSetting,
         AltitudeYellowSetting,
@@ -235,6 +241,11 @@ public static class AppSettings
     /// Grubość ciemnej obwódki ikon samolotów z każdej strony w dp.
     /// </summary>
     public static float AircraftOutlineWidth => (float)Get(AircraftOutlineWidthSetting);
+
+    /// <summary>
+    /// Informacja, czy etykiety z opisem samolotów są widoczne na mapie.
+    /// </summary>
+    public static bool ShowLabels => Get(ShowLabelsSetting) >= 0.5;
 
     /// <summary>
     /// Wielkość tekstu etykiet samolotów w dp.

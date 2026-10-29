@@ -1451,7 +1451,7 @@ public sealed class MapController
         canvas.DrawPath(shape.Path, aircraftPaint);
         canvas.Restore();
 
-        if (kind == AircraftKind.Ground)
+        if (kind == AircraftKind.Ground || !AppSettings.ShowLabels)
         {
             return;
         }
