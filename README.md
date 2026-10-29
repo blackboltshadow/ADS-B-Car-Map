@@ -35,6 +35,15 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 - **Etykieta:** znak wywoławczy i poziom lotu (np. `LOT281 FL350`), a pod spodem typ i trasa (np. `B738 WAW→LHR`).
 - Trasa i linia lotnicza są pobierane w tle z adsbdb (po jednym zapytaniu na sekundę).
 
+**Karta samolotu**
+- Po dotknięciu samolotu u dołu mapy pojawia się karta (odświeżana co sekundę): lot, rejestracja, linia lotnicza, typ i rodzaj, trasa z lotniskami wylotu i przylotu oraz **pasek postępu lotu**.
+- Pod paskiem: ile procent trasy przeleciano, ile kilometrów zostało do celu i szacowany czas przylotu (z prędkości względem ziemi, więc to przybliżenie).
+- Parametry lotu: wysokość (ft i m), prędkość (kt i km/h), kurs z kierunkiem świata, prędkość wznoszenia lub opadania, squawk oraz wiek danych.
+- **Odległość i kierunek od Ciebie** (np. „34,2 km, NE (47°)”), liczone z pozycji GPS.
+- Przycisk „Śledź” wyśrodkowuje mapę na samolocie, a „✕” zamyka kartę i czyści zaznaczenie. Przy kilku zaznaczonych samolotach karta pokazuje ostatnio dotknięty, a przy jego nazwie jest liczba pozostałych.
+- Dane trasy i postęp są dostępne tylko dla lotów, które zna `adsbdb`. Jego pokrycie jest niepełne: w próbie testowej część znaków wywoławczych (np. `WUK6351`) nie miała trasy. Wtedy karta pokazuje pozostałe dane, bez paska postępu.
+- Karta mówi wprost, dlaczego trasy nie ma: „pobieranie…” (czeka w kolejce lub jest pobierana), „baza adsbdb nie zna tego lotu” albo „nie udało się pobrać (błąd sieci lub limit zapytań)”. W każdym z tych przypadków jest przycisk („Pobierz teraz”, „Sprawdź ponownie”, „Spróbuj ponownie”), który wymusza pobranie trasy w pierwszej kolejności. Trasa samolotu pokazanego na karcie jest też pobierana poza kolejką, bez czekania na pozostałe.
+
 **Wyszukiwanie** (menu → „Szukaj samolotu”)
 - Pole wyszukiwania zawsze na górze, pod nim przewijana lista widocznych samolotów: lot, rejestracja, linia lotnicza, typ, trasa, wysokość. Wiersze na przemian w jaśniejszym tle.
 - Wpisz lot, rejestrację, kod typu, lotnisko lub linię, aby zawęzić listę. Dotknięcie wiersza centruje mapę na samolocie i śledzi go.

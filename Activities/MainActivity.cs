@@ -1,3 +1,4 @@
+using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Services;
 using Android.App;
@@ -53,6 +54,26 @@ public class MainActivity : Activity
     private TextView? multiSelectButton;
 
     /// <summary>
+    /// Karta głównego zaznaczonego samolotu.
+    /// </summary>
+    private AircraftCardView? aircraftCard;
+
+    /// <summary>
+    /// Handler głównego wątku używany do okresowego odświeżania karty.
+    /// </summary>
+    private readonly Handler handler = new Handler(Looper.MainLooper!);
+
+    /// <summary>
+    /// Zadanie okresowego odświeżania karty, null gdy Activity nie jest widoczna.
+    /// </summary>
+    private Java.Lang.Runnable? cardRefreshRunnable;
+
+    /// <summary>
+    /// Odstęp odświeżania karty samolotu w milisekundach.
+    /// </summary>
+    private const int CardRefreshIntervalMilliseconds = 1000;
+
+    /// <summary>
     /// Buduje ekran z mapą i przyciskami oraz prosi o uprawnienia lokalizacji i powiadomień, jeśli ich brakuje.
     /// </summary>
     /// <param name="savedInstanceState">Zapisany stan Activity.</param>
@@ -81,6 +102,90 @@ public class MainActivity : Activity
         {
             RequestPermissions(missingPermissions.ToArray(), PermissionRequestCode);
         }
+    }
+
+    /// <summary>
+    /// Uruchamia okresowe odświeżanie karty samolotu.
+    /// </summary>
+    protected override void OnResume()
+    {
+        base.OnResume();
+
+        cardRefreshRunnable = new Java.Lang.Runnable(CardRefreshTick);
+        handler.Post(cardRefreshRunnable);
+    }
+
+    /// <summary>
+    /// Zatrzymuje okresowe odświeżanie karty samolotu.
+    /// </summary>
+    protected override void OnPause()
+    {
+        if (cardRefreshRunnable != null)
+        {
+            handler.RemoveCallbacks(cardRefreshRunnable);
+            cardRefreshRunnable = null;
+        }
+
+        base.OnPause();
+    }
+
+    /// <summary>
+    /// Odświeża kartę i planuje kolejne odświeżenie, dopóki Activity jest widoczna.
+    /// </summary>
+    private void CardRefreshTick()
+    {
+        UpdateCard();
+
+        if (cardRefreshRunnable != null)
+        {
+            handler.PostDelayed(cardRefreshRunnable, CardRefreshIntervalMilliseconds);
+        }
+    }
+
+    /// <summary>
+    /// Pokazuje kartę głównego zaznaczonego samolotu z aktualnymi danymi albo ją ukrywa, gdy nic nie jest zaznaczone.
+    /// </summary>
+    private void UpdateCard()
+    {
+        if (aircraftCard == null)
+        {
+            return;
+        }
+
+        SelectedAircraftInfo? info = controller.GetPrimaryInfo();
+
+        if (info == null)
+        {
+            aircraftCard.Visibility = ViewStates.Gone;
+
+            return;
+        }
+
+        string? callsign = info.Aircraft?.Callsign;
+        FlightRoute? route = AppServices.Routes.Get(callsign);
+
+        AppServices.Routes.Prioritize(callsign);
+
+        aircraftCard.Bind(info, route, AppServices.Routes.GetState(callsign));
+        aircraftCard.Visibility = ViewStates.Visible;
+    }
+
+    /// <summary>
+    /// Wymusza pobranie trasy głównego zaznaczonego samolotu i od razu odświeża kartę, żeby pokazała stan „pobieranie”.
+    /// </summary>
+    private void OnRefreshRouteClicked()
+    {
+        AppServices.Routes.Refresh(controller.GetPrimaryInfo()?.Aircraft?.Callsign);
+        UpdateCard();
+    }
+
+    /// <summary>
+    /// Odświeża przyciski trybów i kartę po zmianie zaznaczenia.
+    /// </summary>
+    private void OnSelectionChanged()
+    {
+        UpdateModeButtons();
+        UpdateCard();
     }
 
     /// <summary>
@@ -136,7 +241,17 @@ public class MainActivity : Activity
         modeParams.SetMargins(Dp(12), Dp(66), Dp(12), Dp(12));
         root.AddView(modeColumn, modeParams);
 
-        controller.SelectionChanged += () => RunOnUiThread(UpdateModeButtons);
+        aircraftCard = new AircraftCardView(this);
+        aircraftCard.Visibility = ViewStates.Gone;
+        aircraftCard.FollowClicked += () => controller.FollowPrimary();
+        aircraftCard.CloseClicked += () => controller.ClearSelection();
+        aircraftCard.RefreshRouteClicked += OnRefreshRouteClicked;
+
+        FrameLayout.LayoutParams cardParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent, GravityFlags.Bottom | GravityFlags.Start);
+        cardParams.SetMargins(Dp(12), Dp(12), Dp(12), Dp(32));
+        root.AddView(aircraftCard, cardParams);
+
+        controller.SelectionChanged += () => RunOnUiThread(OnSelectionChanged);
         UpdateModeButtons();
 
         ImageButton zoomInButton = CreateRoundButton(Resource.Drawable.ic_zoom_in, "Przybliż");
@@ -161,6 +276,8 @@ public class MainActivity : Activity
         FrameLayout.LayoutParams columnParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent, GravityFlags.Bottom | GravityFlags.End);
         columnParams.SetMargins(Dp(12), Dp(12), Dp(12), Dp(32));
         root.AddView(buttonColumn, columnParams);
+
+        aircraftCard.BringToFront();
 
         return root;
     }

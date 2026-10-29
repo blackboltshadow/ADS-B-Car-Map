@@ -146,6 +146,31 @@ public static class AircraftClassifier
     }
 
     /// <summary>
+    /// Zwraca polską nazwę rodzaju samolotu do wyświetlenia.
+    /// </summary>
+    /// <param name="kind">Rodzaj samolotu.</param>
+    /// <returns>Nazwa rodzaju lub pusty tekst dla rodzaju nieznanego.</returns>
+    public static string GetDisplayName(AircraftKind kind)
+    {
+        return kind switch
+        {
+            AircraftKind.Airliner => "samolot pasażerski",
+            AircraftKind.Heavy => "samolot szerokokadłubowy",
+            AircraftKind.SmallJet => "mały odrzutowiec",
+            AircraftKind.Turboprop => "samolot turbośmigłowy",
+            AircraftKind.LightPlane => "samolot lekki",
+            AircraftKind.Helicopter => "śmigłowiec",
+            AircraftKind.Fighter => "samolot bojowy",
+            AircraftKind.MilitaryTransport => "wojskowy transportowy",
+            AircraftKind.Glider => "szybowiec",
+            AircraftKind.Balloon => "balon",
+            AircraftKind.Drone => "dron",
+            AircraftKind.Ground => "obiekt naziemny",
+            _ => string.Empty,
+        };
+    }
+
+    /// <summary>
     /// Tworzy zbiór napisów porównywanych bez względu na wielkość liter.
     /// </summary>
     /// <param name="values">Elementy zbioru.</param>

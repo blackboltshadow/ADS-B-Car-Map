@@ -57,8 +57,8 @@ public sealed class RouteClient
             return null;
         }
 
-        (string? Code, string? City) origin = ParseAirport(route, "origin");
-        (string? Code, string? City) destination = ParseAirport(route, "destination");
+        (string? Code, string? City, double? Latitude, double? Longitude) origin = ParseAirport(route, "origin");
+        (string? Code, string? City, double? Latitude, double? Longitude) destination = ParseAirport(route, "destination");
 
         if (origin.Code == null || destination.Code == null)
         {
@@ -72,7 +72,16 @@ public sealed class RouteClient
             airlineName = GetString(airline, "name");
         }
 
-        return new FlightRoute(origin.Code, origin.City, destination.Code, destination.City, string.IsNullOrWhiteSpace(airlineName) ? null : airlineName);
+        return new FlightRoute(
+            origin.Code,
+            origin.City,
+            destination.Code,
+            destination.City,
+            string.IsNullOrWhiteSpace(airlineName) ? null : airlineName,
+            origin.Latitude,
+            origin.Longitude,
+            destination.Latitude,
+            destination.Longitude);
     }
 
     /// <summary>
@@ -80,19 +89,35 @@ public sealed class RouteClient
     /// </summary>
     /// <param name="route">Obiekt "flightroute".</param>
     /// <param name="name">Nazwa właściwości lotniska, "origin" albo "destination".</param>
-    /// <returns>Kod IATA, a gdy go brak ICAO, oraz miasto. Null, gdy danych brakuje.</returns>
-    private static (string? Code, string? City) ParseAirport(JsonElement route, string name)
+    /// <returns>Kod IATA, a gdy go brak ICAO, miasto oraz współrzędne. Null, gdy danych brakuje.</returns>
+    private static (string? Code, string? City, double? Latitude, double? Longitude) ParseAirport(JsonElement route, string name)
     {
         if (!route.TryGetProperty(name, out JsonElement airport) || airport.ValueKind != JsonValueKind.Object)
         {
-            return (null, null);
+            return (null, null, null, null);
         }
 
         string? iata = GetString(airport, "iata_code");
         string? icao = GetString(airport, "icao_code");
         string? city = GetString(airport, "municipality");
 
-        return (string.IsNullOrEmpty(iata) ? icao : iata, city);
+        return (string.IsNullOrEmpty(iata) ? icao : iata, city, GetDouble(airport, "latitude"), GetDouble(airport, "longitude"));
+    }
+
+    /// <summary>
+    /// Odczytuje właściwość liczbową.
+    /// </summary>
+    /// <param name="element">Obiekt JSON.</param>
+    /// <param name="name">Nazwa właściwości.</param>
+    /// <returns>Wartość lub null, gdy właściwość nie istnieje lub nie jest liczbą.</returns>
+    private static double? GetDouble(JsonElement element, string name)
+    {
+        if (element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Number)
+        {
+            return value.GetDouble();
+        }
+
+        return null;
     }
 
     /// <summary>

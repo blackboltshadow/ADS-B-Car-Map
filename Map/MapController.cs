@@ -330,6 +330,11 @@ public sealed class MapController
     private IReadOnlySet<string> selectedHexes = new HashSet<string>();
 
     /// <summary>
+    /// Adres ICAO głównego zaznaczonego samolotu, którego dotyczy karta, albo null, gdy nic nie jest zaznaczone.
+    /// </summary>
+    private string? primaryHex;
+
+    /// <summary>
     /// Informacja, czy dotknięcia samolotów dodają je do zaznaczenia.
     /// </summary>
     private bool multiSelect;
@@ -710,9 +715,73 @@ public sealed class MapController
             followedHex = hex;
             followLocation = false;
             selectedHexes = new HashSet<string> { hex };
+            primaryHex = hex;
         }
 
         SelectionChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Włącza podążanie środka mapy za głównym zaznaczonym samolotem, nie zmieniając zaznaczenia.
+    /// </summary>
+    public void FollowPrimary()
+    {
+        lock (stateLock)
+        {
+            if (primaryHex == null)
+            {
+                return;
+            }
+
+            flingVelocityX = 0.0;
+            flingVelocityY = 0.0;
+            followedHex = primaryHex;
+            followLocation = false;
+        }
+    }
+
+    /// <summary>
+    /// Czyści zaznaczenie samolotów i wyłącza izolację.
+    /// </summary>
+    public void ClearSelection()
+    {
+        lock (stateLock)
+        {
+            selectedHexes = new HashSet<string>();
+            primaryHex = null;
+            isolateSelected = false;
+        }
+
+        SelectionChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Zwraca dane głównego zaznaczonego samolotu z bieżącą, ekstrapolowaną pozycją oraz pozycję użytkownika, albo null, gdy nic nie jest zaznaczone.
+    /// </summary>
+    /// <returns>Dane do pokazania na karcie samolotu lub null.</returns>
+    public SelectedAircraftInfo? GetPrimaryInfo()
+    {
+        lock (stateLock)
+        {
+            string? hex = primaryHex;
+
+            if (hex == null)
+            {
+                return null;
+            }
+
+            Aircraft? aircraft = latestAircraft.FirstOrDefault(item => item.Hex == hex);
+            double ageSeconds = (DateTime.UtcNow - latestAircraftTimestampUtc).TotalSeconds;
+
+            if (aircraft == null)
+            {
+                return new SelectedAircraftInfo(hex, null, 0.0, 0.0, ageSeconds, hasUserLocation, userLatitude, userLongitude, selectedHexes.Count);
+            }
+
+            (double Latitude, double Longitude) position = Extrapolate(aircraft, ageSeconds);
+
+            return new SelectedAircraftInfo(hex, aircraft, position.Latitude, position.Longitude, ageSeconds, hasUserLocation, userLatitude, userLongitude, selectedHexes.Count);
+        }
     }
 
     /// <summary>
@@ -832,9 +901,17 @@ public sealed class MapController
             {
                 HashSet<string> next = new HashSet<string>(selectedHexes);
 
-                if (!next.Remove(tapped))
+                if (next.Remove(tapped))
+                {
+                    if (primaryHex == tapped)
+                    {
+                        primaryHex = next.FirstOrDefault();
+                    }
+                }
+                else
                 {
                     next.Add(tapped);
+                    primaryHex = tapped;
                 }
 
                 selectedHexes = next;
@@ -842,11 +919,13 @@ public sealed class MapController
             else
             {
                 selectedHexes = new HashSet<string> { tapped };
+                primaryHex = tapped;
             }
 
             if (selectedHexes.Count == 0)
             {
                 isolateSelected = false;
+                primaryHex = null;
             }
         }
 

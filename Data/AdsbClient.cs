@@ -215,6 +215,8 @@ public sealed class AdsbClient
         string? registration = GetString(element, "r")?.Trim();
         string? category = GetString(element, "category")?.Trim();
         bool isMilitary = GetDouble(element, "dbFlags") is double flags && ((int)flags & 1) != 0;
+        double? verticalRate = GetDouble(element, "baro_rate") ?? GetDouble(element, "geom_rate");
+        string? squawk = GetString(element, "squawk")?.Trim();
 
         return new Aircraft(
             hex,
@@ -229,7 +231,9 @@ public sealed class AdsbClient
             string.IsNullOrEmpty(typeCode) ? null : typeCode,
             string.IsNullOrEmpty(registration) ? null : registration,
             string.IsNullOrEmpty(category) ? null : category,
-            isMilitary);
+            isMilitary,
+            verticalRate.HasValue ? (int)Math.Round(verticalRate.Value) : null,
+            string.IsNullOrEmpty(squawk) ? null : squawk);
     }
 
     /// <summary>

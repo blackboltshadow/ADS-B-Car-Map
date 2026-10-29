@@ -21,6 +21,8 @@ public sealed class Aircraft
     /// <param name="registration">Znaki rejestracyjne lub null, gdy nieznane.</param>
     /// <param name="category">Kategoria nadajnika ADS-B, np. "A3", lub null, gdy nie jest nadawana.</param>
     /// <param name="isMilitary">Informacja, czy baza oznacza samolot jako wojskowy.</param>
+    /// <param name="verticalRateFeetPerMinute">Prędkość wznoszenia (dodatnia) lub opadania (ujemna) w stopach na minutę albo null, gdy nieznana.</param>
+    /// <param name="squawk">Kod transpondera lub null, gdy nieznany.</param>
     public Aircraft(
         string hex,
         string? callsign,
@@ -34,10 +36,14 @@ public sealed class Aircraft
         string? typeCode,
         string? registration,
         string? category = null,
-        bool isMilitary = false)
+        bool isMilitary = false,
+        int? verticalRateFeetPerMinute = null,
+        string? squawk = null)
     {
         Category = category;
         IsMilitary = isMilitary;
+        VerticalRateFeetPerMinute = verticalRateFeetPerMinute;
+        Squawk = squawk;
         Hex = hex;
         Callsign = callsign;
         Latitude = latitude;
@@ -65,6 +71,16 @@ public sealed class Aircraft
     /// Informacja, czy baza oznacza samolot jako wojskowy.
     /// </summary>
     public bool IsMilitary { get; }
+
+    /// <summary>
+    /// Prędkość wznoszenia (dodatnia) lub opadania (ujemna) w stopach na minutę albo null, gdy nieznana.
+    /// </summary>
+    public int? VerticalRateFeetPerMinute { get; }
+
+    /// <summary>
+    /// Kod transpondera lub null, gdy nieznany.
+    /// </summary>
+    public string? Squawk { get; }
 
     /// <summary>
     /// Rodzaj samolotu ustalony z kategorii, znacznika wojskowego i kodu typu.

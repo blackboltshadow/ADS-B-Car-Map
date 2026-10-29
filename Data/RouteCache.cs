@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Android.Util;
 
@@ -53,6 +54,16 @@ public sealed class RouteCache
     /// Znaki wywoławcze aktualnie w kolejce, aby nie dodawać ich wielokrotnie.
     /// </summary>
     private readonly ConcurrentDictionary<string, byte> queued = new ConcurrentDictionary<string, byte>();
+
+    /// <summary>
+    /// Kolejka znaków wywoławczych do pobrania w pierwszej kolejności, np. samolotu pokazanego na karcie.
+    /// </summary>
+    private readonly ConcurrentQueue<string> priorityQueue = new ConcurrentQueue<string>();
+
+    /// <summary>
+    /// Znaki wywoławcze aktualnie w kolejce priorytetowej, aby nie dodawać ich wielokrotnie.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, byte> priorityQueued = new ConcurrentDictionary<string, byte>();
 
     /// <summary>
     /// Znacznik działającego wątku pobierającego: 1, gdy działa, 0 w przeciwnym razie.
@@ -124,11 +135,111 @@ public sealed class RouteCache
         }
 
         queue.Enqueue(key);
+        EnsureWorker();
+    }
 
+    /// <summary>
+    /// Uruchamia wątek pobierający, jeśli jeszcze nie działa.
+    /// </summary>
+    private void EnsureWorker()
+    {
         if (Interlocked.CompareExchange(ref workerRunning, 1, 0) == 0)
         {
             _ = Task.Run(WorkerAsync);
         }
+    }
+
+    /// <summary>
+    /// Zwraca stan wyszukiwania trasy: znana, nieznana serwerowi, nieudana lub w toku.
+    /// </summary>
+    /// <param name="callsign">Znak wywoławczy lub null.</param>
+    /// <returns>Stan wyszukiwania trasy.</returns>
+    public RouteLookupState GetState(string? callsign)
+    {
+        if (string.IsNullOrWhiteSpace(callsign))
+        {
+            return RouteLookupState.NotApplicable;
+        }
+
+        string key = callsign.Trim().ToUpperInvariant();
+
+        if (routes.TryGetValue(key, out FlightRoute? route))
+        {
+            return route != null ? RouteLookupState.Found : RouteLookupState.NotFound;
+        }
+
+        if (!queued.ContainsKey(key) && retryAfterUtc.TryGetValue(key, out DateTime retryAfter) && retryAfter > DateTime.UtcNow)
+        {
+            return RouteLookupState.Failed;
+        }
+
+        return RouteLookupState.Pending;
+    }
+
+    /// <summary>
+    /// Wymusza ponowne pobranie trasy: zapomina dotychczasowy wynik, także informację o braku trasy lub o błędzie, i pobiera ją w pierwszej kolejności.
+    /// </summary>
+    /// <param name="callsign">Znak wywoławczy lub null.</param>
+    public void Refresh(string? callsign)
+    {
+        if (string.IsNullOrWhiteSpace(callsign))
+        {
+            return;
+        }
+
+        string key = callsign.Trim().ToUpperInvariant();
+
+        routes.TryRemove(key, out FlightRoute? removedRoute);
+        retryAfterUtc.TryRemove(key, out DateTime removedRetry);
+        queued.TryAdd(key, 0);
+        EnqueuePriority(key);
+    }
+
+    /// <summary>
+    /// Przesuwa na początek kolejki trasę, która czeka na pobranie. Nie robi nic, gdy trasa jest już znana albo pobranie się nie udało.
+    /// </summary>
+    /// <param name="callsign">Znak wywoławczy lub null.</param>
+    public void Prioritize(string? callsign)
+    {
+        if (string.IsNullOrWhiteSpace(callsign) || GetState(callsign) != RouteLookupState.Pending)
+        {
+            return;
+        }
+
+        string key = callsign.Trim().ToUpperInvariant();
+
+        queued.TryAdd(key, 0);
+        EnqueuePriority(key);
+    }
+
+    /// <summary>
+    /// Dodaje znak wywoławczy do kolejki priorytetowej, jeśli jeszcze w niej nie ma, i uruchamia pobieranie.
+    /// </summary>
+    /// <param name="key">Znormalizowany znak wywoławczy.</param>
+    private void EnqueuePriority(string key)
+    {
+        if (priorityQueued.TryAdd(key, 0))
+        {
+            priorityQueue.Enqueue(key);
+            EnsureWorker();
+        }
+    }
+
+    /// <summary>
+    /// Pobiera następny znak wywoławczy do przetworzenia, najpierw z kolejki priorytetowej.
+    /// </summary>
+    /// <param name="key">Znak wywoławczy do pobrania.</param>
+    /// <returns>True, gdy w którejś kolejce coś było.</returns>
+    private bool TryDequeueNext([NotNullWhen(true)] out string? key)
+    {
+        if (priorityQueue.TryDequeue(out key))
+        {
+            priorityQueued.TryRemove(key, out byte removedPriorityMarker);
+
+            return true;
+        }
+
+        return queue.TryDequeue(out key);
     }
 
     /// <summary>
@@ -139,8 +250,15 @@ public sealed class RouteCache
     {
         while (true)
         {
-            while (queue.TryDequeue(out string? key))
+            while (TryDequeueNext(out string? key))
             {
+                if (routes.ContainsKey(key))
+                {
+                    queued.TryRemove(key, out byte removedDuplicateMarker);
+
+                    continue;
+                }
+
                 try
                 {
                     FlightRoute? route = await client.GetRouteAsync(key, CancellationToken.None);
@@ -162,7 +280,7 @@ public sealed class RouteCache
 
             Interlocked.Exchange(ref workerRunning, 0);
 
-            if (queue.IsEmpty || Interlocked.CompareExchange(ref workerRunning, 1, 0) != 0)
+            if ((queue.IsEmpty && priorityQueue.IsEmpty) || Interlocked.CompareExchange(ref workerRunning, 1, 0) != 0)
             {
                 return;
             }
