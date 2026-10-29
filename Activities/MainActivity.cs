@@ -8,6 +8,8 @@ using Android.Content;
 using Android.Content.PM;
 using Android.Graphics;
 using Android.OS;
+using Android.Text;
+using Android.Text.Style;
 using Android.Util;
 using Android.Views;
 using Android.Widget;
@@ -15,7 +17,7 @@ using Android.Widget;
 namespace AdsbCarMap.Activities
 {
     /// <summary>
-    /// Activity startowa na telefonie z mapą samolotów, przyciskami zoomu i centrowania oraz menu prowadzącym do wyszukiwarki i ustawień. Prosi też o uprawnienia lokalizacji i powiadomień.
+    /// Start activity on the phone with the aircraft map, zoom and center buttons, and a menu leading to the search and the settings. It also asks for the location and notification permissions.
     /// </summary>
     [Activity(
         Label = "ADS-B Car Map",
@@ -26,79 +28,89 @@ namespace AdsbCarMap.Activities
     public class MainActivity : Activity
     {
         /// <summary>
-        /// Tag używany w logach Androida.
+        /// Tag used in Android logs.
         /// </summary>
         private const string LogTag = "AdsbCarMap";
 
         /// <summary>
-        /// Kod żądania uprawnień lokalizacji i powiadomień.
+        /// Request code for the location and notification permissions.
         /// </summary>
         private const int PermissionRequestCode = 1;
 
         /// <summary>
-        /// Identyfikator pozycji menu otwierającej wyszukiwarkę.
+        /// Identifier of the menu item that opens the search.
         /// </summary>
         private const int MenuSearchId = 1;
 
         /// <summary>
-        /// Identyfikator pozycji menu otwierającej ustawienia.
+        /// Identifier of the menu item that opens the settings.
         /// </summary>
         private const int MenuSettingsId = 2;
 
         /// <summary>
-        /// Kontroler mapy rysowanej na ekranie telefonu.
+        /// Controller of the map drawn on the phone screen.
         /// </summary>
         private readonly MapController controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes);
 
         /// <summary>
-        /// Przycisk izolacji zaznaczonych samolotów.
+        /// Button that isolates the selected aircraft.
         /// </summary>
         private TextView? isolateButton;
 
         /// <summary>
-        /// Przycisk trybu zaznaczania wielu samolotów.
+        /// Button of the multi-select mode.
         /// </summary>
         private TextView? multiSelectButton;
 
         /// <summary>
-        /// Przycisk pokazujący i ukrywający etykiety z opisem samolotów.
+        /// Button that shows and hides the aircraft description labels.
         /// </summary>
         private ImageButton? labelsButton;
 
         /// <summary>
-        /// Przycisk filtra pokazującego wyłącznie samoloty wojskowe.
+        /// Button of the filter that shows only military aircraft.
         /// </summary>
         private ImageButton? militaryButton;
 
         /// <summary>
-        /// Karta głównego zaznaczonego samolotu.
+        /// Card of the primary selected aircraft.
         /// </summary>
         private AircraftCardView? aircraftCard;
 
         /// <summary>
-        /// Handler głównego wątku używany do okresowego odświeżania karty.
+        /// Main thread handler used to refresh the card periodically.
         /// </summary>
         private readonly Handler handler = new Handler(Looper.MainLooper!);
 
         /// <summary>
-        /// Zadanie okresowego odświeżania karty, null gdy Activity nie jest widoczna.
+        /// Periodic card refresh task, null when the activity is not visible.
         /// </summary>
         private Java.Lang.Runnable? cardRefreshRunnable;
 
         /// <summary>
-        /// Odstęp odświeżania karty samolotu w milisekundach.
+        /// Aircraft card refresh interval in milliseconds.
         /// </summary>
         private const int CardRefreshIntervalMilliseconds = 1000;
 
         /// <summary>
-        /// Część szerokości ekranu zajmowana przez kartę samolotu w poziomie, aby nie zasłaniała przycisków po prawej.
+        /// Part of the screen width taken by the aircraft card in landscape, so that it does not cover the buttons on the right.
         /// </summary>
         private const float LandscapeCardWidthFraction = 0.55f;
 
         /// <summary>
-        /// Buduje ekran z mapą i przyciskami oraz prosi o uprawnienia lokalizacji i powiadomień, jeśli ich brakuje.
+        /// Size of the selection counter relative to the "M" letter.
         /// </summary>
-        /// <param name="savedInstanceState">Zapisany stan Activity.</param>
+        private const float CounterRelativeSize = 0.65f;
+
+        /// <summary>
+        /// Number of selected aircraft from which the counter is shown next to the "M" letter.
+        /// </summary>
+        private const int MinimumCounterCount = 2;
+
+        /// <summary>
+        /// Builds the screen with the map and buttons, and asks for the location and notification permissions if they are missing.
+        /// </summary>
+        /// <param name="savedInstanceState">Saved activity state.</param>
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
@@ -128,9 +140,9 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Przebudowuje układ po obrocie ekranu bez odtwarzania Activity, dzięki czemu mapa zachowuje przybliżenie, środek i zaznaczenie.
+        /// Rebuilds the layout after a screen rotation without recreating the activity, so the map keeps its zoom, center and selection.
         /// </summary>
-        /// <param name="newConfig">Nowa konfiguracja ekranu.</param>
+        /// <param name="newConfig">New screen configuration.</param>
         public override void OnConfigurationChanged(Android.Content.Res.Configuration newConfig)
         {
             base.OnConfigurationChanged(newConfig);
@@ -140,7 +152,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Uruchamia okresowe odświeżanie karty samolotu.
+        /// Starts the periodic refresh of the aircraft card.
         /// </summary>
         protected override void OnResume()
         {
@@ -152,7 +164,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Zatrzymuje okresowe odświeżanie karty samolotu.
+        /// Stops the periodic refresh of the aircraft card.
         /// </summary>
         protected override void OnPause()
         {
@@ -166,7 +178,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Odświeża kartę i planuje kolejne odświeżenie, dopóki Activity jest widoczna.
+        /// Refreshes the card and schedules the next refresh while the activity is visible.
         /// </summary>
         private void CardRefreshTick()
         {
@@ -179,7 +191,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Pokazuje kartę głównego zaznaczonego samolotu z aktualnymi danymi albo ją ukrywa, gdy nic nie jest zaznaczone.
+        /// Shows the card of the primary selected aircraft with current data, or hides it when nothing is selected.
         /// </summary>
         private void UpdateCard()
         {
@@ -207,7 +219,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Wymusza pobranie trasy głównego zaznaczonego samolotu i od razu odświeża kartę, żeby pokazała stan „pobieranie”.
+        /// Forces the route download for the primary selected aircraft and refreshes the card immediately so that it shows the "loading" state.
         /// </summary>
         private void OnRefreshRouteClicked()
         {
@@ -216,7 +228,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Odświeża przyciski trybów i kartę po zmianie zaznaczenia.
+        /// Refreshes the mode buttons and the card after the selection changes.
         /// </summary>
         private void OnSelectionChanged()
         {
@@ -225,11 +237,11 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Uruchamia aktualizacje pozycji po przyznaniu uprawnienia lokalizacji.
+        /// Starts the location updates after the location permission is granted.
         /// </summary>
-        /// <param name="requestCode">Kod żądania.</param>
-        /// <param name="permissions">Zażądane uprawnienia.</param>
-        /// <param name="grantResults">Wyniki żądania.</param>
+        /// <param name="requestCode">Request code.</param>
+        /// <param name="permissions">Requested permissions.</param>
+        /// <param name="grantResults">Request results.</param>
         public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
         {
             base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -241,9 +253,9 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Tworzy widok ekranu: mapę na całej powierzchni, menu w prawym górnym rogu oraz przyciski zoomu i centrowania w prawym dolnym.
+        /// Creates the screen view: the map on the whole surface, the menu in the top right corner, and the zoom and center buttons in the bottom right.
         /// </summary>
-        /// <returns>Główny widok Activity.</returns>
+        /// <returns>Main view of the activity.</returns>
         private View BuildContent()
         {
             FrameLayout root = new FrameLayout(this);
@@ -348,11 +360,11 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Tworzy okrągły przycisk z ikoną nakładany na mapę.
+        /// Creates a round button with an icon, overlaid on the map.
         /// </summary>
-        /// <param name="iconResourceId">Identyfikator zasobu drawable z ikoną.</param>
-        /// <param name="description">Opis przycisku dla czytników ekranu.</param>
-        /// <returns>Przycisk gotowy do dodania do układu.</returns>
+        /// <param name="iconResourceId">Identifier of the drawable resource with the icon.</param>
+        /// <param name="description">Button description for screen readers.</param>
+        /// <returns>Button ready to be added to the layout.</returns>
         private ImageButton CreateRoundButton(int iconResourceId, string description)
         {
             ImageButton button = new ImageButton(this);
@@ -365,11 +377,11 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Tworzy okrągły przycisk z literą nakładany na mapę.
+        /// Creates a round button with a letter, overlaid on the map.
         /// </summary>
-        /// <param name="text">Litera na przycisku.</param>
-        /// <param name="description">Opis przycisku dla czytników ekranu.</param>
-        /// <returns>Przycisk gotowy do dodania do układu.</returns>
+        /// <param name="text">Letter on the button.</param>
+        /// <param name="description">Button description for screen readers.</param>
+        /// <returns>Button ready to be added to the layout.</returns>
         private TextView CreateTextButton(string text, string description)
         {
             TextView button = new TextView(this);
@@ -386,7 +398,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Włącza lub wyłącza izolację zaznaczonych samolotów i podpowiada, gdy nic nie jest zaznaczone.
+        /// Turns the isolation of the selected aircraft on or off, and shows a hint when nothing is selected.
         /// </summary>
         private void OnIsolateClicked()
         {
@@ -397,7 +409,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Włącza lub wyłącza zaznaczanie wielu samolotów.
+        /// Turns the multi-select mode on or off.
         /// </summary>
         private void OnMultiSelectClicked()
         {
@@ -410,7 +422,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Przełącza widoczność etykiet z opisem samolotów i zapisuje wybór w ustawieniach.
+        /// Toggles the visibility of the aircraft description labels and saves the choice in the settings.
         /// </summary>
         private void OnLabelsClicked()
         {
@@ -426,7 +438,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Włącza lub wyłącza filtr samolotów wojskowych i podaje, ile ich jest w ostatnich danych.
+        /// Turns the military aircraft filter on or off and reports how many of them are in the latest data.
         /// </summary>
         private void OnMilitaryClicked()
         {
@@ -441,7 +453,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Podświetla przyciski „I”, „M”, etykiet i filtra wojskowych, gdy odpowiadające im tryby są włączone.
+        /// Highlights the "I", "M", labels and military filter buttons when their modes are on, and shows the number of selected aircraft next to "M".
         /// </summary>
         private void UpdateModeButtons()
         {
@@ -449,12 +461,41 @@ namespace AdsbCarMap.Activities
             isolateButton?.SetBackgroundResource(controller.IsIsolated ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
             multiSelectButton?.SetBackgroundResource(controller.IsMultiSelect ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
             labelsButton?.SetBackgroundResource(AppSettings.ShowLabels ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
+
+            UpdateSelectionCounter();
         }
 
         /// <summary>
-        /// Pokazuje menu z wyszukiwarką i ustawieniami pod przyciskiem menu.
+        /// Shows the number of selected aircraft in parentheses, slightly lowered and smaller, next to the "M" letter once at least two are selected, or just the letter otherwise.
         /// </summary>
-        /// <param name="anchor">Przycisk, pod którym pojawia się menu.</param>
+        private void UpdateSelectionCounter()
+        {
+            if (multiSelectButton == null)
+            {
+                return;
+            }
+
+            int count = controller.SelectedCount;
+            bool showCounter = count >= MinimumCounterCount;
+            string text = showCounter ? "M(" + count.ToString(CultureInfo.InvariantCulture) + ")" : "M";
+            SpannableString spannable = new SpannableString(text);
+
+            if (showCounter)
+            {
+                spannable.SetSpan(new RelativeSizeSpan(CounterRelativeSize), 1, text.Length, SpanTypes.ExclusiveExclusive);
+                spannable.SetSpan(new SubscriptSpan(), 1, text.Length, SpanTypes.ExclusiveExclusive);
+            }
+
+            multiSelectButton.SetText(spannable, TextView.BufferType.Normal);
+            multiSelectButton.ContentDescription = count > 0
+                ? string.Format(CultureInfo.InvariantCulture, "Zaznaczanie wielu samolotów, zaznaczono: {0}", count)
+                : "Zaznaczanie wielu samolotów";
+        }
+
+        /// <summary>
+        /// Shows the menu with the search and the settings under the menu button.
+        /// </summary>
+        /// <param name="anchor">Button under which the menu appears.</param>
         private void ShowMenu(View anchor)
         {
             PopupMenu popup = new PopupMenu(this, anchor);
@@ -477,10 +518,10 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Przelicza dp na piksele ekranu telefonu.
+        /// Converts dp to pixels of the phone screen.
         /// </summary>
-        /// <param name="value">Wartość w dp.</param>
-        /// <returns>Wartość w pikselach.</returns>
+        /// <param name="value">Value in dp.</param>
+        /// <returns>Value in pixels.</returns>
         private int Dp(int value)
         {
             return (int)(value * (Resources?.DisplayMetrics?.Density ?? 1.0f));

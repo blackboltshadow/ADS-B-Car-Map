@@ -50,7 +50,7 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 
 **Zaznaczanie i izolacja**
 - Dotknięcie samolotu na mapie zaznacza go (żółty pierścień).
-- **M** włącza tryb zaznaczania wielu samolotów: dotknięcia dodają lub odejmują samoloty. W tym trybie karta samolotu się nie pokazuje, żeby nie zasłaniała mapy przy zaznaczaniu. Wróci po wyłączeniu „M”, jeśli coś zostało zaznaczone.
+- **M** włącza tryb zaznaczania wielu samolotów: dotknięcia dodają lub odejmują samoloty. W tym trybie karta samolotu się nie pokazuje, żeby nie zasłaniała mapy przy zaznaczaniu. Wróci po wyłączeniu „M”, jeśli coś zostało zaznaczone. Obok litery „M” widać **licznik zaznaczonych samolotów** w nawiasie, nieco niżej i mniejszą czcionką (np. „M(5)”). Pojawia się od dwóch zaznaczonych samolotów, także po wyłączeniu trybu wielokrotnego.
 - **I** pokazuje tylko zaznaczone samoloty (reszta i ich ślady znika). Ponowne dotknięcie przywraca wszystkie.
 
 **Filtr samolotów wojskowych**

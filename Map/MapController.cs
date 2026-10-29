@@ -13,102 +13,102 @@ using AndroidPath = Android.Graphics.Path;
 namespace AdsbCarMap.Map
 {
     /// <summary>
-    /// Przechowuje stan mapy oraz uruchamia pętle pobierania samolotów i rysowania na powierzchni Android Auto.
+    /// Holds the map state and runs the aircraft download and drawing loops on the Android Auto surface.
     /// </summary>
     public sealed class MapController
     {
         /// <summary>
-        /// Tag używany w logach Androida.
+        /// Tag used in Android logs.
         /// </summary>
         private const string LogTag = "AdsbCarMap";
 
         /// <summary>
-        /// Maksymalny czas w milisekundach, przez jaki główny wątek czeka na zakończenie rysowania klatki przy zatrzymaniu.
+        /// Maximum time in milliseconds the main thread waits for the current frame to finish drawing when stopping.
         /// </summary>
         private const int StopWaitMilliseconds = 500;
 
         /// <summary>
-        /// Największy poziom przybliżenia kafelków OpenStreetMap.
+        /// Highest zoom level of the OpenStreetMap tiles.
         /// </summary>
         private const int MaxTileZoom = 19;
 
         /// <summary>
-        /// O ile poziomów niższy jest zawsze wczytywany kafelek bazowy, który służy za tło, gdy dokładniejszy kafelek jeszcze nie dotarł.
+        /// How many levels lower the base tile is always loaded; it serves as a background while the more detailed tile has not arrived yet.
         /// </summary>
         private const int BaseLayerLevels = 2;
 
         /// <summary>
-        /// Na ilu poziomach w dół szukany jest kafelek zastępczy.
+        /// How many levels down a fallback tile is searched for.
         /// </summary>
         private const int MaxFallbackLevels = 3;
 
         /// <summary>
-        /// Szerokość pasa wokół ekranu w pikselach kafelków, z którego kafelki są wczytywane z wyprzedzeniem.
+        /// Width of the band around the screen, in tile pixels, from which tiles are loaded ahead of time.
         /// </summary>
         private const int TilePrefetchPixels = 256;
 
         /// <summary>
-        /// Największa liczba jednocześnie pobieranych kafelków.
+        /// Maximum number of tiles downloaded at the same time.
         /// </summary>
         private const int MaxConcurrentTileDownloads = 6;
 
         /// <summary>
-        /// Stała czasowa płynnego dochodzenia zoomu do celu, w sekundach.
+        /// Time constant of the smooth zoom approach to its target, in seconds.
         /// </summary>
         private const double ZoomEasingSeconds = 0.09;
 
         /// <summary>
-        /// Różnica zoomu, poniżej której zoom jest od razu ustawiany na cel.
+        /// Zoom difference below which the zoom is set to the target immediately.
         /// </summary>
         private const double ZoomSnapThreshold = 0.004;
 
         /// <summary>
-        /// Stała czasowa zanikania bezwładnego przesuwania, w sekundach.
+        /// Time constant of the fling movement decay, in seconds.
         /// </summary>
         private const double FlingDecaySeconds = 0.35;
 
         /// <summary>
-        /// Prędkość w pikselach na sekundę, poniżej której bezwładne przesuwanie się kończy.
+        /// Velocity in pixels per second below which the fling movement ends.
         /// </summary>
         private const double FlingStopVelocity = 25.0;
 
         /// <summary>
-        /// Największy czas jednej klatki liczony do ruchu, w sekundach, aby po zatrzymaniu pętli mapa nie skakała.
+        /// Longest frame time counted for movement, in seconds, so that the map does not jump after the loop was paused.
         /// </summary>
         private const double MaxFrameSeconds = 0.1;
 
         /// <summary>
-        /// Zapas miejsc w pamięci kafelków ponad liczbę widocznych kafelków, aby limit z ustawień nie powodował ciągłego pobierania.
+        /// Number of spare tile slots above the visible tile count, so that the settings limit does not cause constant downloading.
         /// </summary>
         private const int TileCacheMargin = 16;
 
         /// <summary>
-        /// Odstęp między zapisami statystyk kafelków w logu.
+        /// Interval between tile statistics log entries.
         /// </summary>
         private static readonly TimeSpan TileStatisticsInterval = TimeSpan.FromSeconds(5);
 
         /// <summary>
-        /// Maksymalny wiek współdzielonej listy samolotów, przy którym nowa mapa pokazuje ją od razu po uruchomieniu.
+        /// Maximum age of the shared aircraft list at which a new map shows it immediately after start.
         /// </summary>
         private static readonly TimeSpan SharedSnapshotMaxAge = TimeSpan.FromSeconds(60);
 
         /// <summary>
-        /// Kolor tła widoczny, zanim kafelki zostaną pobrane.
+        /// Background color visible before the tiles are downloaded.
         /// </summary>
         private static readonly Color BackgroundColor = Color.Rgb(30, 34, 40);
 
         /// <summary>
-        /// Przelicznik stóp na metry.
+        /// Feet to meters conversion factor.
         /// </summary>
         private const double MetersPerFoot = 0.3048;
 
         /// <summary>
-        /// Kolor samolotu na ziemi.
+        /// Color of an aircraft on the ground.
         /// </summary>
         private static readonly Color GroundColor = Color.Rgb(150, 150, 150);
 
         /// <summary>
-        /// Kolory samolotu w powietrzu odpowiadające progom wysokości z <see cref="AppSettings.AltitudeStopsMeters"/>: pomarańczowy, żółty, zielony, niebieski, fioletowy.
+        /// Colors of an airborne aircraft matching the altitude thresholds from <see cref="AppSettings.AltitudeStopsMeters"/>: orange, yellow, green, blue, purple.
         /// </summary>
         private static readonly Color[] AltitudeStopColors = new Color[]
         {
@@ -120,341 +120,341 @@ namespace AdsbCarMap.Map
         };
 
         /// <summary>
-        /// Kolor znacznika pozycji użytkownika.
+        /// Color of the user position marker.
         /// </summary>
         private static readonly Color UserColor = Color.Rgb(66, 133, 244);
 
         /// <summary>
-        /// Kolor obwódki znacznika pozycji użytkownika.
+        /// Color of the outline of the user position marker.
         /// </summary>
         private static readonly Color UserOutlineColor = Color.White;
 
         /// <summary>
-        /// Kolor pierścienia wokół zaznaczonego samolotu.
+        /// Color of the ring around a selected aircraft.
         /// </summary>
         private static readonly Color SelectedAircraftColor = Color.Rgb(255, 214, 0);
 
         /// <summary>
-        /// Promień w dp, w jakim dotknięcie jest przypisywane do samolotu.
+        /// Radius in dp within which a tap is assigned to an aircraft.
         /// </summary>
         private const float TapRadius = 30.0f;
 
         /// <summary>
-        /// Kolor obwódki wokół śledzonego samolotu.
+        /// Color of the outline around the followed aircraft.
         /// </summary>
         private static readonly Color FollowedAircraftColor = Color.White;
 
         /// <summary>
-        /// Klient API ADS-B.
+        /// ADS-B API client.
         /// </summary>
         private readonly AdsbClient adsbClient;
 
         /// <summary>
-        /// Dostawca kafelków mapy.
+        /// Map tile provider.
         /// </summary>
         private readonly TileProvider tileProvider;
 
         /// <summary>
-        /// Pamięć tras lotów.
+        /// Flight route cache.
         /// </summary>
         private readonly RouteCache routeCache;
 
         /// <summary>
-        /// Blokada chroniąca stan widoku i listę samolotów.
+        /// Lock protecting the view state and the aircraft list.
         /// </summary>
         private readonly object stateLock = new object();
 
         /// <summary>
-        /// Blokada gwarantująca, że powierzchnia nie jest używana po jej zniszczeniu.
+        /// Lock guaranteeing that the surface is not used after it has been destroyed.
         /// </summary>
         private readonly object renderLock = new object();
 
         /// <summary>
-        /// Zdekodowane kafelki gotowe do narysowania.
+        /// Decoded tiles ready to be drawn.
         /// </summary>
         private readonly ConcurrentDictionary<TileKey, Bitmap> bitmaps = new ConcurrentDictionary<TileKey, Bitmap>();
 
         /// <summary>
-        /// Kafelki, które są aktualnie pobierane lub dekodowane.
+        /// Tiles that are currently being downloaded or decoded.
         /// </summary>
         private readonly ConcurrentDictionary<TileKey, byte> loadingTiles = new ConcurrentDictionary<TileKey, byte>();
 
         /// <summary>
-        /// Numer klatki, w której kafelek był ostatnio narysowany lub zdekodowany. Służy do usuwania najdawniej użytych kafelków.
+        /// Number of the frame in which a tile was last drawn or decoded. Used to remove the least recently used tiles.
         /// </summary>
         private readonly ConcurrentDictionary<TileKey, long> tileLastUsedFrame = new ConcurrentDictionary<TileKey, long>();
 
         /// <summary>
-        /// Kafelki potrzebne w ostatniej klatce: widoczne, sąsiednie do wczytania z wyprzedzeniem oraz warstwa bazowa o niższym poziomie. Zbiór jest podmieniany co klatkę i nie jest modyfikowany po publikacji.
+        /// Tiles needed in the last frame: visible ones, neighbors to load ahead of time, and the lower-level base layer. The set is replaced every frame and is not modified after publication.
         /// </summary>
         private HashSet<TileKey> wantedTiles = new HashSet<TileKey>();
 
         /// <summary>
-        /// Ogranicza liczbę jednoczesnych pobrań kafelków.
+        /// Limits the number of simultaneous tile downloads.
         /// </summary>
         private readonly SemaphoreSlim tileGate = new SemaphoreSlim(MaxConcurrentTileDownloads);
 
         /// <summary>
-        /// Źródło fragmentu kafelka używanego jako zastępczy.
+        /// Source region of the tile used as a fallback.
         /// </summary>
         private readonly Rect fallbackSource = new Rect();
 
         /// <summary>
-        /// Obszar, w którym rysowany jest kafelek zastępczy.
+        /// Area in which the fallback tile is drawn.
         /// </summary>
         private readonly RectF fallbackDestination = new RectF();
 
         /// <summary>
-        /// Numer ostatnio rozpoczętej klatki rysowania.
+        /// Number of the most recently started drawing frame.
         /// </summary>
         private long frameCounter;
 
         /// <summary>
-        /// Liczba kafelków pokrywających ekran w ostatniej klatce.
+        /// Number of tiles covering the screen in the last frame.
         /// </summary>
         private int lastVisibleTileCount;
 
         /// <summary>
-        /// Czas, po którym można ponowić pobranie kafelka, który się nie udał.
+        /// Time after which a failed tile download can be retried.
         /// </summary>
         private readonly ConcurrentDictionary<TileKey, DateTime> tileRetryAfterUtc = new ConcurrentDictionary<TileKey, DateTime>();
 
         /// <summary>
-        /// Liczba kafelków zdekodowanych od uruchomienia kontrolera.
+        /// Number of tiles decoded since the controller was started.
         /// </summary>
         private long tilesDecodedCount;
 
         /// <summary>
-        /// Liczba nieudanych prób pobrania lub zdekodowania kafelka od uruchomienia kontrolera.
+        /// Number of failed attempts to download or decode a tile since the controller was started.
         /// </summary>
         private long tilesFailedCount;
 
         /// <summary>
-        /// Rozmiar i format ostatnio zdekodowanego kafelka.
+        /// Size and format of the most recently decoded tile.
         /// </summary>
         private string lastDecodedTileInfo = "brak";
 
         /// <summary>
-        /// Moment ostatniego zapisu statystyk kafelków w logu, w UTC.
+        /// Moment of the last tile statistics log entry, in UTC.
         /// </summary>
         private DateTime lastTileStatisticsUtc = DateTime.MinValue;
 
         /// <summary>
-        /// Pędzel używany do rysowania ciemnej obwódki ikon samolotów.
+        /// Paint used to draw the dark outline of the aircraft icons.
         /// </summary>
         private readonly Paint aircraftOutlinePaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Pędzel używany do rysowania pierścienia wokół zaznaczonych samolotów.
+        /// Paint used to draw the ring around the selected aircraft.
         /// </summary>
         private readonly Paint selectedPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Pędzel używany do rysowania kafelków.
+        /// Paint used to draw the tiles.
         /// </summary>
         private readonly Paint tilePaint = new Paint(PaintFlags.FilterBitmap);
 
         /// <summary>
-        /// Pędzel używany do rysowania sylwetek samolotów.
+        /// Paint used to draw the aircraft silhouettes.
         /// </summary>
         private readonly Paint aircraftPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Pędzel używany do rysowania śladów samolotów.
+        /// Paint used to draw the aircraft trails.
         /// </summary>
         private readonly Paint trailPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Pędzel używany do rysowania ciemnej obwódki pod śladami samolotów.
+        /// Paint used to draw the dark outline under the aircraft trails.
         /// </summary>
         private readonly Paint trailOutlinePaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Ścieżka obwódki śladu, wielokrotnie używana dla kolejnych samolotów.
+        /// Path of the trail outline, reused for consecutive aircraft.
         /// </summary>
         private readonly AndroidPath trailOutlinePath = new AndroidPath();
 
         /// <summary>
-        /// Pędzel używany do rysowania etykiet samolotów.
+        /// Paint used to draw the aircraft labels.
         /// </summary>
         private readonly Paint labelPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Pędzel używany do rysowania atrybucji OpenStreetMap.
+        /// Paint used to draw the OpenStreetMap attribution.
         /// </summary>
         private readonly Paint attributionPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Pędzel używany do rysowania numeru wersji.
+        /// Paint used to draw the version number.
         /// </summary>
         private readonly Paint versionPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Pędzel używany do rysowania znacznika pozycji użytkownika.
+        /// Paint used to draw the user position marker.
         /// </summary>
         private readonly Paint userPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Pędzel używany do rysowania obwódki wokół śledzonego samolotu.
+        /// Paint used to draw the outline around the followed aircraft.
         /// </summary>
         private readonly Paint followedPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Kształty ikon samolotów według rodzaju.
+        /// Aircraft icon shapes by kind.
         /// </summary>
         private readonly AircraftShapes aircraftShapes = new AircraftShapes();
 
         /// <summary>
-        /// Szerokość geograficzna środka mapy.
+        /// Latitude of the map center.
         /// </summary>
         private double centerLatitude = 52.2297;
 
         /// <summary>
-        /// Długość geograficzna środka mapy.
+        /// Longitude of the map center.
         /// </summary>
         private double centerLongitude = 21.0122;
 
         /// <summary>
-        /// Informacja, czy środek mapy podąża za pozycją użytkownika.
+        /// Whether the map center follows the user position.
         /// </summary>
         private bool followLocation = true;
 
         /// <summary>
-        /// Adres ICAO samolotu, za którym podąża środek mapy, lub null, gdy żaden nie jest śledzony.
+        /// ICAO address of the aircraft the map center follows, or null when none is followed.
         /// </summary>
         private string? followedHex;
 
         /// <summary>
-        /// Adresy ICAO zaznaczonych samolotów. Zbiór jest podmieniany przy każdej zmianie i nie jest modyfikowany po przypisaniu.
+        /// ICAO addresses of the selected aircraft. The set is replaced on every change and is not modified after assignment.
         /// </summary>
         private IReadOnlySet<string> selectedHexes = new HashSet<string>();
 
         /// <summary>
-        /// Adres ICAO głównego zaznaczonego samolotu, którego dotyczy karta, albo null, gdy nic nie jest zaznaczone.
+        /// ICAO address of the primary selected aircraft the card refers to, or null when nothing is selected.
         /// </summary>
         private string? primaryHex;
 
         /// <summary>
-        /// Informacja, czy dotknięcia samolotów dodają je do zaznaczenia.
+        /// Whether taps on aircraft add them to the selection.
         /// </summary>
         private bool multiSelect;
 
         /// <summary>
-        /// Informacja, czy rysowane są wyłącznie zaznaczone samoloty.
+        /// Whether only the selected aircraft are drawn.
         /// </summary>
         private bool isolateSelected;
 
         /// <summary>
-        /// Informacja, czy rysowane są wyłącznie samoloty oznaczone w bazie jako wojskowe.
+        /// Whether only the aircraft marked as military in the database are drawn.
         /// </summary>
         private bool militaryOnly;
 
         /// <summary>
-        /// Pozycje samolotów narysowanych w ostatniej klatce, używane do rozpoznawania dotknięć. Lista jest podmieniana co klatkę.
+        /// Positions of the aircraft drawn in the last frame, used to recognize taps. The list is replaced every frame.
         /// </summary>
         private IReadOnlyList<(string Hex, float X, float Y)> screenHits = Array.Empty<(string Hex, float X, float Y)>();
 
         /// <summary>
-        /// Progi wysokości w metrach obowiązujące w bieżącej klatce, odczytywane z ustawień na początku rysowania.
+        /// Altitude thresholds in meters used in the current frame, read from the settings at the start of drawing.
         /// </summary>
         private double[] frameAltitudeStops = AppSettings.AltitudeStopsMeters;
 
         /// <summary>
-        /// Informacja, czy znana jest już pozycja użytkownika.
+        /// Whether the user position is already known.
         /// </summary>
         private bool hasUserLocation;
 
         /// <summary>
-        /// Ostatnia znana szerokość geograficzna użytkownika.
+        /// Last known latitude of the user.
         /// </summary>
         private double userLatitude;
 
         /// <summary>
-        /// Ostatnia znana długość geograficzna użytkownika.
+        /// Last known longitude of the user.
         /// </summary>
         private double userLongitude;
 
         /// <summary>
-        /// Aktualny, ułamkowy poziom przybliżenia widoczny na ekranie.
+        /// Current, fractional zoom level visible on the screen.
         /// </summary>
         private double zoom = 8.0;
 
         /// <summary>
-        /// Poziom przybliżenia, do którego płynnie zmierza <see cref="zoom"/>.
+        /// Zoom level that <see cref="zoom"/> smoothly approaches.
         /// </summary>
         private double zoomTarget = 8.0;
 
         /// <summary>
-        /// Prędkość bezwładnego przesuwania w poziomie w pikselach na sekundę, według konwencji GestureDetector.
+        /// Horizontal fling velocity in pixels per second, following the GestureDetector convention.
         /// </summary>
         private double flingVelocityX;
 
         /// <summary>
-        /// Prędkość bezwładnego przesuwania w pionie w pikselach na sekundę, według konwencji GestureDetector.
+        /// Vertical fling velocity in pixels per second, following the GestureDetector convention.
         /// </summary>
         private double flingVelocityY;
 
         /// <summary>
-        /// Moment rozpoczęcia poprzedniej klatki, w UTC. Służy do ruchu niezależnego od tempa klatek.
+        /// Start of the previous frame, in UTC. Used for movement independent of the frame rate.
         /// </summary>
         private DateTime lastFrameUtc = DateTime.MinValue;
 
         /// <summary>
-        /// Szerokość powierzchni w pikselach.
+        /// Surface width in pixels.
         /// </summary>
         private int surfaceWidth;
 
         /// <summary>
-        /// Wysokość powierzchni w pikselach.
+        /// Surface height in pixels.
         /// </summary>
         private int surfaceHeight;
 
         /// <summary>
-        /// Współczynnik gęstości ekranu względem 160 dpi.
+        /// Screen density factor relative to 160 dpi.
         /// </summary>
         private float density = 1.0f;
 
         /// <summary>
-        /// Ostatnio pobrana lista samolotów.
+        /// Most recently downloaded aircraft list.
         /// </summary>
         private IReadOnlyList<Aircraft> latestAircraft = Array.Empty<Aircraft>();
 
         /// <summary>
-        /// Moment pobrania ostatniej listy samolotów, w UTC.
+        /// Moment the latest aircraft list was downloaded, in UTC.
         /// </summary>
         private DateTime latestAircraftTimestampUtc = DateTime.UtcNow;
 
         /// <summary>
-        /// Ślady samolotów według adresu ICAO, od najstarszego punktu. Słownik i tablice nie są modyfikowane po przypisaniu, każda aktualizacja tworzy nowe.
+        /// Aircraft trails by ICAO address, from the oldest point. The dictionary and the arrays are not modified after assignment; every update creates new ones.
         /// </summary>
         private IReadOnlyDictionary<string, TrailPoint[]> latestTrails = new Dictionary<string, TrailPoint[]>();
 
         /// <summary>
-        /// Powierzchnia, na której rysowana jest mapa. Null, gdy nie jest dostępna.
+        /// Surface the map is drawn on. Null when it is not available.
         /// </summary>
         private Surface? surface;
 
         /// <summary>
-        /// Źródło tokenów anulowania dla pętli pobierania i rysowania.
+        /// Cancellation token source for the download and drawing loops.
         /// </summary>
         private CancellationTokenSource? cancellation;
 
         /// <summary>
-        /// Odbiornik aktualizacji pozycji użytkownika.
+        /// Receiver of the user position updates.
         /// </summary>
         private readonly LocationTracker locationTracker;
 
         /// <summary>
-        /// Zdarzenie wywoływane po zmianie zaznaczenia, trybu zaznaczania lub izolacji.
+        /// Event raised after the selection, the selection mode or the isolation changes.
         /// </summary>
         public event System.Action? SelectionChanged;
 
         /// <summary>
-        /// Tworzy kontroler i przygotowuje pędzle oraz kształt samolotu.
+        /// Creates the controller and prepares the paints and the aircraft shapes.
         /// </summary>
-        /// <param name="adsbClient">Klient API ADS-B.</param>
-        /// <param name="tileProvider">Dostawca kafelków mapy.</param>
-        /// <param name="routeCache">Pamięć tras lotów.</param>
+        /// <param name="adsbClient">ADS-B API client.</param>
+        /// <param name="tileProvider">Map tile provider.</param>
+        /// <param name="routeCache">Flight route cache.</param>
         public MapController(AdsbClient adsbClient, TileProvider tileProvider, RouteCache routeCache)
         {
             this.adsbClient = adsbClient;
@@ -492,12 +492,12 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Zapamiętuje powierzchnię i uruchamia pętle pobierania danych oraz rysowania, a także aktualizacje pozycji.
+        /// Stores the surface and starts the data download and drawing loops as well as the position updates.
         /// </summary>
-        /// <param name="newSurface">Powierzchnia udostępniona przez Android Auto.</param>
-        /// <param name="width">Szerokość powierzchni w pikselach.</param>
-        /// <param name="height">Wysokość powierzchni w pikselach.</param>
-        /// <param name="dpi">Gęstość ekranu w dpi.</param>
+        /// <param name="newSurface">Surface provided by Android Auto.</param>
+        /// <param name="width">Surface width in pixels.</param>
+        /// <param name="height">Surface height in pixels.</param>
+        /// <param name="dpi">Screen density in dpi.</param>
         public void Start(Surface newSurface, int width, int height, int dpi)
         {
             Stop();
@@ -539,7 +539,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Zatrzymuje pętle i aktualizacje pozycji oraz zwalnia powierzchnię. Wraca dopiero po zakończeniu ewentualnego rysowania klatki.
+        /// Stops the loops and the position updates and releases the surface. Returns only after a possible frame drawing has finished.
         /// </summary>
         public void Stop()
         {
@@ -572,9 +572,9 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Zatrzymuje rysowanie tylko wtedy, gdy niszczona powierzchnia jest tą, na której mapa aktualnie rysuje. Chroni przed zatrzymaniem rysowania na nowej powierzchni, gdy stara jest niszczona po jej utworzeniu, np. przy obrocie ekranu.
+        /// Stops drawing only if the destroyed surface is the one the map is currently drawing on. Protects against stopping the drawing on a new surface when the old one is destroyed after it was created, e.g. on screen rotation.
         /// </summary>
-        /// <param name="destroyed">Niszczona powierzchnia.</param>
+        /// <param name="destroyed">Surface being destroyed.</param>
         public void StopIfCurrent(Surface destroyed)
         {
             Surface? current = surface;
@@ -586,7 +586,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Płynnie przybliża mapę do następnego pełnego poziomu.
+        /// Smoothly zooms in to the next whole level.
         /// </summary>
         public void ZoomIn()
         {
@@ -597,7 +597,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Płynnie oddala mapę do poprzedniego pełnego poziomu.
+        /// Smoothly zooms out to the previous whole level.
         /// </summary>
         public void ZoomOut()
         {
@@ -608,9 +608,9 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Zmienia zoom ciągle zgodnie ze skalą gestu przybliżania.
+        /// Changes the zoom continuously according to the pinch gesture scale.
         /// </summary>
-        /// <param name="scaleFactor">Współczynnik skali względem poprzedniego zdarzenia.</param>
+        /// <param name="scaleFactor">Scale factor relative to the previous event.</param>
         public void Scale(float scaleFactor)
         {
             if (scaleFactor <= 0.0f)
@@ -627,10 +627,10 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Przesuwa środek mapy o podaną liczbę pikseli, zatrzymuje bezwładność i wyłącza śledzenie pozycji użytkownika oraz samolotu.
+        /// Moves the map center by the given number of pixels, stops the fling and turns off following of the user position and of the aircraft.
         /// </summary>
-        /// <param name="distanceX">Przesunięcie w poziomie w pikselach, według konwencji GestureDetector.</param>
-        /// <param name="distanceY">Przesunięcie w pionie w pikselach, według konwencji GestureDetector.</param>
+        /// <param name="distanceX">Horizontal movement in pixels, following the GestureDetector convention.</param>
+        /// <param name="distanceY">Vertical movement in pixels, following the GestureDetector convention.</param>
         public void Pan(float distanceX, float distanceY)
         {
             lock (stateLock)
@@ -642,10 +642,10 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Uruchamia bezwładne przesuwanie mapy po geście przeciągnięcia z rozpędem.
+        /// Starts the fling movement of the map after a fling gesture.
         /// </summary>
-        /// <param name="velocityX">Prędkość palca w poziomie w pikselach na sekundę.</param>
-        /// <param name="velocityY">Prędkość palca w pionie w pikselach na sekundę.</param>
+        /// <param name="velocityX">Horizontal finger velocity in pixels per second.</param>
+        /// <param name="velocityY">Vertical finger velocity in pixels per second.</param>
         public void Fling(float velocityX, float velocityY)
         {
             lock (stateLock)
@@ -658,7 +658,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Zatrzymuje bezwładne przesuwanie, np. po dotknięciu ekranu.
+        /// Stops the fling movement, e.g. after the screen is touched.
         /// </summary>
         public void StopFling()
         {
@@ -670,10 +670,10 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Przesuwa środek mapy o podaną liczbę pikseli i wyłącza śledzenie. Wywoływać pod blokadą stanu.
+        /// Moves the map center by the given number of pixels and turns off following. Call under the state lock.
         /// </summary>
-        /// <param name="distanceX">Przesunięcie w poziomie w pikselach.</param>
-        /// <param name="distanceY">Przesunięcie w pionie w pikselach.</param>
+        /// <param name="distanceX">Horizontal movement in pixels.</param>
+        /// <param name="distanceY">Vertical movement in pixels.</param>
         private void MoveCenter(double distanceX, double distanceY)
         {
             (double X, double Y) center = WebMercator.LatLonToWorldPixel(centerLatitude, centerLongitude, zoom);
@@ -686,9 +686,9 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Przesuwa stan ruchu o czas jednej klatki: zbliża zoom do celu i przesuwa mapę z bezwładnością. Wywoływać pod blokadą stanu.
+        /// Advances the motion state by one frame time: brings the zoom closer to its target and moves the map with inertia. Call under the state lock.
         /// </summary>
-        /// <param name="deltaSeconds">Czas od poprzedniej klatki w sekundach.</param>
+        /// <param name="deltaSeconds">Time since the previous frame in seconds.</param>
         private void AdvanceMotion(double deltaSeconds)
         {
             double minimumZoom = AppSettings.MinZoom;
@@ -722,9 +722,9 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Włącza podążanie środka mapy za samolotem i wyłącza śledzenie pozycji użytkownika.
+        /// Makes the map center follow an aircraft and turns off following of the user position.
         /// </summary>
-        /// <param name="hex">Adres ICAO samolotu.</param>
+        /// <param name="hex">ICAO address of the aircraft.</param>
         public void FollowAircraft(string hex)
         {
             lock (stateLock)
@@ -741,7 +741,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Włącza podążanie środka mapy za głównym zaznaczonym samolotem, nie zmieniając zaznaczenia.
+        /// Makes the map center follow the primary selected aircraft without changing the selection.
         /// </summary>
         public void FollowPrimary()
         {
@@ -760,7 +760,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Czyści zaznaczenie samolotów i wyłącza izolację.
+        /// Clears the aircraft selection and turns off the isolation.
         /// </summary>
         public void ClearSelection()
         {
@@ -775,9 +775,9 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Zwraca dane głównego zaznaczonego samolotu z bieżącą, ekstrapolowaną pozycją oraz pozycję użytkownika, albo null, gdy nic nie jest zaznaczone.
+        /// Returns the data of the primary selected aircraft with its current, extrapolated position and the user position, or null when nothing is selected.
         /// </summary>
-        /// <returns>Dane do pokazania na karcie samolotu lub null.</returns>
+        /// <returns>Data shown on the aircraft card, or null.</returns>
         public SelectedAircraftInfo? GetPrimaryInfo()
         {
             lock (stateLock)
@@ -804,7 +804,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Informacja, czy dotknięcia samolotów dodają je do zaznaczenia zamiast zastępować zaznaczenie.
+        /// Whether taps on aircraft add them to the selection instead of replacing it.
         /// </summary>
         public bool IsMultiSelect
         {
@@ -818,7 +818,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Informacja, czy na mapie widać wyłącznie zaznaczone samoloty.
+        /// Whether only the selected aircraft are visible on the map.
         /// </summary>
         public bool IsIsolated
         {
@@ -832,7 +832,21 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Informacja, czy na mapie widać wyłącznie samoloty oznaczone jako wojskowe.
+        /// Number of currently selected aircraft.
+        /// </summary>
+        public int SelectedCount
+        {
+            get
+            {
+                lock (stateLock)
+                {
+                    return selectedHexes.Count;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Whether only the aircraft marked as military are visible on the map.
         /// </summary>
         public bool IsMilitaryOnly
         {
@@ -846,10 +860,10 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Włącza lub wyłącza filtr pokazujący wyłącznie samoloty wojskowe.
+        /// Turns the filter that shows only military aircraft on or off.
         /// </summary>
-        /// <param name="militaryCount">Liczba samolotów wojskowych w ostatnich danych.</param>
-        /// <returns>True, gdy filtr jest teraz włączony.</returns>
+        /// <param name="militaryCount">Number of military aircraft in the latest data.</param>
+        /// <returns>True when the filter is now on.</returns>
         public bool ToggleMilitaryOnly(out int militaryCount)
         {
             bool enabled;
@@ -867,9 +881,9 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Włącza lub wyłącza tryb zaznaczania wielu samolotów.
+        /// Turns the multi-select mode on or off.
         /// </summary>
-        /// <returns>True, gdy tryb jest teraz włączony.</returns>
+        /// <returns>True when the mode is now on.</returns>
         public bool ToggleMultiSelect()
         {
             bool enabled;
@@ -886,10 +900,10 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Włącza izolację zaznaczonych samolotów albo ją wyłącza, jeśli jest włączona.
+        /// Turns the isolation of the selected aircraft on, or off if it is on.
         /// </summary>
-        /// <param name="isolated">Informacja, czy izolacja jest włączona po wywołaniu.</param>
-        /// <returns>False, gdy izolacji nie da się włączyć, bo nic nie jest zaznaczone.</returns>
+        /// <param name="isolated">Whether the isolation is on after the call.</param>
+        /// <returns>False when the isolation cannot be turned on because nothing is selected.</returns>
         public bool TryToggleIsolation(out bool isolated)
         {
             lock (stateLock)
@@ -918,10 +932,10 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Obsługuje dotknięcie mapy: zaznacza najbliższy samolot w pobliżu palca. W trybie wielokrotnym dodaje go do zaznaczenia lub usuwa z niego, a w zwykłym zastępuje zaznaczenie. Dotknięcie pustego miejsca poza trybem wielokrotnym czyści zaznaczenie.
+        /// Handles a tap on the map: selects the aircraft nearest to the finger. In the multi-select mode it adds the aircraft to the selection or removes it, and in the normal mode it replaces the selection. A tap on an empty spot clears the selection outside the multi-select mode.
         /// </summary>
-        /// <param name="x">Pozycja dotknięcia w poziomie w pikselach.</param>
-        /// <param name="y">Pozycja dotknięcia w pionie w pikselach.</param>
+        /// <param name="x">Horizontal tap position in pixels.</param>
+        /// <param name="y">Vertical tap position in pixels.</param>
         public void Tap(float x, float y)
         {
             IReadOnlyList<(string Hex, float X, float Y)> hits = Volatile.Read(ref screenHits);
@@ -987,10 +1001,10 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Zapamiętuje pozycję użytkownika i, w trybie śledzenia, przesuwa na nią środek mapy.
+        /// Stores the user position and, in the following mode, moves the map center to it.
         /// </summary>
-        /// <param name="latitude">Szerokość geograficzna użytkownika.</param>
-        /// <param name="longitude">Długość geograficzna użytkownika.</param>
+        /// <param name="latitude">Latitude of the user.</param>
+        /// <param name="longitude">Longitude of the user.</param>
         public void SetUserLocation(double latitude, double longitude)
         {
             lock (stateLock)
@@ -1008,7 +1022,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Włącza tryb śledzenia użytkownika zamiast samolotu i, jeśli pozycja jest znana, centruje na niej mapę.
+        /// Turns on following of the user instead of an aircraft and, if the position is known, centers the map on it.
         /// </summary>
         public void FollowUser()
         {
@@ -1028,7 +1042,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Uruchamia aktualizacje pozycji, jeśli powierzchnia jest aktywna. Wywoływane po przyznaniu uprawnienia.
+        /// Starts the position updates if the surface is active. Called after the permission is granted.
         /// </summary>
         public void StartLocationUpdates()
         {
@@ -1039,10 +1053,10 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Pętla rysowania, która odświeża klatkę co odstęp z ustawień.
+        /// Drawing loop that refreshes the frame at the interval from the settings.
         /// </summary>
-        /// <param name="cancellationToken">Token zatrzymujący pętlę.</param>
-        /// <returns>Zadanie reprezentujące pętlę.</returns>
+        /// <param name="cancellationToken">Token that stops the loop.</param>
+        /// <returns>Task representing the loop.</returns>
         private async Task RenderLoopAsync(CancellationToken cancellationToken)
         {
             try
@@ -1065,10 +1079,10 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Pętla pobierająca samoloty w zasięgu widocznego obszaru.
+        /// Loop that downloads the aircraft within the range of the visible area.
         /// </summary>
-        /// <param name="cancellationToken">Token zatrzymujący pętlę.</param>
-        /// <returns>Zadanie reprezentujące pętlę.</returns>
+        /// <param name="cancellationToken">Token that stops the loop.</param>
+        /// <returns>Task representing the loop.</returns>
         private async Task DataLoopAsync(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -1133,12 +1147,12 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Tworzy nowe ślady, dopisując pozycje z odpowiedzi API i usuwając punkty starsze niż <see cref="AppSettings.TrailDuration"/>.
+        /// Creates new trails by appending the positions from the API response and removing the points older than <see cref="AppSettings.TrailDuration"/>.
         /// </summary>
-        /// <param name="previous">Dotychczasowe ślady.</param>
-        /// <param name="fetched">Samoloty z najnowszej odpowiedzi.</param>
-        /// <param name="nowUtc">Moment otrzymania odpowiedzi, w UTC.</param>
-        /// <returns>Nowy słownik śladów.</returns>
+        /// <param name="previous">Existing trails.</param>
+        /// <param name="fetched">Aircraft from the latest response.</param>
+        /// <param name="nowUtc">Moment the response was received, in UTC.</param>
+        /// <returns>New trail dictionary.</returns>
         private static IReadOnlyDictionary<string, TrailPoint[]> UpdateTrails(IReadOnlyDictionary<string, TrailPoint[]> previous, IReadOnlyList<Aircraft> fetched, DateTime nowUtc)
         {
             DateTime cutoffUtc = nowUtc - AppSettings.TrailDuration;
@@ -1191,13 +1205,13 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Wylicza promień zapytania tak, aby pokrywał przekątną widocznego obszaru.
+        /// Calculates the query radius so that it covers the diagonal of the visible area.
         /// </summary>
-        /// <param name="latitude">Szerokość geograficzna środka mapy.</param>
-        /// <param name="zoomLevel">Poziom przybliżenia.</param>
-        /// <param name="width">Szerokość widoku w pikselach.</param>
-        /// <param name="height">Wysokość widoku w pikselach.</param>
-        /// <returns>Promień w milach morskich.</returns>
+        /// <param name="latitude">Latitude of the map center.</param>
+        /// <param name="zoomLevel">Zoom level.</param>
+        /// <param name="width">View width in pixels.</param>
+        /// <param name="height">View height in pixels.</param>
+        /// <returns>Radius in nautical miles.</returns>
         private static double CalculateRadiusNauticalMiles(double latitude, double zoomLevel, int width, int height)
         {
             double metersPerPixel = 156543.03392 * Math.Cos(latitude * Math.PI / 180.0) / Math.Pow(2.0, zoomLevel);
@@ -1207,7 +1221,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Rysuje jedną klatkę na powierzchni, jeśli jest dostępna.
+        /// Draws one frame on the surface if it is available.
         /// </summary>
         private void DrawFrame()
         {
@@ -1246,9 +1260,9 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Rysuje tło, kafelki, ślady, samoloty, atrybucję i numer wersji.
+        /// Draws the background, tiles, trails, aircraft, attribution and the version number.
         /// </summary>
-        /// <param name="canvas">Płótno powierzchni.</param>
+        /// <param name="canvas">Surface canvas.</param>
         private void DrawScene(Canvas canvas)
         {
             double latitude;
@@ -1476,13 +1490,13 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Rysuje sylwetkę samolotu obróconą o kurs wraz z etykietą: w pierwszej linii lot i wysokość, w drugiej typ i trasa.
+        /// Draws the aircraft silhouette rotated by the track together with the label: flight and altitude in the first line, type and route in the second.
         /// </summary>
-        /// <param name="canvas">Płótno powierzchni.</param>
-        /// <param name="item">Samolot do narysowania.</param>
-        /// <param name="x">Pozycja samolotu na ekranie w poziomie.</param>
-        /// <param name="y">Pozycja samolotu na ekranie w pionie.</param>
-        /// <param name="screenDensity">Współczynnik gęstości ekranu.</param>
+        /// <param name="canvas">Surface canvas.</param>
+        /// <param name="item">Aircraft to draw.</param>
+        /// <param name="x">Horizontal position of the aircraft on the screen.</param>
+        /// <param name="y">Vertical position of the aircraft on the screen.</param>
+        /// <param name="screenDensity">Screen density factor.</param>
         private void DrawAircraft(Canvas canvas, Aircraft item, float x, float y, float screenDensity)
         {
             aircraftPaint.Color = GetAltitudeColor(item.OnGround, item.AltitudeFeet);
@@ -1542,18 +1556,18 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Rysuje ślad samolotu jako odcinki w kolorze wysokości na ciemnej obwódce, coraz bardziej przezroczyste w stronę najstarszego punktu. Ostatni odcinek łączy ślad z bieżącą pozycją ikony.
+        /// Draws the aircraft trail as segments in the altitude color on a dark outline, increasingly transparent toward the oldest point. The last segment connects the trail with the current icon position.
         /// </summary>
-        /// <param name="canvas">Płótno powierzchni.</param>
-        /// <param name="trail">Punkty śladu od najstarszego.</param>
-        /// <param name="item">Samolot, do którego należy ślad.</param>
-        /// <param name="aircraftX">Bieżąca pozycja ikony na ekranie w poziomie.</param>
-        /// <param name="aircraftY">Bieżąca pozycja ikony na ekranie w pionie.</param>
-        /// <param name="centerLatitude">Szerokość geograficzna środka ekranu.</param>
-        /// <param name="centerLongitude">Długość geograficzna środka ekranu.</param>
-        /// <param name="zoomLevel">Poziom przybliżenia.</param>
-        /// <param name="width">Szerokość ekranu w pikselach.</param>
-        /// <param name="height">Wysokość ekranu w pikselach.</param>
+        /// <param name="canvas">Surface canvas.</param>
+        /// <param name="trail">Trail points from the oldest.</param>
+        /// <param name="item">Aircraft the trail belongs to.</param>
+        /// <param name="aircraftX">Current horizontal position of the icon on the screen.</param>
+        /// <param name="aircraftY">Current vertical position of the icon on the screen.</param>
+        /// <param name="centerLatitude">Latitude of the screen center.</param>
+        /// <param name="centerLongitude">Longitude of the screen center.</param>
+        /// <param name="zoomLevel">Zoom level.</param>
+        /// <param name="width">Screen width in pixels.</param>
+        /// <param name="height">Screen height in pixels.</param>
         private void DrawTrail(Canvas canvas, TrailPoint[] trail, Aircraft item, float aircraftX, float aircraftY, double centerLatitude, double centerLongitude, double zoomLevel, int width, int height)
         {
             if (trail.Length == 0)
@@ -1601,11 +1615,11 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Wyznacza kolor samolotu według wysokości: szary na ziemi, a w powietrzu przejście od pomarańczowego przez żółty, zielony i niebieski do fioletowego, według progów z ustawień.
+        /// Determines the aircraft color by altitude: gray on the ground, and in the air a gradient from orange through yellow, green and blue to purple, according to the thresholds from the settings.
         /// </summary>
-        /// <param name="onGround">Informacja, czy samolot jest na ziemi.</param>
-        /// <param name="altitudeFeet">Wysokość barometryczna w stopach lub null, gdy nieznana.</param>
-        /// <returns>Kolor ikony i śladu.</returns>
+        /// <param name="onGround">Whether the aircraft is on the ground.</param>
+        /// <param name="altitudeFeet">Barometric altitude in feet, or null when unknown.</param>
+        /// <returns>Color of the icon and the trail.</returns>
         private Color GetAltitudeColor(bool onGround, int? altitudeFeet)
         {
             if (onGround)
@@ -1652,11 +1666,11 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Szacuje aktualną pozycję samolotu na podstawie kursu i prędkości od momentu ostatniego pomiaru.
+        /// Estimates the current aircraft position from its track and speed since the last measurement.
         /// </summary>
-        /// <param name="item">Samolot z ostatnim znanym położeniem.</param>
-        /// <param name="elapsedSeconds">Czas od pobrania danych w sekundach.</param>
-        /// <returns>Szacowana szerokość i długość geograficzna.</returns>
+        /// <param name="item">Aircraft with the last known position.</param>
+        /// <param name="elapsedSeconds">Time since the data was downloaded, in seconds.</param>
+        /// <returns>Estimated latitude and longitude.</returns>
         private static (double Latitude, double Longitude) Extrapolate(Aircraft item, double elapsedSeconds)
         {
             if (item.OnGround || !item.GroundSpeedKnots.HasValue || !item.TrackDegrees.HasValue)
@@ -1676,11 +1690,11 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Zapisuje w logu podsumowanie stanu kafelków co kilka sekund.
+        /// Writes a tile status summary to the log every few seconds.
         /// </summary>
-        /// <param name="visibleTiles">Liczba kafelków pokrywających ekran.</param>
-        /// <param name="missingTiles">Liczba kafelków, których jeszcze nie ma w pamięci.</param>
-        /// <param name="zoomLevel">Bieżący poziom przybliżenia.</param>
+        /// <param name="visibleTiles">Number of tiles covering the screen.</param>
+        /// <param name="missingTiles">Number of tiles not in memory yet.</param>
+        /// <param name="zoomLevel">Current zoom level.</param>
         private void LogTileStatistics(int visibleTiles, int missingTiles, double zoomLevel)
         {
             DateTime now = DateTime.UtcNow;
@@ -1706,11 +1720,11 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Rysuje w miejscu brakującego kafelka jego powiększony fragment z kafelka o niższym poziomie przybliżenia albo, gdy go nie ma, zmniejszone kafelki o wyższym poziomie. Pozostawia tło, gdy nic nie jest dostępne.
+        /// Draws in place of a missing tile its enlarged part from a tile of a lower zoom level or, when there is none, reduced tiles of a higher level. Leaves the background when nothing is available.
         /// </summary>
-        /// <param name="canvas">Płótno powierzchni z ustawioną skalą kafelków.</param>
-        /// <param name="tile">Brakujący kafelek z pozycją na ekranie.</param>
-        /// <param name="frame">Numer bieżącej klatki.</param>
+        /// <param name="canvas">Surface canvas with the tile scale set.</param>
+        /// <param name="tile">Missing tile with its position on the screen.</param>
+        /// <param name="frame">Number of the current frame.</param>
         private void DrawFallbackTile(Canvas canvas, VisibleTile tile, long frame)
         {
             TileKey key = tile.Key;
@@ -1766,9 +1780,9 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Zleca pobranie i zdekodowanie kafelka, jeśli nie jest już w pamięci, w toku ani nie czeka na ponowną próbę.
+        /// Requests the download and decoding of a tile if it is not already in memory, in progress, or waiting for a retry.
         /// </summary>
-        /// <param name="key">Identyfikator kafelka.</param>
+        /// <param name="key">Tile identifier.</param>
         private void RequestTile(TileKey key)
         {
             if (bitmaps.ContainsKey(key))
@@ -1837,7 +1851,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Usuwa nadmiarowe zdekodowane kafelki, gdy cache przekracza dozwolony rozmiar.
+        /// Removes the excess decoded tiles when the cache exceeds the allowed size.
         /// </summary>
         private void TrimBitmapCache()
         {
