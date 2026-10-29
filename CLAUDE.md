@@ -3,6 +3,8 @@ Zasady kodu:
 - Nie używamy var, zawsze jawne typy.
 - Zawsze pełne new List<string>(), bez target-typed new().
 - Bez komentarzy opisujących, co kod robi. Dokumentacja tylko jako XML /// <summary> przy metodach, klasach, polach i zmiennych.
+- Komentarze i dokumentacja XML w kodzie piszemy po angielsku. Teksty widoczne dla użytkownika (interfejs, komunikaty) i dokumentacja w README zostają po polsku.
+- Przestrzenie nazw zapisujemy z klamrami (namespace Xyz { ... }), nie w stylu file-scoped (namespace Xyz;).
 
 Projekt:
 PoC aplikacji Android Auto (NavigationTemplate + SurfaceCallback, własne rysowanie na Canvas) z mapą OSM i nakładką samolotów ADS-B z adsb.lol (API zgodne z airplanes.live). Użytek własny, sideload.

@@ -61,20 +61,22 @@
     <WriteLinesToFile File="$(BuildNumberFile)" Lines="$(BuildNumber)" Overwrite="true" Condition="'$(DesignTimeBuild)' != 'true'" />
 
     <ItemGroup>
-      <BuildInfoLine Include="namespace AdsbCarMap%3B" />
-      <BuildInfoLine Include="/// &lt;summary&gt;" />
-      <BuildInfoLine Include="/// Informacje o kompilacji generowane przy każdym buildzie." />
-      <BuildInfoLine Include="/// &lt;/summary&gt;" />
-      <BuildInfoLine Include="internal static class BuildInfo" />
+      <BuildInfoLine Include="namespace AdsbCarMap" />
       <BuildInfoLine Include="{" />
       <BuildInfoLine Include="    /// &lt;summary&gt;" />
-      <BuildInfoLine Include="    /// Wersja aplikacji z numerem kompilacji zwiększanym przy każdym buildzie." />
+      <BuildInfoLine Include="    /// Build information generated on every build." />
       <BuildInfoLine Include="    /// &lt;/summary&gt;" />
-      <BuildInfoLine Include="    public const string Version = &quot;$(ApplicationDisplayVersion).$(BuildNumber)&quot;%3B" />
-      <BuildInfoLine Include="    /// &lt;summary&gt;" />
-      <BuildInfoLine Include="    /// Kontakt wysyłany serwerom danych w nagłówku User-Agent, wczytywany z pliku użytkownika adsbcarmap-contact.props. Pusty, gdy pliku nie ma." />
-      <BuildInfoLine Include="    /// &lt;/summary&gt;" />
-      <BuildInfoLine Include="    public const string Contact = &quot;$(AdsbCarMapContact)&quot;%3B" />
+      <BuildInfoLine Include="    internal static class BuildInfo" />
+      <BuildInfoLine Include="    {" />
+      <BuildInfoLine Include="        /// &lt;summary&gt;" />
+      <BuildInfoLine Include="        /// Application version with the build number incremented on every build." />
+      <BuildInfoLine Include="        /// &lt;/summary&gt;" />
+      <BuildInfoLine Include="        public const string Version = &quot;$(ApplicationDisplayVersion).$(BuildNumber)&quot;%3B" />
+      <BuildInfoLine Include="        /// &lt;summary&gt;" />
+      <BuildInfoLine Include="        /// Contact sent to the data servers in the User-Agent header, loaded from the user file adsbcarmap-contact.props. Empty when the file does not exist." />
+      <BuildInfoLine Include="        /// &lt;/summary&gt;" />
+      <BuildInfoLine Include="        public const string Contact = &quot;$(AdsbCarMapContact)&quot;%3B" />
+      <BuildInfoLine Include="    }" />
       <BuildInfoLine Include="}" />
     </ItemGroup>
 

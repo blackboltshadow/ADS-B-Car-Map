@@ -1,0 +1,20 @@
+root = true
+
+[*.cs]
+# Namespaces are declared with braces: namespace Xyz { ... }, not file-scoped.
+csharp_style_namespace_declarations = block_scoped:suggestion
+
+# IDE0290: "Use primary constructor". The project deliberately uses regular constructors with fields.
+dotnet_diagnostic.IDE0290.severity = none
+
+# IDE0090: "Use new(...)". The project deliberately uses the full form, e.g. new List<string>(), without target-typed new().
+dotnet_diagnostic.IDE0090.severity = none
+
+# IDE0028: "Simplify collection initialization". The project deliberately uses explicit types and full new, without collection expressions [...].
+dotnet_diagnostic.IDE0028.severity = none
+
+# IDE0330: "Prefer System.Threading.Lock". Locks in the project are short, and renderLock uses Monitor.TryEnter with a timeout, so plain objects stay.
+dotnet_diagnostic.IDE0330.severity = none
+
+# IDE0300: "Use collection expression for array". The project deliberately uses explicit types, e.g. new string[] { ... }, without [...].
+dotnet_diagnostic.IDE0300.severity = none
