@@ -19,11 +19,6 @@ public sealed class AircraftCardView : LinearLayout
     private static readonly CultureInfo DisplayCulture = new CultureInfo("pl-PL");
 
     /// <summary>
-    /// Współczynnik powiększenia całej karty: tekstów i odstępów.
-    /// </summary>
-    private const float SizeScale = 1.25f;
-
-    /// <summary>
     /// Przelicznik stóp na metry.
     /// </summary>
     private const double MetersPerFoot = 0.3048;
@@ -42,6 +37,11 @@ public sealed class AircraftCardView : LinearLayout
     /// Wartość prędkości wznoszenia w stopach na minutę, poniżej której lot uznaje się za poziomy.
     /// </summary>
     private const int LevelFlightThresholdFeetPerMinute = 100;
+
+    /// <summary>
+    /// Współczynnik powiększenia całej karty: tekstów i odstępów.
+    /// </summary>
+    private readonly float sizeScale;
 
     /// <summary>
     /// Lot i liczba zaznaczonych samolotów.
@@ -92,8 +92,10 @@ public sealed class AircraftCardView : LinearLayout
     /// Tworzy kartę i jej widoki.
     /// </summary>
     /// <param name="context">Kontekst Activity.</param>
-    public AircraftCardView(Context context) : base(context)
+    /// <param name="sizeScale">Współczynnik powiększenia tekstów i odstępów, 1 to rozmiar podstawowy.</param>
+    public AircraftCardView(Context context, float sizeScale) : base(context)
     {
+        this.sizeScale = sizeScale;
         Orientation = Orientation.Vertical;
         SetBackgroundResource(Resource.Drawable.bg_card);
         SetPadding(Dp(14), Dp(10), Dp(14), Dp(12));
@@ -425,7 +427,7 @@ public sealed class AircraftCardView : LinearLayout
     private TextView CreateText(float size, Color color, bool bold)
     {
         TextView text = new TextView(Context);
-        text.TextSize = size * SizeScale;
+        text.TextSize = size * sizeScale;
         text.SetTextColor(color);
 
         if (bold)
@@ -443,6 +445,6 @@ public sealed class AircraftCardView : LinearLayout
     /// <returns>Wartość w pikselach.</returns>
     private int Dp(int value)
     {
-        return (int)(value * SizeScale * (Resources?.DisplayMetrics?.Density ?? 1.0f));
+        return (int)(value * sizeScale * (Resources?.DisplayMetrics?.Density ?? 1.0f));
     }
 }

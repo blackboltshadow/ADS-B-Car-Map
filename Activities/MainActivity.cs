@@ -17,7 +17,12 @@ namespace AdsbCarMap.Activities;
 /// <summary>
 /// Activity startowa na telefonie z mapą samolotów, przyciskami zoomu i centrowania oraz menu prowadzącym do wyszukiwarki i ustawień. Prosi też o uprawnienia lokalizacji i powiadomień.
 /// </summary>
-[Activity(Label = "ADS-B Car Map", MainLauncher = true, Exported = true, Theme = "@android:style/Theme.Material.NoActionBar")]
+[Activity(
+    Label = "ADS-B Car Map",
+    MainLauncher = true,
+    Exported = true,
+    Theme = "@android:style/Theme.Material.NoActionBar",
+    ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.SmallestScreenSize | ConfigChanges.ScreenLayout)]
 public class MainActivity : Activity
 {
     /// <summary>
@@ -86,6 +91,11 @@ public class MainActivity : Activity
     private const int CardRefreshIntervalMilliseconds = 1000;
 
     /// <summary>
+    /// Część szerokości ekranu zajmowana przez kartę samolotu w poziomie, aby nie zasłaniała przycisków po prawej.
+    /// </summary>
+    private const float LandscapeCardWidthFraction = 0.55f;
+
+    /// <summary>
     /// Buduje ekran z mapą i przyciskami oraz prosi o uprawnienia lokalizacji i powiadomień, jeśli ich brakuje.
     /// </summary>
     /// <param name="savedInstanceState">Zapisany stan Activity.</param>
@@ -94,6 +104,7 @@ public class MainActivity : Activity
         base.OnCreate(savedInstanceState);
         Log.Info(LogTag, "MainActivity.OnCreate");
 
+        controller.SelectionChanged += () => RunOnUiThread(OnSelectionChanged);
         SetContentView(BuildContent());
 
         List<string> missingPermissions = new List<string>();
@@ -114,6 +125,18 @@ public class MainActivity : Activity
         {
             RequestPermissions(missingPermissions.ToArray(), PermissionRequestCode);
         }
+    }
+
+    /// <summary>
+    /// Przebudowuje układ po obrocie ekranu bez odtwarzania Activity, dzięki czemu mapa zachowuje przybliżenie, środek i zaznaczenie.
+    /// </summary>
+    /// <param name="newConfig">Nowa konfiguracja ekranu.</param>
+    public override void OnConfigurationChanged(Android.Content.Res.Configuration newConfig)
+    {
+        base.OnConfigurationChanged(newConfig);
+
+        SetContentView(BuildContent());
+        UpdateCard();
     }
 
     /// <summary>
@@ -240,8 +263,10 @@ public class MainActivity : Activity
         multiSelectButton = CreateTextButton("M", "Zaznaczanie wielu samolotów");
         multiSelectButton.Click += (sender, args) => OnMultiSelectClicked();
 
+        bool landscape = Resources?.Configuration?.Orientation == Android.Content.Res.Orientation.Landscape;
+
         LinearLayout modeColumn = new LinearLayout(this);
-        modeColumn.Orientation = Orientation.Vertical;
+        modeColumn.Orientation = landscape ? Orientation.Horizontal : Orientation.Vertical;
 
         labelsButton = CreateRoundButton(Resource.Drawable.ic_labels, "Pokaż lub ukryj etykiety samolotów");
         labelsButton.Click += (sender, args) => OnLabelsClicked();
@@ -252,25 +277,46 @@ public class MainActivity : Activity
         foreach (View button in new View[] { isolateButton, multiSelectButton, labelsButton, militaryButton })
         {
             LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(Dp(48), Dp(48));
-            buttonParams.SetMargins(0, Dp(6), 0, Dp(6));
+
+            if (landscape)
+            {
+                buttonParams.SetMargins(Dp(6), 0, Dp(6), 0);
+            }
+            else
+            {
+                buttonParams.SetMargins(0, Dp(6), 0, Dp(6));
+            }
+
             modeColumn.AddView(button, buttonParams);
         }
 
         FrameLayout.LayoutParams modeParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent, GravityFlags.Top | GravityFlags.End);
-        modeParams.SetMargins(Dp(12), Dp(66), Dp(12), Dp(12));
+
+        if (landscape)
+        {
+            modeParams.SetMargins(Dp(12), Dp(12), Dp(72), Dp(12));
+        }
+        else
+        {
+            modeParams.SetMargins(Dp(12), Dp(66), Dp(12), Dp(12));
+        }
+
         root.AddView(modeColumn, modeParams);
 
-        aircraftCard = new AircraftCardView(this);
+        aircraftCard = new AircraftCardView(this, landscape ? 1.0f : 1.25f);
         aircraftCard.Visibility = ViewStates.Gone;
         aircraftCard.FollowClicked += () => controller.FollowPrimary();
         aircraftCard.CloseClicked += () => controller.ClearSelection();
         aircraftCard.RefreshRouteClicked += OnRefreshRouteClicked;
 
-        FrameLayout.LayoutParams cardParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent, GravityFlags.Bottom | GravityFlags.Start);
+        int cardWidth = landscape
+            ? (int)((Resources?.DisplayMetrics?.WidthPixels ?? 0) * LandscapeCardWidthFraction)
+            : ViewGroup.LayoutParams.MatchParent;
+
+        FrameLayout.LayoutParams cardParams = new FrameLayout.LayoutParams(cardWidth, ViewGroup.LayoutParams.WrapContent, GravityFlags.Bottom | GravityFlags.Start);
         cardParams.SetMargins(Dp(12), Dp(12), Dp(12), Dp(32));
         root.AddView(aircraftCard, cardParams);
 
-        controller.SelectionChanged += () => RunOnUiThread(OnSelectionChanged);
         UpdateModeButtons();
 
         ImageButton zoomInButton = CreateRoundButton(Resource.Drawable.ic_zoom_in, "Przybliż");

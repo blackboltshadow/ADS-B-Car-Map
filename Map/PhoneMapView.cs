@@ -73,7 +73,12 @@ public sealed class PhoneMapView : SurfaceView, ISurfaceHolderCallback
     /// <param name="holder">Uchwyt powierzchni.</param>
     public void SurfaceDestroyed(ISurfaceHolder holder)
     {
-        controller.Stop();
+        Android.Views.Surface? destroyed = holder.Surface;
+
+        if (destroyed != null)
+        {
+            controller.StopIfCurrent(destroyed);
+        }
     }
 
     /// <summary>

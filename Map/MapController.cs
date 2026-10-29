@@ -572,6 +572,20 @@ public sealed class MapController
     }
 
     /// <summary>
+    /// Zatrzymuje rysowanie tylko wtedy, gdy niszczona powierzchnia jest tą, na której mapa aktualnie rysuje. Chroni przed zatrzymaniem rysowania na nowej powierzchni, gdy stara jest niszczona po jej utworzeniu, np. przy obrocie ekranu.
+    /// </summary>
+    /// <param name="destroyed">Niszczona powierzchnia.</param>
+    public void StopIfCurrent(Surface destroyed)
+    {
+        Surface? current = surface;
+
+        if (current != null && current.Equals(destroyed))
+        {
+            Stop();
+        }
+    }
+
+    /// <summary>
     /// Płynnie przybliża mapę do następnego pełnego poziomu.
     /// </summary>
     public void ZoomIn()
