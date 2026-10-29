@@ -190,7 +190,7 @@ public class MainActivity : Activity
 
         SelectedAircraftInfo? info = controller.GetPrimaryInfo();
 
-        if (info == null)
+        if (info == null || controller.IsMultiSelect)
         {
             aircraftCard.Visibility = ViewStates.Gone;
 
