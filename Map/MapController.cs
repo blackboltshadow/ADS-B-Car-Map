@@ -445,6 +445,11 @@ namespace AdsbCarMap.Map
         private readonly LocationTracker locationTracker;
 
         /// <summary>
+        /// Whether the selected aircraft always get a label, even when the labels of all aircraft are hidden. Used on the car screen, which has no aircraft card.
+        /// </summary>
+        public bool LabelSelectedAircraft { get; set; }
+
+        /// <summary>
         /// Event raised after the selection, the selection mode or the isolation changes.
         /// </summary>
         public event System.Action? SelectionChanged;
@@ -1456,7 +1461,9 @@ namespace AdsbCarMap.Map
                     continue;
                 }
 
-                DrawAircraft(canvas, entry.Item, entry.X, entry.Y, screenDensity);
+                bool forceLabel = LabelSelectedAircraft && selection.Contains(entry.Item.Hex);
+
+                DrawAircraft(canvas, entry.Item, entry.X, entry.Y, screenDensity, forceLabel);
                 hits.Add((entry.Item.Hex, entry.X, entry.Y));
 
                 if (entry.Item.Hex == followed)
@@ -1497,7 +1504,8 @@ namespace AdsbCarMap.Map
         /// <param name="x">Horizontal position of the aircraft on the screen.</param>
         /// <param name="y">Vertical position of the aircraft on the screen.</param>
         /// <param name="screenDensity">Screen density factor.</param>
-        private void DrawAircraft(Canvas canvas, Aircraft item, float x, float y, float screenDensity)
+        /// <param name="forceLabel">Whether the label is drawn even when the labels are hidden in the settings.</param>
+        private void DrawAircraft(Canvas canvas, Aircraft item, float x, float y, float screenDensity, bool forceLabel)
         {
             aircraftPaint.Color = GetAltitudeColor(item.OnGround, item.AltitudeFeet);
 
@@ -1521,7 +1529,7 @@ namespace AdsbCarMap.Map
             canvas.DrawPath(shape.Path, aircraftPaint);
             canvas.Restore();
 
-            if (kind == AircraftKind.Ground || !AppSettings.ShowLabels)
+            if (kind == AircraftKind.Ground || !(AppSettings.ShowLabels || forceLabel))
             {
                 return;
             }

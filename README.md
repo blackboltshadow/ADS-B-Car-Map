@@ -60,6 +60,9 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 
 **Android Auto**
 - Mapa z samolotami na ekranie samochodu, przyciski przybliżania i oddalania, centrowanie na pozycji, przesuwanie, wyszukiwarka samolotów.
+- Górny pasek akcji: wyszukiwarka, **filtr samolotów wojskowych** (ikona myśliwca), **izolacja** zaznaczonego samolotu i **przycisk etykiet** (pokazuje lub ukrywa etykiety wszystkich samolotów, domyślnie ukryte; to samo ustawienie co na telefonie). Aktywny tryb jest podświetlony na niebiesko, a krótki komunikat na ekranie mówi, co się włączyło.
+- Pasek mapy po prawej: przesuwanie, przybliżanie, oddalanie i centrowanie na pozycji (pod przyciskami zoomu).
+- Dotknięcie samolotu na ekranie dotykowym samochodu zaznacza go (pierścień), a wybór z wyszukiwarki też go zaznacza. **Zaznaczony samolot zawsze ma etykietę** (lot, poziom, typ i trasa), nawet gdy etykiety pozostałych są ukryte, bo w samochodzie nie ma karty samolotu. Zaznaczasz jeden samolot na raz, bo nie ma trybu „M”.
 
 ## Jak to wygląda w użyciu
 

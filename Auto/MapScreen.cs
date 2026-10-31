@@ -1,5 +1,8 @@
+using System.Globalization;
 using AdsbCarMap.Services;
+using AdsbCarMap.Settings;
 using Android.Graphics;
+using Android.OS;
 using Android.Runtime;
 using AndroidX.Car.App;
 using AndroidX.Car.App.Model;
@@ -11,27 +14,34 @@ using MapController = AdsbCarMap.Map.MapController;
 namespace AdsbCarMap.Auto
 {
     /// <summary>
-    /// Ekran Android Auto z mapą, na której rysowane są samoloty.
+    /// Android Auto screen with the map on which the aircraft are drawn.
     /// </summary>
     public class MapScreen : Screen
     {
         /// <summary>
-        /// Kontroler stanu mapy i rysowania.
+        /// Controller of the map state and drawing.
         /// </summary>
         private readonly MapController controller;
 
         /// <summary>
-        /// Callback obsługujący powierzchnię rysowania i gesty.
+        /// Callback handling the drawing surface and the gestures.
         /// </summary>
         private readonly MapSurfaceCallback surfaceCallback;
 
         /// <summary>
-        /// Tworzy ekran i rejestruje callback powierzchni w menedżerze aplikacji.
+        /// Main thread handler used to rebuild the template when the map modes change.
         /// </summary>
-        /// <param name="carContext">Kontekst samochodu przekazany przez sesję.</param>
+        private readonly Handler handler = new Handler(Looper.MainLooper!);
+
+        /// <summary>
+        /// Creates the screen and registers the surface callback in the app manager.
+        /// </summary>
+        /// <param name="carContext">Car context provided by the session.</param>
         public MapScreen(CarContext carContext) : base(carContext)
         {
             controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes);
+            controller.SelectionChanged += RefreshTemplate;
+            controller.LabelSelectedAircraft = true;
             surfaceCallback = new MapSurfaceCallback(controller);
 
             if (!LocationTracker.HasPermission())
@@ -51,9 +61,9 @@ namespace AdsbCarMap.Auto
         }
 
         /// <summary>
-        /// Buduje szablon nawigacyjny z przyciskami wyszukiwania i centrowania u góry oraz przesuwaniem i zoomem w pasku mapy po prawej stronie.
+        /// Builds the navigation template with the search, military filter, isolation and labels buttons at the top, and panning, zoom in, zoom out and recenter in the map action strip on the right side.
         /// </summary>
-        /// <returns>Szablon wyświetlany na ekranie samochodu.</returns>
+        /// <returns>Template shown on the car screen.</returns>
         public override ITemplate OnGetTemplate()
         {
             CarAction recenterAction = new CarAction.Builder()
@@ -66,9 +76,26 @@ namespace AdsbCarMap.Auto
                 .SetOnClickListener(new DelegateClickListener(OpenSearch))
                 .Build();
 
+            CarAction militaryAction = new CarAction.Builder()
+                .SetIcon(CreateIcon(Resource.Drawable.ic_fighter, controller.IsMilitaryOnly))
+                .SetOnClickListener(new DelegateClickListener(ToggleMilitaryOnly))
+                .Build();
+
+            CarAction isolateAction = new CarAction.Builder()
+                .SetIcon(CreateIcon(Resource.Drawable.ic_isolate, controller.IsIsolated))
+                .SetOnClickListener(new DelegateClickListener(ToggleIsolation))
+                .Build();
+
+            CarAction labelsAction = new CarAction.Builder()
+                .SetIcon(CreateIcon(Resource.Drawable.ic_labels, AppSettings.ShowLabels))
+                .SetOnClickListener(new DelegateClickListener(ToggleLabels))
+                .Build();
+
             ActionStrip actionStrip = new ActionStrip.Builder()
                 .AddAction(searchAction)
-                .AddAction(recenterAction)
+                .AddAction(militaryAction)
+                .AddAction(isolateAction)
+                .AddAction(labelsAction)
                 .Build();
 
             CarAction zoomInAction = new CarAction.Builder()
@@ -85,6 +112,7 @@ namespace AdsbCarMap.Auto
                 .AddAction(CarAction.Pan)
                 .AddAction(zoomInAction)
                 .AddAction(zoomOutAction)
+                .AddAction(recenterAction)
                 .Build();
 
             NavigationTemplate template = new NavigationTemplate.Builder()
@@ -96,7 +124,7 @@ namespace AdsbCarMap.Auto
         }
 
         /// <summary>
-        /// Otwiera ekran wyszukiwania samolotów.
+        /// Opens the aircraft search screen.
         /// </summary>
         private void OpenSearch()
         {
@@ -104,41 +132,98 @@ namespace AdsbCarMap.Auto
         }
 
         /// <summary>
-        /// Tworzy ikonę Android Auto z zasobu drawable.
+        /// Turns the filter that shows only military aircraft on or off and reports the result in a car toast.
         /// </summary>
-        /// <param name="resourceId">Identyfikator zasobu drawable.</param>
-        /// <returns>Ikona do użycia w akcji.</returns>
-        private CarIcon CreateIcon(int resourceId)
+        private void ToggleMilitaryOnly()
+        {
+            bool enabled = controller.ToggleMilitaryOnly(out int militaryCount);
+            string message = !enabled
+                ? "Wszystkie samoloty"
+                : militaryCount > 0
+                    ? string.Format(CultureInfo.InvariantCulture, "Tylko wojskowe: {0} w zasięgu", militaryCount)
+                    : "Tylko wojskowe: żadnego w zasięgu";
+
+            CarToast.MakeText(CarContext, message, CarToast.LengthShort)?.Show();
+        }
+
+        /// <summary>
+        /// Shows or hides the labels of all aircraft, saves the choice in the settings shared with the phone, and reports it in a car toast.
+        /// </summary>
+        private void ToggleLabels()
+        {
+            bool show = !AppSettings.ShowLabels;
+            Dictionary<SettingDefinition, double> values = new Dictionary<SettingDefinition, double>
+            {
+                { AppSettings.ShowLabelsSetting, show ? 1.0 : 0.0 },
+            };
+
+            AppSettings.Save(values);
+            CarToast.MakeText(CarContext, show ? "Etykiety samolotów: widoczne" : "Etykiety samolotów: ukryte", CarToast.LengthShort)?.Show();
+            RefreshTemplate();
+        }
+
+        /// <summary>
+        /// Turns the isolation of the selected aircraft on or off and shows a hint in a car toast when nothing is selected.
+        /// </summary>
+        private void ToggleIsolation()
+        {
+            if (!controller.TryToggleIsolation(out bool isolated))
+            {
+                CarToast.MakeText(CarContext, "Najpierw zaznacz samolot: dotknij go na mapie lub wyszukaj", CarToast.LengthShort)?.Show();
+            }
+        }
+
+        /// <summary>
+        /// Rebuilds the template on the main thread so that the buttons reflect the current modes.
+        /// </summary>
+        private void RefreshTemplate()
+        {
+            handler.Post(Invalidate);
+        }
+
+        /// <summary>
+        /// Creates an Android Auto icon from a drawable resource, tinted blue when the mode it represents is on.
+        /// </summary>
+        /// <param name="resourceId">Identifier of the drawable resource.</param>
+        /// <param name="active">Whether the icon is tinted to show an active mode.</param>
+        /// <returns>Icon to use in an action.</returns>
+        private CarIcon CreateIcon(int resourceId, bool active = false)
         {
             IconCompat iconCompat = IconCompat.CreateWithResource(CarContext, resourceId)!;
+            CarIcon.Builder builder = new CarIcon.Builder(iconCompat);
 
-            return new CarIcon.Builder(iconCompat).Build();
+            if (active)
+            {
+                builder.SetTint(CarColor.Blue);
+            }
+
+            return builder.Build();
         }
     }
 
     /// <summary>
-    /// Callback powierzchni Android Auto, który przekazuje zdarzenia do kontrolera mapy.
+    /// Android Auto surface callback that forwards the events to the map controller.
     /// </summary>
     public class MapSurfaceCallback : Java.Lang.Object, ISurfaceCallback
     {
         /// <summary>
-        /// Kontroler stanu mapy i rysowania.
+        /// Controller of the map state and drawing.
         /// </summary>
         private readonly MapController controller;
 
         /// <summary>
-        /// Tworzy callback powiązany z kontrolerem mapy.
+        /// Creates a callback bound to the map controller.
         /// </summary>
-        /// <param name="controller">Kontroler mapy.</param>
+        /// <param name="controller">Map controller.</param>
         public MapSurfaceCallback(MapController controller)
         {
             this.controller = controller;
         }
 
         /// <summary>
-        /// Uruchamia rysowanie, gdy powierzchnia staje się dostępna.
+        /// Starts drawing when the surface becomes available.
         /// </summary>
-        /// <param name="surfaceContainer">Kontener z powierzchnią i jej parametrami.</param>
+        /// <param name="surfaceContainer">Container with the surface and its parameters.</param>
         public void OnSurfaceAvailable(SurfaceContainer surfaceContainer)
         {
             Android.Views.Surface? surface = surfaceContainer.Surface;
@@ -154,9 +239,9 @@ namespace AdsbCarMap.Auto
         }
 
         /// <summary>
-        /// Zatrzymuje rysowanie, gdy powierzchnia przestaje być dostępna.
+        /// Stops drawing when the surface is no longer available.
         /// </summary>
-        /// <param name="surfaceContainer">Kontener z niszczoną powierzchnią.</param>
+        /// <param name="surfaceContainer">Container with the surface being destroyed.</param>
         public void OnSurfaceDestroyed(SurfaceContainer surfaceContainer)
         {
             Android.Util.Log.Info("AdsbCarMap", "OnSurfaceDestroyed");
@@ -164,83 +249,84 @@ namespace AdsbCarMap.Auto
         }
 
         /// <summary>
-        /// Obsługuje zmianę widocznego obszaru. W PoC jest ignorowana.
+        /// Handles a change of the visible area. Ignored in the PoC.
         /// </summary>
-        /// <param name="visibleArea">Widoczny obszar powierzchni.</param>
+        /// <param name="visibleArea">Visible area of the surface.</param>
         public void OnVisibleAreaChanged(Rect visibleArea)
         {
         }
 
         /// <summary>
-        /// Obsługuje zmianę obszaru stabilnego. W PoC jest ignorowana.
+        /// Handles a change of the stable area. Ignored in the PoC.
         /// </summary>
-        /// <param name="stableArea">Obszar niezasłaniany przez elementy interfejsu.</param>
+        /// <param name="stableArea">Area not covered by the interface elements.</param>
         public void OnStableAreaChanged(Rect stableArea)
         {
         }
 
         /// <summary>
-        /// Przesuwa mapę zgodnie z gestem przewijania.
+        /// Moves the map according to the scroll gesture.
         /// </summary>
-        /// <param name="distanceX">Przesunięcie w poziomie od poprzedniego wywołania, w pikselach.</param>
-        /// <param name="distanceY">Przesunięcie w pionie od poprzedniego wywołania, w pikselach.</param>
+        /// <param name="distanceX">Horizontal movement since the previous call, in pixels.</param>
+        /// <param name="distanceY">Vertical movement since the previous call, in pixels.</param>
         public void OnScroll(float distanceX, float distanceY)
         {
             controller.Pan(distanceX, distanceY);
         }
 
         /// <summary>
-        /// Uruchamia bezwładne przesuwanie mapy po geście przeciągnięcia z rozpędem.
+        /// Starts the fling movement of the map after a fling gesture.
         /// </summary>
-        /// <param name="velocityX">Prędkość w poziomie.</param>
-        /// <param name="velocityY">Prędkość w pionie.</param>
+        /// <param name="velocityX">Horizontal velocity.</param>
+        /// <param name="velocityY">Vertical velocity.</param>
         public void OnFling(float velocityX, float velocityY)
         {
             controller.Fling(velocityX, velocityY);
         }
 
         /// <summary>
-        /// Zmienia zoom zgodnie z gestem skalowania.
+        /// Changes the zoom according to the scale gesture.
         /// </summary>
-        /// <param name="focusX">Punkt ogniskowania w poziomie.</param>
-        /// <param name="focusY">Punkt ogniskowania w pionie.</param>
-        /// <param name="scaleFactor">Współczynnik skali względem poprzedniego wywołania.</param>
+        /// <param name="focusX">Horizontal focus point.</param>
+        /// <param name="focusY">Vertical focus point.</param>
+        /// <param name="scaleFactor">Scale factor relative to the previous call.</param>
         public void OnScale(float focusX, float focusY, float scaleFactor)
         {
             controller.Scale(scaleFactor);
         }
 
         /// <summary>
-        /// Obsługuje dotknięcie powierzchni. W PoC jest ignorowane.
+        /// Handles a tap on the surface by selecting the aircraft nearest to the tap.
         /// </summary>
-        /// <param name="x">Pozycja dotknięcia w poziomie.</param>
-        /// <param name="y">Pozycja dotknięcia w pionie.</param>
+        /// <param name="x">Horizontal tap position.</param>
+        /// <param name="y">Vertical tap position.</param>
         public void OnClick(float x, float y)
         {
+            controller.Tap(x, y);
         }
     }
 
     /// <summary>
-    /// Adapter przekazujący kliknięcia przycisków Android Auto do delegata C#.
+    /// Adapter forwarding the Android Auto button clicks to a C# delegate.
     /// </summary>
     public class DelegateClickListener : Java.Lang.Object, IOnClickListener
     {
         /// <summary>
-        /// Delegat wywoływany po kliknięciu.
+        /// Delegate invoked on click.
         /// </summary>
         private readonly System.Action callback;
 
         /// <summary>
-        /// Tworzy listener wywołujący podany delegat.
+        /// Creates a listener that invokes the given delegate.
         /// </summary>
-        /// <param name="callback">Delegat wywoływany po kliknięciu.</param>
+        /// <param name="callback">Delegate invoked on click.</param>
         public DelegateClickListener(System.Action callback)
         {
             this.callback = callback;
         }
 
         /// <summary>
-        /// Wywołuje delegat po kliknięciu przycisku.
+        /// Invokes the delegate when the button is clicked.
         /// </summary>
         public void OnClick()
         {
@@ -249,29 +335,29 @@ namespace AdsbCarMap.Auto
     }
 
     /// <summary>
-    /// Odbiera wynik prośby o uprawnienia lokalizacji i uruchamia aktualizacje pozycji po ich przyznaniu.
+    /// Receives the result of the location permission request and starts the position updates after they are granted.
     /// </summary>
     public class PermissionResultListener : Java.Lang.Object, IOnRequestPermissionsListener
     {
         /// <summary>
-        /// Kontroler mapy, który ma rozpocząć aktualizacje pozycji.
+        /// Map controller that is to start the position updates.
         /// </summary>
         private readonly MapController controller;
 
         /// <summary>
-        /// Tworzy listener powiązany z kontrolerem mapy.
+        /// Creates a listener bound to the map controller.
         /// </summary>
-        /// <param name="controller">Kontroler mapy.</param>
+        /// <param name="controller">Map controller.</param>
         public PermissionResultListener(MapController controller)
         {
             this.controller = controller;
         }
 
         /// <summary>
-        /// Uruchamia aktualizacje pozycji, jeśli przyznano którekolwiek z uprawnień lokalizacji.
+        /// Starts the position updates if any of the location permissions was granted.
         /// </summary>
-        /// <param name="grantedPermissions">Przyznane uprawnienia.</param>
-        /// <param name="rejectedPermissions">Odrzucone uprawnienia.</param>
+        /// <param name="grantedPermissions">Granted permissions.</param>
+        /// <param name="rejectedPermissions">Rejected permissions.</param>
         public void OnRequestPermissionsResult(IList<string> grantedPermissions, IList<string> rejectedPermissions)
         {
             bool fineGranted = grantedPermissions.Contains(Android.Manifest.Permission.AccessFineLocation);

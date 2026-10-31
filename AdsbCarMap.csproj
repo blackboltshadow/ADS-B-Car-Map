@@ -30,6 +30,11 @@
     <PackageReference Include="Xamarin.AndroidX.Car.App.App" Version="1.4.0.2" />
   </ItemGroup>
 
+  <!-- The Car App library reads car-app-api.level from the package root at runtime. Without this item the file is not packaged and Android Auto fails with "Car API level file car-app-api.level not found" (GET_APP_VERSION timeout). -->
+  <ItemGroup>
+    <AndroidPackagingOptionsInclude Include="car-app-api.level" />
+  </ItemGroup>
+
   <PropertyGroup>
     <BuildNumberFile>$(MSBuildProjectDirectory)\BuildNumber.txt</BuildNumberFile>
     <ApplicationVersion Condition="Exists('$(BuildNumberFile)')">$([MSBuild]::Add($([System.IO.File]::ReadAllText('$(BuildNumberFile)').Trim()), 1))</ApplicationVersion>
