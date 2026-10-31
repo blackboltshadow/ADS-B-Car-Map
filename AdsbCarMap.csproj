@@ -30,10 +30,47 @@
     <PackageReference Include="Xamarin.AndroidX.Car.App.App" Version="1.4.0.2" />
   </ItemGroup>
 
-  <!-- The Car App library reads car-app-api.level from the package root at runtime. Without this item the file is not packaged and Android Auto fails with "Car API level file car-app-api.level not found" (GET_APP_VERSION timeout). -->
+  <!-- The Car App library reads car-app-api.level from the package root at runtime. Without it Android Auto fails with "Car API level file car-app-api.level not found" (GET_APP_VERSION timeout). The file from the library jar is lost in some incremental builds, so the same file (content 7) is added to the package explicitly. -->
   <ItemGroup>
     <AndroidPackagingOptionsInclude Include="car-app-api.level" />
   </ItemGroup>
+
+  <UsingTask TaskName="ZipContainsEntry" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <ArchivePath ParameterType="System.String" Required="true" />
+      <EntryName ParameterType="System.String" Required="true" />
+      <Found ParameterType="System.Boolean" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO.Compression" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        using (ZipArchive archive = ZipFile.OpenRead(ArchivePath))
+        {
+            Found = archive.GetEntry(EntryName) != null;
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <!-- Fails the build when the finished package has no car-app-api.level, instead of letting Android Auto fail at runtime. CarAppApiLevelCheckFile can be set to check another file. -->
+  <Target Name="VerifyCarAppApiLevel" AfterTargets="SignAndroidPackage" Condition="'$(AndroidPackageFormat)' == 'aab'">
+    <PropertyGroup>
+      <CarAppApiLevelCheckFile Condition="'$(CarAppApiLevelCheckFile)' == ''">$(_AabFileSigned)</CarAppApiLevelCheckFile>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(CarAppApiLevelCheckFile)')" Text="Package to verify not found: $(CarAppApiLevelCheckFile)" />
+    <ZipContainsEntry ArchivePath="$(CarAppApiLevelCheckFile)" EntryName="base/root/car-app-api.level">
+      <Output TaskParameter="Found" PropertyName="CarAppApiLevelFound" />
+    </ZipContainsEntry>
+    <Error Condition="'$(CarAppApiLevelFound)' != 'True'" Text="The package $(CarAppApiLevelCheckFile) has no base/root/car-app-api.level. Android Auto would fail with 'Car API level file car-app-api.level not found'. Check the AddCarAppApiLevelFile target in AdsbCarMap.csproj and Libs\car-app-api.level." />
+  </Target>
+
+  <Target Name="AddCarAppApiLevelFile" BeforeTargets="_BuildApkFastDev;_BuildApkEmbed">
+    <ItemGroup>
+      <FilesToAddToArchive Include="$(MSBuildProjectDirectory)\Libs\car-app-api.level">
+        <ArchivePath>root/car-app-api.level</ArchivePath>
+      </FilesToAddToArchive>
+    </ItemGroup>
+  </Target>
 
   <PropertyGroup>
     <BuildNumberFile>$(MSBuildProjectDirectory)\BuildNumber.txt</BuildNumberFile>

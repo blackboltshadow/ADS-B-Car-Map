@@ -4,52 +4,57 @@ using AdsbCarMap.Map;
 namespace AdsbCarMap.Services
 {
     /// <summary>
-    /// Długowieczne obiekty współdzielone przez ekrany Android Auto i ekran telefonu.
+    /// Long-lived objects shared by the Android Auto screens and the phone screen.
     /// </summary>
     public static class AppServices
     {
         /// <summary>
-        /// Wartość nagłówka User-Agent wysyłana do serwerów danych i kafelków. Zawiera kontakt z pliku użytkownika adsbcarmap-contact.props, jeśli istnieje. Pole musi być zadeklarowane przed klientami HTTP.
+        /// Value of the User-Agent header sent to the data and tile servers. Contains the contact from the user's adsbcarmap-contact.props file, if it exists. The field must be declared before the HTTP clients.
         /// </summary>
         public static readonly string UserAgent = string.IsNullOrEmpty(BuildInfo.Contact)
             ? "AdsbCarMap/" + BuildInfo.Version
             : "AdsbCarMap/" + BuildInfo.Version + " (kontakt: " + BuildInfo.Contact + ")";
 
         /// <summary>
-        /// Klient HTTP używany do zapytań o samoloty.
+        /// HTTP client used for the aircraft requests.
         /// </summary>
         private static readonly HttpClient AdsbHttpClient = CreateHttpClient(AdsbClient.DefaultBaseAddress);
 
         /// <summary>
-        /// Klient HTTP używany do pobierania kafelków mapy.
+        /// HTTP client used to download the map tiles.
         /// </summary>
         private static readonly HttpClient TileHttpClient = CreateHttpClient(null);
 
         /// <summary>
-        /// Klient HTTP używany do zapytań o trasy lotów.
+        /// HTTP client used for the flight route requests.
         /// </summary>
         private static readonly HttpClient RouteHttpClient = CreateHttpClient(RouteClient.DefaultBaseAddress);
 
         /// <summary>
-        /// Klient API ADS-B.
+        /// ADS-B API client.
         /// </summary>
         public static AdsbClient Adsb { get; } = new AdsbClient(AdsbHttpClient);
 
         /// <summary>
-        /// Pamięć tras lotów pobieranych z adsbdb.com.
+        /// Cache of the flight routes downloaded from adsbdb.com.
         /// </summary>
         public static RouteCache Routes { get; } = new RouteCache(new RouteClient(RouteHttpClient));
 
         /// <summary>
-        /// Dostawca kafelków mapy OpenStreetMap z cache w pamięci.
+        /// OpenStreetMap tile provider with an in-memory cache.
         /// </summary>
         public static TileProvider Tiles { get; } = new TileProvider(TileHttpClient, TileProvider.OpenStreetMapTemplate, 256);
 
         /// <summary>
-        /// Tworzy klienta HTTP z limitem czasu i nagłówkiem User-Agent.
+        /// Aircraft selection and filters shared by the phone map and the Android Auto map.
         /// </summary>
-        /// <param name="baseAddress">Adres bazowy lub null, gdy nie jest potrzebny.</param>
-        /// <returns>Skonfigurowany klient HTTP.</returns>
+        public static SelectionState Selection { get; } = new SelectionState();
+
+        /// <summary>
+        /// Creates an HTTP client with a timeout and the User-Agent header.
+        /// </summary>
+        /// <param name="baseAddress">Base address, or null when not needed.</param>
+        /// <returns>Configured HTTP client.</returns>
         private static HttpClient CreateHttpClient(string? baseAddress)
         {
             HttpClient client = new HttpClient();

@@ -60,9 +60,19 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 
 **Android Auto**
 - Mapa z samolotami na ekranie samochodu, przyciski przybliżania i oddalania, centrowanie na pozycji, przesuwanie, wyszukiwarka samolotów.
-- Górny pasek akcji: wyszukiwarka, **filtr samolotów wojskowych** (ikona myśliwca), **izolacja** zaznaczonego samolotu i **przycisk etykiet** (pokazuje lub ukrywa etykiety wszystkich samolotów, domyślnie ukryte; to samo ustawienie co na telefonie). Aktywny tryb jest podświetlony na niebiesko, a krótki komunikat na ekranie mówi, co się włączyło.
-- Pasek mapy po prawej: przesuwanie, przybliżanie, oddalanie i centrowanie na pozycji (pod przyciskami zoomu).
+- Górny pasek akcji (od lewej): **filtr samolotów wojskowych** (ikona myśliwca), **izolacja** zaznaczonego samolotu, **przycisk etykiet** (pokazuje lub ukrywa etykiety wszystkich samolotów, domyślnie ukryte; to samo ustawienie co na telefonie) i **wyszukiwarka**. Włączony tryb jest pokazany osobną ikoną: zieloną i z obwódką (host Android Auto ignoruje kolor nadany ikonie i pozwala na kolorowe tło tylko jednego przycisku w pasku, dlatego obwódka zostaje widoczna nawet wtedy, gdy host sam wybarwi ikonę): filtr wojskowych, centrowanie (gaśnie po ręcznym przesunięciu mapy), etykiety i izolacja. Krótki komunikat na ekranie mówi, co się włączyło.
+- Pasek mapy po prawej: przesuwanie, przybliżanie, oddalanie i **centrowanie na pozycji GPS** (przy przyciskach zoomu; świeci, gdy mapa podąża za pozycją lub samolotem).
+- Wskaźnik wczytywania w lewym dolnym rogu, obok numeru wersji: obracające się kółko z napisem „Wczytywanie samolotów…” albo „Wczytywanie mapy…”. Działa też na telefonie.
 - Dotknięcie samolotu na ekranie dotykowym samochodu zaznacza go (pierścień), a wybór z wyszukiwarki też go zaznacza. **Zaznaczony samolot zawsze ma etykietę** (lot, poziom, typ i trasa), nawet gdy etykiety pozostałych są ukryte, bo w samochodzie nie ma karty samolotu. Zaznaczasz jeden samolot na raz, bo nie ma trybu „M”.
+- **Okienko z danymi zaznaczonego samolotu** (lewy dolny róg mapy): lot i rejestracja, linia, typ i rodzaj, trasa z paskiem postępu, wysokość, prędkość, kurs, wznoszenie, odległość od Ciebie i squawk. Samolotów przysłoniętych przez okienko nie da się zaznaczyć, a dotknięcie okienka nic nie zmienia. Dotknięcie pustego miejsca na mapie zamyka okienko.
+- Wybór samolotu z wyszukiwarki centruje na nim mapę, **automatycznie włącza izolację** i pokazuje okienko.
+
+**Telefon i samochód działają tak samo i są zsynchronizowane**
+- Zaznaczenie samolotu, izolacja i filtr samolotów wojskowych są wspólne: zmiana na telefonie od razu widać w samochodzie i odwrotnie. Wspólne są też ustawienia (np. etykiety). Wspólne jest też centrowanie: „Śledź” samolot i przycisk centrowania na pozycji działają na obu mapach naraz (ręczne przesunięcie mapy przerywa śledzenie tylko na tej mapie). Niezależne są pozycja po ręcznym przesunięciu i przybliżenie, a tryb „M” (wielokrotne zaznaczanie) działa tylko na telefonie.
+- Wybór samolotu w wyszukiwarce (na telefonie albo w samochodzie) pokazuje go na obu mapach: centruje, zaznacza i izoluje.
+- Zaznaczenie innego samolotu na jednym ekranie (dotknięciem, z wyszukiwarki) centruje na nim mapę także na drugim ekranie.
+- Gdy samolot zaznaczony na jednym ekranie jest poza obszarem danych drugiego, drugi ekran przenosi się do niego i od razu pobiera samoloty w tej okolicy (zamiast pokazywać „poza zasięgiem danych”); dane zaznaczonego samolotu są przekazywane między ekranami, więc działa to także, gdy serwer akurat odmawia zapytań. Limit zapytań (429) jest wspólny: gdy serwer każe czekać, wstrzymują się oba ekrany.
+- Na telefonie samolotów przysłoniętych przez kartę samolotu nie da się zaznaczyć, tak jak w samochodzie pod okienkiem.
 
 ## Jak to wygląda w użyciu
 

@@ -140,6 +140,66 @@ namespace AdsbCarMap.Map
         private const float TapRadius = 30.0f;
 
         /// <summary>
+        /// Time the loading indicator stays visible after the download ends, so that a short download is still noticeable.
+        /// </summary>
+        private static readonly TimeSpan LoadingIndicatorMinimumVisible = TimeSpan.FromMilliseconds(800);
+
+        /// <summary>
+        /// Duration of one full turn of the loading indicator spinner, in milliseconds.
+        /// </summary>
+        private const int SpinnerTurnMilliseconds = 900;
+
+        /// <summary>
+        /// Minimum time between rebuilds of the popup lines.
+        /// </summary>
+        private static readonly TimeSpan PopupRefreshInterval = TimeSpan.FromMilliseconds(500);
+
+        /// <summary>
+        /// Background color of the selected aircraft popup.
+        /// </summary>
+        private static readonly Color PopupBackgroundColor = Color.Argb(225, 24, 28, 34);
+
+        /// <summary>
+        /// Color of the accent lines and the progress bar of the popup.
+        /// </summary>
+        private static readonly Color PopupAccentColor = Color.Rgb(120, 190, 255);
+
+        /// <summary>
+        /// Text size of the popup lines in dp.
+        /// </summary>
+        private const float PopupTextSize = 15.0f;
+
+        /// <summary>
+        /// Popup margin from the screen edge and padding inside the popup, in dp.
+        /// </summary>
+        private const float PopupMargin = 12.0f;
+
+        /// <summary>
+        /// Popup distance from the bottom edge of the screen, in dp. Leaves room for the version number.
+        /// </summary>
+        private const float PopupBottomOffset = 30.0f;
+
+        /// <summary>
+        /// Maximum popup width in dp.
+        /// </summary>
+        private const float PopupMaxWidth = 380.0f;
+
+        /// <summary>
+        /// Maximum popup width as a part of the screen width.
+        /// </summary>
+        private const float PopupMaxWidthFraction = 0.5f;
+
+        /// <summary>
+        /// Popup line height as a multiple of the text size.
+        /// </summary>
+        private const float PopupLineSpacing = 1.35f;
+
+        /// <summary>
+        /// Height of the popup progress bar in dp.
+        /// </summary>
+        private const float PopupBarHeight = 8.0f;
+
+        /// <summary>
         /// Color of the outline around the followed aircraft.
         /// </summary>
         private static readonly Color FollowedAircraftColor = Color.White;
@@ -158,6 +218,21 @@ namespace AdsbCarMap.Map
         /// Flight route cache.
         /// </summary>
         private readonly RouteCache routeCache;
+
+        /// <summary>
+        /// Selection and filters shared with the other map.
+        /// </summary>
+        private readonly SelectionState selectionState;
+
+        /// <summary>
+        /// Version of the shared follow target this map published or applied last.
+        /// </summary>
+        private int appliedFollowVersion;
+
+        /// <summary>
+        /// Area of the screen covered by a view drawn over the map, e.g. the aircraft card on the phone, or null when nothing covers the map. Aircraft in this area cannot be tapped. The object is replaced on every change and is not modified after assignment.
+        /// </summary>
+        private RectF? coveredArea;
 
         /// <summary>
         /// Lock protecting the view state and the aircraft list.
@@ -445,9 +520,84 @@ namespace AdsbCarMap.Map
         private readonly LocationTracker locationTracker;
 
         /// <summary>
+        /// Paint used to draw the background of the selected aircraft popup.
+        /// </summary>
+        private readonly Paint popupBackgroundPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Paint used to draw the regular lines of the popup.
+        /// </summary>
+        private readonly Paint popupPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Paint used to draw the bold lines of the popup.
+        /// </summary>
+        private readonly Paint popupBoldPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Paint used to draw the accent lines of the popup and the filled part of its progress bar.
+        /// </summary>
+        private readonly Paint popupAccentPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Lines of the selected aircraft popup, rebuilt at most every <see cref="PopupRefreshInterval"/>. Null when no popup is shown.
+        /// </summary>
+        private IReadOnlyList<PopupLine>? popupLines;
+
+        /// <summary>
+        /// ICAO address of the aircraft <see cref="popupLines"/> were built for.
+        /// </summary>
+        private string? popupHex;
+
+        /// <summary>
+        /// Moment <see cref="popupLines"/> were built, in UTC.
+        /// </summary>
+        private DateTime popupBuiltUtc = DateTime.MinValue;
+
+        /// <summary>
+        /// Callsign whose route download was last prioritized for the popup.
+        /// </summary>
+        private string? popupPrioritizedCallsign;
+
+        /// <summary>
+        /// Paint used to draw the spinner of the loading indicator.
+        /// </summary>
+        private readonly Paint spinnerPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Rectangle of the loading indicator spinner, reused every frame.
+        /// </summary>
+        private readonly RectF spinnerBounds = new RectF();
+
+        /// <summary>
+        /// Released to start the next aircraft download before the regular interval ends.
+        /// </summary>
+        private readonly SemaphoreSlim fetchWake = new SemaphoreSlim(0, 1);
+
+        /// <summary>
+        /// Non-zero while the aircraft download is in progress.
+        /// </summary>
+        private int aircraftLoading;
+
+        /// <summary>
+        /// Moment the last aircraft download ended, in UTC ticks.
+        /// </summary>
+        private long aircraftLoadEndedTicks;
+
+        /// <summary>
+        /// Area covered by the popup in the last frame, or null when no popup was drawn. The object is replaced every frame and is not modified after publication.
+        /// </summary>
+        private RectF? popupBounds;
+
+        /// <summary>
         /// Whether the selected aircraft always get a label, even when the labels of all aircraft are hidden. Used on the car screen, which has no aircraft card.
         /// </summary>
         public bool LabelSelectedAircraft { get; set; }
+
+        /// <summary>
+        /// Whether a popup with the data of the primary selected aircraft is drawn on the map. Used on the car screen, which has no aircraft card.
+        /// </summary>
+        public bool ShowSelectionPopup { get; set; }
 
         /// <summary>
         /// Event raised after the selection, the selection mode or the isolation changes.
@@ -460,11 +610,13 @@ namespace AdsbCarMap.Map
         /// <param name="adsbClient">ADS-B API client.</param>
         /// <param name="tileProvider">Map tile provider.</param>
         /// <param name="routeCache">Flight route cache.</param>
-        public MapController(AdsbClient adsbClient, TileProvider tileProvider, RouteCache routeCache)
+        /// <param name="selectionState">Selection and filters shared with the other map.</param>
+        public MapController(AdsbClient adsbClient, TileProvider tileProvider, RouteCache routeCache, SelectionState selectionState)
         {
             this.adsbClient = adsbClient;
             this.tileProvider = tileProvider;
             this.routeCache = routeCache;
+            this.selectionState = selectionState;
             locationTracker = new LocationTracker(SetUserLocation);
 
             trailPaint.SetStyle(Paint.Style.Stroke);
@@ -494,6 +646,20 @@ namespace AdsbCarMap.Map
             versionPaint.Color = Color.White;
             versionPaint.TextAlign = Paint.Align.Left;
             versionPaint.SetShadowLayer(3f, 0f, 0f, Color.Black);
+
+            popupBackgroundPaint.Color = PopupBackgroundColor;
+
+            popupPaint.Color = Color.White;
+
+            popupBoldPaint.Color = Color.White;
+            popupBoldPaint.SetTypeface(Typeface.DefaultBold);
+
+            popupAccentPaint.Color = PopupAccentColor;
+
+            spinnerPaint.Color = Color.White;
+            spinnerPaint.SetStyle(Paint.Style.Stroke);
+            spinnerPaint.StrokeCap = Paint.Cap.Round;
+            spinnerPaint.SetShadowLayer(3f, 0f, 0f, Color.Black);
         }
 
         /// <summary>
@@ -530,13 +696,25 @@ namespace AdsbCarMap.Map
             CancellationTokenSource source = new CancellationTokenSource();
             cancellation = source;
             locationTracker.Start();
-            LiveTraffic.FocusRequested += FollowAircraft;
+            LiveTraffic.FocusRequested += FocusAircraft;
+            selectionState.Changed += OnSharedSelectionChanged;
+            selectionState.FollowChanged += OnSharedFollowChanged;
+            ApplySelection(selectionState.Current);
+
+            FollowSnapshot sharedFollow = selectionState.CurrentFollow;
+
+            if (sharedFollow.Version != appliedFollowVersion)
+            {
+                ApplyFollow(sharedFollow);
+            }
+
+            SelectionChanged?.Invoke();
 
             string? pendingFocus = LiveTraffic.GetPendingFocus();
 
             if (pendingFocus != null)
             {
-                FollowAircraft(pendingFocus);
+                FocusAircraft(pendingFocus);
             }
 
             _ = Task.Run(() => RenderLoopAsync(source.Token));
@@ -552,7 +730,9 @@ namespace AdsbCarMap.Map
             cancellation = null;
             source?.Cancel();
             locationTracker.Stop();
-            LiveTraffic.FocusRequested -= FollowAircraft;
+            LiveTraffic.FocusRequested -= FocusAircraft;
+            selectionState.Changed -= OnSharedSelectionChanged;
+            selectionState.FollowChanged -= OnSharedFollowChanged;
             Volatile.Write(ref wantedTiles, new HashSet<TileKey>());
 
             bool lockTaken = false;
@@ -638,11 +818,33 @@ namespace AdsbCarMap.Map
         /// <param name="distanceY">Vertical movement in pixels, following the GestureDetector convention.</param>
         public void Pan(float distanceX, float distanceY)
         {
+            bool wasFollowing;
+
             lock (stateLock)
             {
+                wasFollowing = followLocation || followedHex != null;
                 flingVelocityX = 0.0;
                 flingVelocityY = 0.0;
                 MoveCenter(distanceX, distanceY);
+            }
+
+            if (wasFollowing)
+            {
+                SelectionChanged?.Invoke();
+            }
+        }
+
+        /// <summary>
+        /// Whether the map center follows the user position or an aircraft.
+        /// </summary>
+        public bool IsFollowing
+        {
+            get
+            {
+                lock (stateLock)
+                {
+                    return followLocation || followedHex != null;
+                }
             }
         }
 
@@ -653,12 +855,20 @@ namespace AdsbCarMap.Map
         /// <param name="velocityY">Vertical finger velocity in pixels per second.</param>
         public void Fling(float velocityX, float velocityY)
         {
+            bool wasFollowing;
+
             lock (stateLock)
             {
+                wasFollowing = followLocation || followedHex != null;
                 flingVelocityX = velocityX;
                 flingVelocityY = velocityY;
                 followLocation = false;
                 followedHex = null;
+            }
+
+            if (wasFollowing)
+            {
+                SelectionChanged?.Invoke();
             }
         }
 
@@ -732,6 +942,182 @@ namespace AdsbCarMap.Map
         /// <param name="hex">ICAO address of the aircraft.</param>
         public void FollowAircraft(string hex)
         {
+            FollowAircraft(hex, false);
+        }
+
+        /// <summary>
+        /// When the aircraft is not in this map's data, e.g. because it was selected on the other screen far from this map's area, copies it from the data shared with the other map, moves the map to it and requests an immediate download around it.
+        /// </summary>
+        /// <param name="hex">ICAO address of the aircraft, or null.</param>
+        private void RevealAircraftIfMissing(string? hex)
+        {
+            if (hex == null)
+            {
+                return;
+            }
+
+            lock (stateLock)
+            {
+                if (latestAircraft.Any(item => item.Hex == hex))
+                {
+                    return;
+                }
+            }
+
+            SelectionSnapshot published = selectionState.Current;
+            Aircraft? found = published.PrimaryHex == hex ? published.PrimaryAircraft : null;
+            DateTime foundTimestampUtc = published.PrimaryAircraftTimestampUtc;
+
+            if (found == null)
+            {
+                (IReadOnlyList<Aircraft> Aircraft, DateTime TimestampUtc) shared = LiveTraffic.GetSnapshot();
+
+                found = shared.Aircraft.FirstOrDefault(item => item.Hex == hex);
+                foundTimestampUtc = shared.TimestampUtc;
+            }
+
+            if (found == null)
+            {
+                return;
+            }
+
+            (double Latitude, double Longitude) position = Extrapolate(found, (DateTime.UtcNow - foundTimestampUtc).TotalSeconds);
+
+            lock (stateLock)
+            {
+                if (!latestAircraft.Any(item => item.Hex == hex))
+                {
+                    List<Aircraft> merged = new List<Aircraft>(latestAircraft);
+                    merged.Add(found);
+                    latestAircraft = merged;
+                }
+
+                flingVelocityX = 0.0;
+                flingVelocityY = 0.0;
+                centerLatitude = position.Latitude;
+                centerLongitude = position.Longitude;
+                followedHex = hex;
+                followLocation = false;
+            }
+
+            if (fetchWake.CurrentCount == 0)
+            {
+                fetchWake.Release();
+            }
+        }
+
+        /// <summary>
+        /// Handles the request to show an aircraft found in the search: follows it, selects it and isolates it.
+        /// </summary>
+        /// <param name="hex">ICAO address of the aircraft.</param>
+        private void FocusAircraft(string hex)
+        {
+            FollowAircraft(hex, true);
+        }
+
+        /// <summary>
+        /// Publishes the selection and the filters to the other map and raises <see cref="SelectionChanged"/>.
+        /// </summary>
+        private void NotifySelectionChanged()
+        {
+            SelectionSnapshot snapshot;
+
+            lock (stateLock)
+            {
+                Aircraft? primaryAircraft = primaryHex == null ? null : latestAircraft.FirstOrDefault(item => item.Hex == primaryHex);
+
+                snapshot = new SelectionSnapshot(selectedHexes, primaryHex, isolateSelected, militaryOnly, primaryAircraft, latestAircraftTimestampUtc);
+            }
+
+            selectionState.Publish(this, snapshot);
+            SelectionChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Takes over the selection and the filters changed by the other map.
+        /// </summary>
+        /// <param name="source">Map that changed the state.</param>
+        /// <param name="snapshot">New state.</param>
+        private void OnSharedSelectionChanged(object source, SelectionSnapshot snapshot)
+        {
+            if (ReferenceEquals(source, this))
+            {
+                return;
+            }
+
+            string? previousPrimary;
+
+            lock (stateLock)
+            {
+                previousPrimary = primaryHex;
+            }
+
+            ApplySelection(snapshot);
+
+            if (snapshot.PrimaryHex != null && snapshot.PrimaryHex != previousPrimary)
+            {
+                RevealAircraftIfMissing(snapshot.PrimaryHex);
+
+                lock (stateLock)
+                {
+                    if (latestAircraft.Any(item => item.Hex == snapshot.PrimaryHex))
+                    {
+                        flingVelocityX = 0.0;
+                        flingVelocityY = 0.0;
+                        followedHex = snapshot.PrimaryHex;
+                        followLocation = false;
+                    }
+                }
+            }
+
+            SelectionChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Replaces the selection and the filters with the given state.
+        /// </summary>
+        /// <param name="snapshot">State to apply.</param>
+        private void ApplySelection(SelectionSnapshot snapshot)
+        {
+            lock (stateLock)
+            {
+                selectedHexes = snapshot.Hexes;
+                primaryHex = snapshot.PrimaryHex;
+                isolateSelected = snapshot.Isolated;
+                militaryOnly = snapshot.MilitaryOnly;
+            }
+        }
+
+        /// <summary>
+        /// Sets the area of the screen covered by a view drawn over the map. Aircraft in this area are not selectable.
+        /// </summary>
+        /// <param name="area">Covered area in map pixels, or null when nothing covers the map.</param>
+        public void SetCoveredArea(RectF? area)
+        {
+            Volatile.Write(ref coveredArea, area);
+        }
+
+        /// <summary>
+        /// Checks whether a point of the map is covered by the popup or by a view drawn over the map.
+        /// </summary>
+        /// <param name="popup">Area of the popup, or null.</param>
+        /// <param name="x">Horizontal position in pixels.</param>
+        /// <param name="y">Vertical position in pixels.</param>
+        /// <returns>True when the point is covered.</returns>
+        private bool IsCovered(RectF? popup, float x, float y)
+        {
+            RectF? covered = Volatile.Read(ref coveredArea);
+
+            return (popup != null && popup.Contains(x, y)) || (covered != null && covered.Contains(x, y));
+        }
+
+        /// <summary>
+        /// Makes the map center follow an aircraft, selects it and optionally isolates it.
+        /// </summary>
+        /// <param name="hex">ICAO address of the aircraft.</param>
+        /// <param name="isolate">Whether the aircraft is also isolated, so that only it stays visible.</param>
+        public void FollowAircraft(string hex, bool isolate)
+        {
             lock (stateLock)
             {
                 flingVelocityX = 0.0;
@@ -740,9 +1126,17 @@ namespace AdsbCarMap.Map
                 followLocation = false;
                 selectedHexes = new HashSet<string> { hex };
                 primaryHex = hex;
+
+                if (isolate)
+                {
+                    isolateSelected = true;
+                }
             }
 
-            SelectionChanged?.Invoke();
+            RevealAircraftIfMissing(hex);
+
+            NotifySelectionChanged();
+            PublishFollow();
         }
 
         /// <summary>
@@ -762,6 +1156,66 @@ namespace AdsbCarMap.Map
                 followedHex = primaryHex;
                 followLocation = false;
             }
+
+            PublishFollow();
+            SelectionChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Publishes what this map centers on, so that the other map centers on it too.
+        /// </summary>
+        private void PublishFollow()
+        {
+            string? hex;
+            bool followUser;
+
+            lock (stateLock)
+            {
+                hex = followedHex;
+                followUser = followLocation;
+            }
+
+            appliedFollowVersion = selectionState.PublishFollow(this, hex, followUser).Version;
+        }
+
+        /// <summary>
+        /// Takes over the follow target published by the other map.
+        /// </summary>
+        /// <param name="source">Map that changed the follow target.</param>
+        /// <param name="snapshot">New follow target.</param>
+        private void OnSharedFollowChanged(object source, FollowSnapshot snapshot)
+        {
+            if (ReferenceEquals(source, this))
+            {
+                return;
+            }
+
+            ApplyFollow(snapshot);
+            SelectionChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Starts following the given target.
+        /// </summary>
+        /// <param name="snapshot">Follow target to apply.</param>
+        private void ApplyFollow(FollowSnapshot snapshot)
+        {
+            lock (stateLock)
+            {
+                appliedFollowVersion = snapshot.Version;
+                flingVelocityX = 0.0;
+                flingVelocityY = 0.0;
+                followedHex = snapshot.Hex;
+                followLocation = snapshot.FollowUser;
+
+                if (snapshot.FollowUser && hasUserLocation)
+                {
+                    centerLatitude = userLatitude;
+                    centerLongitude = userLongitude;
+                }
+            }
+
+            RevealAircraftIfMissing(snapshot.Hex);
         }
 
         /// <summary>
@@ -776,7 +1230,7 @@ namespace AdsbCarMap.Map
                 isolateSelected = false;
             }
 
-            SelectionChanged?.Invoke();
+            NotifySelectionChanged();
         }
 
         /// <summary>
@@ -880,7 +1334,7 @@ namespace AdsbCarMap.Map
                 militaryCount = latestAircraft.Count(item => item.IsMilitary);
             }
 
-            SelectionChanged?.Invoke();
+            NotifySelectionChanged();
 
             return enabled;
         }
@@ -931,7 +1385,7 @@ namespace AdsbCarMap.Map
                 isolated = isolateSelected;
             }
 
-            SelectionChanged?.Invoke();
+            NotifySelectionChanged();
 
             return true;
         }
@@ -943,6 +1397,13 @@ namespace AdsbCarMap.Map
         /// <param name="y">Vertical tap position in pixels.</param>
         public void Tap(float x, float y)
         {
+            if (IsCovered(Volatile.Read(ref popupBounds), x, y))
+            {
+                Log.Info(LogTag, string.Format(CultureInfo.InvariantCulture, "Dotknięcie {0:0},{1:0} pominięte: obszar zasłonięty", x, y));
+
+                return;
+            }
+
             IReadOnlyList<(string Hex, float X, float Y)> hits = Volatile.Read(ref screenHits);
             float maximumDistance = TapRadius * density;
             float bestDistance = maximumDistance * maximumDistance;
@@ -958,6 +1419,8 @@ namespace AdsbCarMap.Map
                     tapped = hit.Hex;
                 }
             }
+
+            Log.Info(LogTag, string.Format(CultureInfo.InvariantCulture, "Dotknięcie {0:0},{1:0}: samolotów do wyboru {2}, promień {3:0} px, wybrany {4}", x, y, hits.Count, maximumDistance, tapped ?? "brak"));
 
             lock (stateLock)
             {
@@ -1002,7 +1465,7 @@ namespace AdsbCarMap.Map
                 }
             }
 
-            SelectionChanged?.Invoke();
+            NotifySelectionChanged();
         }
 
         /// <summary>
@@ -1044,6 +1507,9 @@ namespace AdsbCarMap.Map
                     centerLongitude = userLongitude;
                 }
             }
+
+            PublishFollow();
+            SelectionChanged?.Invoke();
         }
 
         /// <summary>
@@ -1092,6 +1558,22 @@ namespace AdsbCarMap.Map
         {
             while (!cancellationToken.IsCancellationRequested)
             {
+                TimeSpan rateLimitRemaining = LiveTraffic.GetRateLimitRemaining();
+
+                if (rateLimitRemaining > TimeSpan.Zero)
+                {
+                    try
+                    {
+                        await fetchWake.WaitAsync(rateLimitRemaining, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return;
+                    }
+
+                    continue;
+                }
+
                 double latitude;
                 double longitude;
                 double radiusNauticalMiles;
@@ -1103,6 +1585,8 @@ namespace AdsbCarMap.Map
                     longitude = centerLongitude;
                     radiusNauticalMiles = CalculateRadiusNauticalMiles(centerLatitude, zoom, surfaceWidth, surfaceHeight);
                 }
+
+                Volatile.Write(ref aircraftLoading, 1);
 
                 try
                 {
@@ -1134,15 +1618,19 @@ namespace AdsbCarMap.Map
                 {
                     Log.Warn(LogTag, "Pobieranie samolotów wstrzymane: " + exception.Message);
                     delay = exception.RetryAfter > delay ? exception.RetryAfter : delay;
+                    LiveTraffic.ReportRateLimited(delay);
                 }
                 catch (Exception exception) when (exception is HttpRequestException || exception is OperationCanceledException || exception is JsonException)
                 {
                     Log.Warn(LogTag, "Pobieranie samolotów nie powiodło się: " + exception.Message);
                 }
 
+                Volatile.Write(ref aircraftLoadEndedTicks, DateTime.UtcNow.Ticks);
+                Volatile.Write(ref aircraftLoading, 0);
+
                 try
                 {
-                    await Task.Delay(delay, cancellationToken);
+                    await fetchWake.WaitAsync(delay, cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
@@ -1436,6 +1924,9 @@ namespace AdsbCarMap.Map
             List<(Aircraft Item, float X, float Y)> projected = new List<(Aircraft Item, float X, float Y)>();
             List<(string Hex, float X, float Y)> hits = new List<(string Hex, float X, float Y)>();
 
+            IReadOnlyList<PopupLine>? popup = ShowSelectionPopup ? GetPopupLines(frameStartUtc) : null;
+            RectF? popupArea = popup == null ? null : MeasurePopup(popup, width, height, screenDensity);
+
             foreach (Aircraft item in snapshot)
             {
                 if ((isolated && !selection.Contains(item.Hex)) || (onlyMilitary && !item.IsMilitary))
@@ -1464,7 +1955,11 @@ namespace AdsbCarMap.Map
                 bool forceLabel = LabelSelectedAircraft && selection.Contains(entry.Item.Hex);
 
                 DrawAircraft(canvas, entry.Item, entry.X, entry.Y, screenDensity, forceLabel);
-                hits.Add((entry.Item.Hex, entry.X, entry.Y));
+
+                if (!IsCovered(popupArea, entry.X, entry.Y))
+                {
+                    hits.Add((entry.Item.Hex, entry.X, entry.Y));
+                }
 
                 if (entry.Item.Hex == followed)
                 {
@@ -1478,6 +1973,7 @@ namespace AdsbCarMap.Map
             }
 
             Volatile.Write(ref screenHits, hits);
+            Volatile.Write(ref popupBounds, popupArea);
 
             if (userKnown)
             {
@@ -1489,11 +1985,303 @@ namespace AdsbCarMap.Map
                 canvas.DrawCircle(userScreen.X, userScreen.Y, 8.0f * screenDensity, userPaint);
             }
 
+            if (popup != null && popupArea != null)
+            {
+                DrawPopup(canvas, popup, popupArea, screenDensity);
+            }
+
             attributionPaint.TextSize = 11.0f * screenDensity;
             canvas.DrawText(TileProvider.OpenStreetMapAttribution, width - 8f * screenDensity, height - 8f * screenDensity, attributionPaint);
 
             versionPaint.TextSize = 11.0f * screenDensity;
-            canvas.DrawText("v" + BuildInfo.Version, 8f * screenDensity, height - 8f * screenDensity, versionPaint);
+            string versionText = "v" + BuildInfo.Version;
+            canvas.DrawText(versionText, 8f * screenDensity, height - 8f * screenDensity, versionPaint);
+
+            DrawLoadingIndicator(canvas, 8f * screenDensity + versionPaint.MeasureText(versionText) + 12f * screenDensity, height - 8f * screenDensity, screenDensity);
+        }
+
+        /// <summary>
+        /// Draws a spinner with a description next to the version number while the aircraft or the map tiles are being loaded.
+        /// </summary>
+        /// <param name="canvas">Surface canvas.</param>
+        /// <param name="left">Left edge of the indicator in pixels.</param>
+        /// <param name="baseline">Text baseline of the indicator in pixels.</param>
+        /// <param name="screenDensity">Screen density factor.</param>
+        private void DrawLoadingIndicator(Canvas canvas, float left, float baseline, float screenDensity)
+        {
+            bool loadingAircraft = Volatile.Read(ref aircraftLoading) != 0
+                || DateTime.UtcNow - new DateTime(Volatile.Read(ref aircraftLoadEndedTicks), DateTimeKind.Utc) < LoadingIndicatorMinimumVisible;
+            bool loadingTilesNow = !loadingTiles.IsEmpty;
+
+            if (!loadingAircraft && !loadingTilesNow)
+            {
+                return;
+            }
+
+            float size = 12f * screenDensity;
+            float top = baseline - size;
+            float startAngle = (Environment.TickCount64 % SpinnerTurnMilliseconds) * 360f / SpinnerTurnMilliseconds;
+
+            spinnerPaint.StrokeWidth = 2f * screenDensity;
+            spinnerBounds.Set(left + screenDensity, top + screenDensity, left + size - screenDensity, baseline - screenDensity);
+            canvas.DrawArc(spinnerBounds, startAngle, 270f, false, spinnerPaint);
+            canvas.DrawText(loadingAircraft ? "Wczytywanie samolotów…" : "Wczytywanie mapy…", left + size + 6f * screenDensity, baseline, versionPaint);
+        }
+
+        /// <summary>
+        /// Style of a popup line.
+        /// </summary>
+        private enum PopupLineStyle
+        {
+            /// <summary>
+            /// Regular white text.
+            /// </summary>
+            Normal,
+
+            /// <summary>
+            /// Bold white text.
+            /// </summary>
+            Bold,
+
+            /// <summary>
+            /// Accent colored text.
+            /// </summary>
+            Accent,
+
+            /// <summary>
+            /// Progress bar with a description below it.
+            /// </summary>
+            Progress,
+        }
+
+        /// <summary>
+        /// One line of the selected aircraft popup.
+        /// </summary>
+        /// <param name="Text">Text of the line.</param>
+        /// <param name="Style">Style of the line.</param>
+        /// <param name="Fraction">Filled part of the progress bar from 0 to 1, used by the progress style only.</param>
+        private readonly record struct PopupLine(string Text, PopupLineStyle Style, float Fraction);
+
+        /// <summary>
+        /// Returns the lines of the selected aircraft popup, rebuilding them when the selection changed or they are older than <see cref="PopupRefreshInterval"/>. Call from the drawing thread only.
+        /// </summary>
+        /// <param name="nowUtc">Start of the current frame, in UTC.</param>
+        /// <returns>Popup lines, or null when no aircraft is selected.</returns>
+        private IReadOnlyList<PopupLine>? GetPopupLines(DateTime nowUtc)
+        {
+            string? hex;
+
+            lock (stateLock)
+            {
+                hex = primaryHex;
+            }
+
+            if (hex == null)
+            {
+                popupLines = null;
+                popupHex = null;
+
+                return null;
+            }
+
+            IReadOnlyList<PopupLine>? current = popupLines;
+
+            if (current != null && popupHex == hex && nowUtc - popupBuiltUtc < PopupRefreshInterval)
+            {
+                return current;
+            }
+
+            SelectedAircraftInfo? info = GetPrimaryInfo();
+
+            if (info == null)
+            {
+                popupLines = null;
+                popupHex = null;
+
+                return null;
+            }
+
+            popupLines = BuildPopupLines(info);
+            popupHex = hex;
+            popupBuiltUtc = nowUtc;
+
+            return popupLines;
+        }
+
+        /// <summary>
+        /// Builds the popup lines from the data of the primary selected aircraft.
+        /// </summary>
+        /// <param name="info">Data of the selected aircraft and the user position.</param>
+        /// <returns>Popup lines.</returns>
+        private List<PopupLine> BuildPopupLines(SelectedAircraftInfo info)
+        {
+            List<PopupLine> lines = new List<PopupLine>();
+            Aircraft? aircraft = info.Aircraft;
+            string title = AircraftCardText.BuildTitle(info);
+
+            if (aircraft == null)
+            {
+                lines.Add(new PopupLine(title, PopupLineStyle.Bold, 0.0f));
+                lines.Add(new PopupLine("Samolot jest poza zasięgiem danych.", PopupLineStyle.Normal, 0.0f));
+
+                return lines;
+            }
+
+            if (!string.IsNullOrEmpty(aircraft.Registration))
+            {
+                title += "  ·  " + aircraft.Registration;
+            }
+
+            if (aircraft.Callsign != popupPrioritizedCallsign)
+            {
+                routeCache.Prioritize(aircraft.Callsign);
+                popupPrioritizedCallsign = aircraft.Callsign;
+            }
+
+            FlightRoute? route = routeCache.Get(aircraft.Callsign);
+            RouteLookupState routeState = routeCache.GetState(aircraft.Callsign);
+            string descriptors = AircraftCardText.BuildDescriptors(aircraft, route);
+
+            lines.Add(new PopupLine(title, PopupLineStyle.Bold, 0.0f));
+
+            if (descriptors.Length > 0)
+            {
+                lines.Add(new PopupLine(descriptors, PopupLineStyle.Accent, 0.0f));
+            }
+
+            lines.Add(new PopupLine(AircraftCardText.BuildRouteText(route, routeState), route == null ? PopupLineStyle.Normal : PopupLineStyle.Bold, 0.0f));
+
+            if (AircraftCardText.TryBuildProgress(info, aircraft, route, out float fraction, out string progress))
+            {
+                lines.Add(new PopupLine(progress, PopupLineStyle.Progress, fraction));
+            }
+
+            List<string> leftLines = AircraftCardText.BuildLeftLines(info, aircraft);
+
+            for (int index = 0; index < leftLines.Count - 1; index++)
+            {
+                lines.Add(new PopupLine(leftLines[index], PopupLineStyle.Normal, 0.0f));
+            }
+
+            foreach (string rightLine in AircraftCardText.BuildRightLines(info, aircraft))
+            {
+                lines.Add(new PopupLine(rightLine, PopupLineStyle.Normal, 0.0f));
+            }
+
+            return lines;
+        }
+
+        /// <summary>
+        /// Returns the height of one popup line in pixels.
+        /// </summary>
+        /// <param name="line">Popup line.</param>
+        /// <param name="screenDensity">Screen density factor.</param>
+        /// <returns>Line height in pixels.</returns>
+        private static float GetPopupLineHeight(PopupLine line, float screenDensity)
+        {
+            float lineHeight = PopupTextSize * PopupLineSpacing * screenDensity;
+
+            return line.Style == PopupLineStyle.Progress ? lineHeight + (PopupBarHeight + 4.0f) * screenDensity : lineHeight;
+        }
+
+        /// <summary>
+        /// Computes the area the popup covers: the bottom left corner of the screen above the version number.
+        /// </summary>
+        /// <param name="lines">Popup lines.</param>
+        /// <param name="width">Surface width in pixels.</param>
+        /// <param name="height">Surface height in pixels.</param>
+        /// <param name="screenDensity">Screen density factor.</param>
+        /// <returns>Area of the popup in screen pixels.</returns>
+        private static RectF MeasurePopup(IReadOnlyList<PopupLine> lines, int width, int height, float screenDensity)
+        {
+            float margin = PopupMargin * screenDensity;
+            float popupWidth = Math.Min(PopupMaxWidth * screenDensity, width * PopupMaxWidthFraction);
+            float popupHeight = 2.0f * margin;
+
+            foreach (PopupLine line in lines)
+            {
+                popupHeight += GetPopupLineHeight(line, screenDensity);
+            }
+
+            float bottom = height - PopupBottomOffset * screenDensity;
+            float top = Math.Max(margin, bottom - popupHeight);
+
+            return new RectF(margin, top, margin + popupWidth, bottom);
+        }
+
+        /// <summary>
+        /// Draws the popup with the data of the selected aircraft.
+        /// </summary>
+        /// <param name="canvas">Surface canvas.</param>
+        /// <param name="lines">Popup lines.</param>
+        /// <param name="area">Area of the popup.</param>
+        /// <param name="screenDensity">Screen density factor.</param>
+        private void DrawPopup(Canvas canvas, IReadOnlyList<PopupLine> lines, RectF area, float screenDensity)
+        {
+            float margin = PopupMargin * screenDensity;
+            float radius = 8.0f * screenDensity;
+            float textWidth = area.Width() - 2.0f * margin;
+            float textSize = PopupTextSize * screenDensity;
+            float y = area.Top + margin;
+
+            popupPaint.TextSize = textSize;
+            popupBoldPaint.TextSize = textSize;
+            popupAccentPaint.TextSize = textSize;
+
+            canvas.DrawRoundRect(area, radius, radius, popupBackgroundPaint);
+
+            foreach (PopupLine line in lines)
+            {
+                float lineHeight = GetPopupLineHeight(line, screenDensity);
+
+                if (y + lineHeight > area.Bottom)
+                {
+                    break;
+                }
+
+                Paint paint = line.Style switch
+                {
+                    PopupLineStyle.Bold => popupBoldPaint,
+                    PopupLineStyle.Accent => popupAccentPaint,
+                    _ => popupPaint,
+                };
+
+                if (line.Style == PopupLineStyle.Progress)
+                {
+                    float barHeight = PopupBarHeight * screenDensity;
+                    float barLeft = area.Left + margin;
+                    float barTop = y + 2.0f * screenDensity;
+                    float barRadius = barHeight / 2.0f;
+
+                    popupPaint.Alpha = 70;
+                    canvas.DrawRoundRect(barLeft, barTop, barLeft + textWidth, barTop + barHeight, barRadius, barRadius, popupPaint);
+                    popupPaint.Alpha = 255;
+                    canvas.DrawRoundRect(barLeft, barTop, barLeft + Math.Max(barHeight, textWidth * Math.Clamp(line.Fraction, 0.0f, 1.0f)), barTop + barHeight, barRadius, barRadius, popupAccentPaint);
+                    y += (PopupBarHeight + 4.0f) * screenDensity;
+                }
+
+                canvas.DrawText(ClipText(paint, line.Text, textWidth), area.Left + margin, y + textSize, paint);
+                y += PopupTextSize * PopupLineSpacing * screenDensity;
+            }
+        }
+
+        /// <summary>
+        /// Shortens a text with an ellipsis so that it fits in the given width.
+        /// </summary>
+        /// <param name="paint">Paint the text is drawn with.</param>
+        /// <param name="text">Text to fit.</param>
+        /// <param name="maxWidth">Available width in pixels.</param>
+        /// <returns>The text, or its beginning followed by an ellipsis.</returns>
+        private static string ClipText(Paint paint, string text, float maxWidth)
+        {
+            if (paint.MeasureText(text) <= maxWidth)
+            {
+                return text;
+            }
+
+            int count = paint.BreakText(text, true, maxWidth - paint.MeasureText("…"), null);
+
+            return text.Substring(0, Math.Max(0, count)) + "…";
         }
 
         /// <summary>

@@ -50,7 +50,7 @@ namespace AdsbCarMap.Activities
         /// <summary>
         /// Controller of the map drawn on the phone screen.
         /// </summary>
-        private readonly MapController controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes);
+        private readonly MapController controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes, AppServices.Selection);
 
         /// <summary>
         /// Button that isolates the selected aircraft.
@@ -76,6 +76,11 @@ namespace AdsbCarMap.Activities
         /// Card of the primary selected aircraft.
         /// </summary>
         private AircraftCardView? aircraftCard;
+
+        /// <summary>
+        /// Map view filling the screen.
+        /// </summary>
+        private PhoneMapView? mapView;
 
         /// <summary>
         /// Main thread handler used to refresh the card periodically.
@@ -205,6 +210,7 @@ namespace AdsbCarMap.Activities
             if (info == null || controller.IsMultiSelect)
             {
                 aircraftCard.Visibility = ViewStates.Gone;
+                UpdateCoveredArea();
 
                 return;
             }
@@ -216,6 +222,25 @@ namespace AdsbCarMap.Activities
 
             aircraftCard.Bind(info, route, AppServices.Routes.GetState(callsign));
             aircraftCard.Visibility = ViewStates.Visible;
+        }
+
+        /// <summary>
+        /// Tells the map which part of it is covered by the visible aircraft card, so that aircraft under the card cannot be tapped.
+        /// </summary>
+        private void UpdateCoveredArea()
+        {
+            if (aircraftCard == null || mapView == null || aircraftCard.Visibility != ViewStates.Visible || aircraftCard.Width == 0)
+            {
+                controller.SetCoveredArea(null);
+
+                return;
+            }
+
+            controller.SetCoveredArea(new Android.Graphics.RectF(
+                aircraftCard.Left - mapView.Left,
+                aircraftCard.Top - mapView.Top,
+                aircraftCard.Right - mapView.Left,
+                aircraftCard.Bottom - mapView.Top));
         }
 
         /// <summary>
@@ -260,7 +285,8 @@ namespace AdsbCarMap.Activities
         {
             FrameLayout root = new FrameLayout(this);
             root.SetFitsSystemWindows(true);
-            root.AddView(new PhoneMapView(this, controller));
+            mapView = new PhoneMapView(this, controller);
+            root.AddView(mapView);
 
             ImageButton menuButton = CreateRoundButton(Resource.Drawable.ic_menu, "Menu");
             menuButton.Click += (sender, args) => ShowMenu(menuButton);
@@ -320,6 +346,7 @@ namespace AdsbCarMap.Activities
             aircraftCard.FollowClicked += () => controller.FollowPrimary();
             aircraftCard.CloseClicked += () => controller.ClearSelection();
             aircraftCard.RefreshRouteClicked += OnRefreshRouteClicked;
+            aircraftCard.LayoutChange += (sender, args) => UpdateCoveredArea();
 
             int cardWidth = landscape
                 ? (int)((Resources?.DisplayMetrics?.WidthPixels ?? 0) * LandscapeCardWidthFraction)

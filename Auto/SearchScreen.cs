@@ -8,39 +8,32 @@ using CarAction = AndroidX.Car.App.Model.Action;
 namespace AdsbCarMap.Auto
 {
     /// <summary>
-    /// Ekran Android Auto do wyszukiwania samolotów po locie, rejestracji, typie i trasie. Wybór samolotu centruje na nim mapę.
+    /// Android Auto screen for searching aircraft by flight, registration, type and route. Picking an aircraft centers the map on it, isolates it and shows its popup.
     /// </summary>
     public class SearchScreen : Screen
     {
         /// <summary>
-        /// Maksymalna liczba wyników na liście.
+        /// Maximum number of results in the list.
         /// </summary>
         private const int MaxResults = 6;
 
         /// <summary>
-        /// Kontroler mapy, który ma podążać za wybranym samolotem.
-        /// </summary>
-        private readonly MapController controller;
-
-        /// <summary>
-        /// Bieżący tekst wyszukiwania.
+        /// Current search text.
         /// </summary>
         private string query = string.Empty;
 
         /// <summary>
-        /// Tworzy ekran wyszukiwania powiązany z kontrolerem mapy.
+        /// Creates the search screen.
         /// </summary>
-        /// <param name="carContext">Kontekst samochodu.</param>
-        /// <param name="controller">Kontroler mapy.</param>
-        public SearchScreen(CarContext carContext, MapController controller) : base(carContext)
+        /// <param name="carContext">Car context.</param>
+        public SearchScreen(CarContext carContext) : base(carContext)
         {
-            this.controller = controller;
         }
 
         /// <summary>
-        /// Buduje szablon wyszukiwania z listą pasujących samolotów.
+        /// Builds the search template with the list of matching aircraft.
         /// </summary>
-        /// <returns>Szablon wyświetlany na ekranie samochodu.</returns>
+        /// <returns>Template shown on the car screen.</returns>
         public override ITemplate OnGetTemplate()
         {
             ItemList.Builder listBuilder = new ItemList.Builder();
@@ -78,9 +71,9 @@ namespace AdsbCarMap.Auto
         }
 
         /// <summary>
-        /// Zapamiętuje nowy tekst wyszukiwania i odświeża listę.
+        /// Stores the new search text and refreshes the list.
         /// </summary>
-        /// <param name="text">Tekst wpisany przez użytkownika.</param>
+        /// <param name="text">Text typed by the user.</param>
         private void OnQueryChanged(string text)
         {
             query = text;
@@ -88,48 +81,48 @@ namespace AdsbCarMap.Auto
         }
 
         /// <summary>
-        /// Ustawia mapę na śledzenie wybranego samolotu i wraca do mapy.
+        /// Requests showing the picked aircraft on all maps (the phone and the car): following, selection and isolation. Then returns to the map.
         /// </summary>
-        /// <param name="hex">Adres ICAO samolotu.</param>
+        /// <param name="hex">ICAO address of the aircraft.</param>
         private void SelectAircraft(string hex)
         {
-            controller.FollowAircraft(hex);
+            LiveTraffic.RequestFocus(hex);
             ScreenManager.Pop();
         }
     }
 
     /// <summary>
-    /// Adapter przekazujący zmiany tekstu wyszukiwania Android Auto do delegata C#.
+    /// Adapter forwarding the Android Auto search text changes to a C# delegate.
     /// </summary>
     public class DelegateSearchCallback : Java.Lang.Object, SearchTemplate.ISearchCallback
     {
         /// <summary>
-        /// Delegat wywoływany po zmianie lub zatwierdzeniu tekstu.
+        /// Delegate invoked after the text changes or is submitted.
         /// </summary>
         private readonly System.Action<string> callback;
 
         /// <summary>
-        /// Tworzy callback wywołujący podany delegat.
+        /// Creates a callback that invokes the given delegate.
         /// </summary>
-        /// <param name="callback">Delegat wywoływany z bieżącym tekstem.</param>
+        /// <param name="callback">Delegate invoked with the current text.</param>
         public DelegateSearchCallback(System.Action<string> callback)
         {
             this.callback = callback;
         }
 
         /// <summary>
-        /// Przekazuje zmieniony tekst do delegata.
+        /// Passes the changed text to the delegate.
         /// </summary>
-        /// <param name="searchText">Bieżący tekst wyszukiwania.</param>
+        /// <param name="searchText">Current search text.</param>
         public void OnSearchTextChanged(string searchText)
         {
             callback(searchText);
         }
 
         /// <summary>
-        /// Przekazuje zatwierdzony tekst do delegata.
+        /// Passes the submitted text to the delegate.
         /// </summary>
-        /// <param name="searchText">Zatwierdzony tekst wyszukiwania.</param>
+        /// <param name="searchText">Submitted search text.</param>
         public void OnSearchSubmitted(string searchText)
         {
             callback(searchText);

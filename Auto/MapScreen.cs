@@ -39,9 +39,10 @@ namespace AdsbCarMap.Auto
         /// <param name="carContext">Car context provided by the session.</param>
         public MapScreen(CarContext carContext) : base(carContext)
         {
-            controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes);
+            controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes, AppServices.Selection);
             controller.SelectionChanged += RefreshTemplate;
             controller.LabelSelectedAircraft = true;
+            controller.ShowSelectionPopup = true;
             surfaceCallback = new MapSurfaceCallback(controller);
 
             if (!LocationTracker.HasPermission())
@@ -61,41 +62,29 @@ namespace AdsbCarMap.Auto
         }
 
         /// <summary>
-        /// Builds the navigation template with the search, military filter, isolation and labels buttons at the top, and panning, zoom in, zoom out and recenter in the map action strip on the right side.
+        /// Builds the navigation template with the military filter, isolation, labels and search buttons at the top, and panning, zoom in, zoom out and recenter in the map action strip on the right side. Active modes use a green icon with a ring.
         /// </summary>
         /// <returns>Template shown on the car screen.</returns>
         public override ITemplate OnGetTemplate()
         {
-            CarAction recenterAction = new CarAction.Builder()
-                .SetIcon(CreateIcon(Resource.Drawable.ic_my_location))
-                .SetOnClickListener(new DelegateClickListener(controller.FollowUser))
-                .Build();
+            CarAction recenterAction = CreateAction(Resource.Drawable.ic_my_location, Resource.Drawable.ic_my_location_on, controller.IsFollowing, controller.FollowUser);
 
             CarAction searchAction = new CarAction.Builder()
                 .SetIcon(CreateIcon(Resource.Drawable.ic_search))
                 .SetOnClickListener(new DelegateClickListener(OpenSearch))
                 .Build();
 
-            CarAction militaryAction = new CarAction.Builder()
-                .SetIcon(CreateIcon(Resource.Drawable.ic_fighter, controller.IsMilitaryOnly))
-                .SetOnClickListener(new DelegateClickListener(ToggleMilitaryOnly))
-                .Build();
+            CarAction militaryAction = CreateAction(Resource.Drawable.ic_fighter, Resource.Drawable.ic_fighter_on, controller.IsMilitaryOnly, ToggleMilitaryOnly);
 
-            CarAction isolateAction = new CarAction.Builder()
-                .SetIcon(CreateIcon(Resource.Drawable.ic_isolate, controller.IsIsolated))
-                .SetOnClickListener(new DelegateClickListener(ToggleIsolation))
-                .Build();
+            CarAction isolateAction = CreateAction(Resource.Drawable.ic_isolate, Resource.Drawable.ic_isolate_on, controller.IsIsolated, ToggleIsolation);
 
-            CarAction labelsAction = new CarAction.Builder()
-                .SetIcon(CreateIcon(Resource.Drawable.ic_labels, AppSettings.ShowLabels))
-                .SetOnClickListener(new DelegateClickListener(ToggleLabels))
-                .Build();
+            CarAction labelsAction = CreateAction(Resource.Drawable.ic_labels, Resource.Drawable.ic_labels_on, AppSettings.ShowLabels, ToggleLabels);
 
             ActionStrip actionStrip = new ActionStrip.Builder()
-                .AddAction(searchAction)
                 .AddAction(militaryAction)
                 .AddAction(isolateAction)
                 .AddAction(labelsAction)
+                .AddAction(searchAction)
                 .Build();
 
             CarAction zoomInAction = new CarAction.Builder()
@@ -128,7 +117,7 @@ namespace AdsbCarMap.Auto
         /// </summary>
         private void OpenSearch()
         {
-            ScreenManager.Push(new SearchScreen(CarContext, controller));
+            ScreenManager.Push(new SearchScreen(CarContext));
         }
 
         /// <summary>
@@ -182,22 +171,31 @@ namespace AdsbCarMap.Auto
         }
 
         /// <summary>
-        /// Creates an Android Auto icon from a drawable resource, tinted blue when the mode it represents is on.
+        /// Creates an Android Auto icon from a drawable resource.
         /// </summary>
         /// <param name="resourceId">Identifier of the drawable resource.</param>
-        /// <param name="active">Whether the icon is tinted to show an active mode.</param>
         /// <returns>Icon to use in an action.</returns>
-        private CarIcon CreateIcon(int resourceId, bool active = false)
+        private CarIcon CreateIcon(int resourceId)
         {
             IconCompat iconCompat = IconCompat.CreateWithResource(CarContext, resourceId)!;
-            CarIcon.Builder builder = new CarIcon.Builder(iconCompat);
 
-            if (active)
-            {
-                builder.SetTint(CarColor.Blue);
-            }
+            return new CarIcon.Builder(iconCompat).Build();
+        }
 
-            return builder.Build();
+        /// <summary>
+        /// Creates an action button with an icon. The host ignores the icon tint, and the navigation action strips allow a background color only for one primary action, so an active mode is shown with a separate icon that is green and has a ring around it.
+        /// </summary>
+        /// <param name="iconResourceId">Identifier of the drawable resource with the icon of the inactive mode.</param>
+        /// <param name="activeIconResourceId">Identifier of the drawable resource with the icon of the active mode.</param>
+        /// <param name="active">Whether the mode the button represents is on.</param>
+        /// <param name="onClick">Delegate invoked when the button is clicked.</param>
+        /// <returns>Action to use in an action strip.</returns>
+        private CarAction CreateAction(int iconResourceId, int activeIconResourceId, bool active, System.Action onClick)
+        {
+            return new CarAction.Builder()
+                .SetIcon(CreateIcon(active ? activeIconResourceId : iconResourceId))
+                .SetOnClickListener(new DelegateClickListener(onClick))
+                .Build();
         }
     }
 
