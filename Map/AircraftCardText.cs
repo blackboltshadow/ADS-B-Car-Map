@@ -7,7 +7,7 @@ namespace AdsbCarMap.Map
     /// <summary>
     /// Builds the texts describing the primary selected aircraft. Shared by the phone card and the Android Auto popup.
     /// </summary>
-    public static class AircraftCardText
+    public static partial class AircraftCardText
     {
         /// <summary>
         /// Culture used to format the numbers: decimal comma and a space as the thousands separator.
@@ -151,8 +151,9 @@ namespace AdsbCarMap.Map
         /// </summary>
         /// <param name="info">Data of the selected aircraft.</param>
         /// <param name="aircraft">Aircraft.</param>
+        /// <param name="unit">Altitude unit chosen by the user.</param>
         /// <returns>Text lines.</returns>
-        public static List<string> BuildLeftLines(SelectedAircraftInfo info, Aircraft aircraft)
+        public static List<string> BuildLeftLines(SelectedAircraftInfo info, Aircraft aircraft, AltitudeUnit unit)
         {
             List<string> lines = new List<string>();
 
@@ -162,7 +163,7 @@ namespace AdsbCarMap.Map
             }
             else if (aircraft.AltitudeFeet.HasValue)
             {
-                lines.Add("Wysokość: " + AltitudeFormatter.FormatWithEquivalent(aircraft.AltitudeFeet.Value));
+                lines.Add("Wysokość: " + AltitudeFormatter.FormatWithEquivalent(aircraft.AltitudeFeet.Value, unit));
             }
             else
             {

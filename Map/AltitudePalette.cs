@@ -44,34 +44,20 @@ namespace AdsbCarMap.Map
         /// <returns>Color of the altitude.</returns>
         public static Color GetColor(double meters, double[] stops)
         {
-            if (meters <= stops[0])
+            AltitudeBlend blend = AltitudeBlend.Locate(meters, stops, StopColors.Length);
+
+            if (blend.FromIndex == blend.ToIndex)
             {
-                return StopColors[0];
+                return StopColors[blend.FromIndex];
             }
 
-            for (int index = 1; index < stops.Length; index++)
-            {
-                if (meters <= stops[index])
-                {
-                    double span = stops[index] - stops[index - 1];
+            Color from = StopColors[blend.FromIndex];
+            Color to = StopColors[blend.ToIndex];
 
-                    if (span <= 0.0)
-                    {
-                        return StopColors[index];
-                    }
-
-                    double fraction = (meters - stops[index - 1]) / span;
-                    Color from = StopColors[index - 1];
-                    Color to = StopColors[index];
-
-                    return Color.Rgb(
-                        (int)Math.Round(from.R + (to.R - from.R) * fraction),
-                        (int)Math.Round(from.G + (to.G - from.G) * fraction),
-                        (int)Math.Round(from.B + (to.B - from.B) * fraction));
-                }
-            }
-
-            return StopColors[StopColors.Length - 1];
+            return Color.Rgb(
+                AltitudeBlend.BlendChannel(from.R, to.R, blend.Fraction),
+                AltitudeBlend.BlendChannel(from.G, to.G, blend.Fraction),
+                AltitudeBlend.BlendChannel(from.B, to.B, blend.Fraction));
         }
     }
 }

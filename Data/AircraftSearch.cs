@@ -1,12 +1,10 @@
-using AdsbCarMap.Services;
-using AdsbCarMap.Settings;
 
 namespace AdsbCarMap.Data
 {
     /// <summary>
     /// Searching aircraft by flight, registration, type and route, and the aircraft description for result lists.
     /// </summary>
-    public static class AircraftSearch
+    public static partial class AircraftSearch
     {
         /// <summary>
         /// Number of the nearest airports listed first when the query is empty.
@@ -17,11 +15,11 @@ namespace AdsbCarMap.Data
         /// Returns the aircraft whose flight, ICAO address, registration, type or route contain all the words of the query. Only routes that are already downloaded are considered, so the API is not queried for every aircraft.
         /// </summary>
         /// <param name="aircraft">Aircraft to search.</param>
-        /// <param name="routes">Flight route cache.</param>
+        /// <param name="peekRoute">Returns the already downloaded route of a callsign, or null.</param>
         /// <param name="query">Query, words separated by spaces.</param>
         /// <param name="maxResults">Maximum number of results.</param>
         /// <returns>Matching aircraft sorted by flight.</returns>
-        public static List<Aircraft> Search(IReadOnlyList<Aircraft> aircraft, RouteCache routes, string query, int maxResults)
+        public static List<Aircraft> Search(IReadOnlyList<Aircraft> aircraft, Func<string?, FlightRoute?> peekRoute, string query, int maxResults)
         {
             string[] terms = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             List<Aircraft> result = new List<Aircraft>();
@@ -33,7 +31,7 @@ namespace AdsbCarMap.Data
 
             foreach (Aircraft item in aircraft)
             {
-                string haystack = BuildSearchText(item, routes.Peek(item.Callsign));
+                string haystack = BuildSearchText(item, peekRoute(item.Callsign));
                 bool matches = terms.All(term => haystack.Contains(term, StringComparison.OrdinalIgnoreCase));
 
                 if (matches)
@@ -100,8 +98,9 @@ namespace AdsbCarMap.Data
         /// </summary>
         /// <param name="item">Aircraft.</param>
         /// <param name="route">Route, or null when unknown.</param>
+        /// <param name="formatAltitude">Formats an altitude given in feet.</param>
         /// <returns>Description built from the available data.</returns>
-        public static string Describe(Aircraft item, FlightRoute? route)
+        public static string Describe(Aircraft item, FlightRoute? route, Func<double, string> formatAltitude)
         {
             List<string> parts = new List<string>();
 
@@ -121,7 +120,7 @@ namespace AdsbCarMap.Data
             }
             else if (item.AltitudeFeet.HasValue)
             {
-                parts.Add(AltitudeFormatter.Format(item.AltitudeFeet.Value));
+                parts.Add(formatAltitude(item.AltitudeFeet.Value));
             }
 
             return string.Join(" · ", parts);
@@ -132,14 +131,16 @@ namespace AdsbCarMap.Data
         /// </summary>
         /// <param name="aircraft">Aircraft to search.</param>
         /// <param name="airports">Airport data.</param>
-        /// <param name="routes">Flight route cache.</param>
+        /// <param name="peekRoute">Returns the already downloaded route of a callsign, or null.</param>
+        /// <param name="favoriteCodes">ICAO codes of the favorite airports, in the order of the favorites list.</param>
+        /// <param name="includeHeliports">Whether heliports are searched too.</param>
         /// <param name="query">Query, words separated by spaces.</param>
         /// <param name="maxResults">Maximum number of rows.</param>
         /// <param name="reservedForAircraft">Number of rows kept for aircraft.</param>
         /// <param name="nearLatitude">Latitude of the point whose neighborhood is listed for an empty query.</param>
         /// <param name="nearLongitude">Longitude of the point whose neighborhood is listed for an empty query.</param>
         /// <returns>Rows of the result list.</returns>
-        public static List<SearchResult> SearchAll(IReadOnlyList<Aircraft> aircraft, AirportDatabase airports, RouteCache routes, string query, int maxResults, int reservedForAircraft, double nearLatitude, double nearLongitude)
+        public static List<SearchResult> SearchAll(IReadOnlyList<Aircraft> aircraft, AirportDatabase airports, Func<string?, FlightRoute?> peekRoute, IReadOnlyList<string> favoriteCodes, bool includeHeliports, string query, int maxResults, int reservedForAircraft, double nearLatitude, double nearLongitude)
         {
             List<string> terms = query
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -150,7 +151,7 @@ namespace AdsbCarMap.Data
 
             if (terms.Count == 0)
             {
-                foreach (string code in AppServices.Favorites.Codes)
+                foreach (string code in favoriteCodes)
                 {
                     Airport? favorite = airports.FindByIcao(code);
 
@@ -175,14 +176,14 @@ namespace AdsbCarMap.Data
             }
             else
             {
-                foreach ((Airport Airport, int Quality) match in airports.Search(terms, maxResults, AppSettings.IsAirportCategoryEnabled(AirportCategory.Heliport), airport => AppServices.Favorites.Contains(airport.Icao)))
+                foreach ((Airport Airport, int Quality) match in airports.Search(terms, maxResults, includeHeliports, airport => favoriteCodes.Contains(airport.Icao, StringComparer.OrdinalIgnoreCase)))
                 {
                     airportRows.Add(new SearchResult(match.Airport, null, match.Quality));
                 }
 
                 foreach (Aircraft item in aircraft)
                 {
-                    int quality = GetAircraftMatchQuality(item, routes.Peek(item.Callsign), terms);
+                    int quality = GetAircraftMatchQuality(item, peekRoute(item.Callsign), terms);
 
                     if (quality > 0)
                     {
@@ -230,18 +231,20 @@ namespace AdsbCarMap.Data
         /// Returns the title of an airport row: the code and the name.
         /// </summary>
         /// <param name="airport">Airport.</param>
+        /// <param name="isFavorite">Whether the airport is a favorite.</param>
         /// <returns>Text such as "WAW · Warsaw Chopin Airport", with a star in front for a favorite.</returns>
-        public static string GetAirportTitle(Airport airport)
+        public static string GetAirportTitle(Airport airport, bool isFavorite)
         {
-            return (AppServices.Favorites.Contains(airport.Icao) ? "★ " : string.Empty) + airport.Code + " · " + airport.Name;
+            return (isFavorite ? "★ " : string.Empty) + airport.Code + " · " + airport.Name;
         }
 
         /// <summary>
         /// Returns the description of an airport row: the place, the size class and the elevation in the unit from the settings.
         /// </summary>
         /// <param name="airport">Airport.</param>
+        /// <param name="formatAltitude">Formats an altitude given in feet.</param>
         /// <returns>Text such as "Warsaw, PL · duże lotnisko · 110 m".</returns>
-        public static string DescribeAirport(Airport airport)
+        public static string DescribeAirport(Airport airport, Func<double, string> formatAltitude)
         {
             List<string> parts = new List<string>();
 
@@ -263,7 +266,7 @@ namespace AdsbCarMap.Data
 
             if (airport.ElevationFeet.HasValue)
             {
-                parts.Add(AltitudeFormatter.Format(airport.ElevationFeet.Value));
+                parts.Add(formatAltitude(airport.ElevationFeet.Value));
             }
 
             return string.Join(" · ", parts);

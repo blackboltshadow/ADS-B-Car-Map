@@ -259,6 +259,16 @@ Zapoznaj się z warunkami użycia tych serwisów, zanim udostępnisz własną ko
 - **Cache kafelków:** tylko w pamięci, po restarcie kafelki są pobierane od nowa.
 - **Minimalna wersja Androida:** 7.0 (API 24). Aplikacja była sprawdzana tylko na jednym telefonie z nowym Androidem.
 
+### Testy jednostkowe
+
+Projekt `Tests\AdsbCarMap.Tests.csproj` (xUnit, net10.0) linkuje te pliki aplikacji, które nie zależą od Androida (GeoMath, WebMercator, klasyfikator rodzajów, AdsbClient, RouteClient, SelectionState, SettingDefinition, SettingsHistory, AirportDatabase, AircraftSearch, TextFolding, AltitudeFormatter, AircraftCardText, AirportCardText, AltitudeBlend) i działa bez Androida i bez telefonu:
+
+```powershell
+dotnet test Tests\AdsbCarMap.Tests.csproj
+```
+
+Testy obejmują odległość i kierunek, projekcję Web Mercator i dobór kafelków, klasyfikację rodzajów samolotów backoff po odpowiedzi 429 i parsowanie pól odpowiedzi ADS-B (z fałszywym `HttpMessageHandler`), klienta tras adsbdb, wspólny stan zaznaczenia telefonu i samochodu oraz definicje ustawień z historią zmian. Kod zależny od Androida jest rozdzielony na pliki `*.Android.cs` i `*.App.cs` (klasy `partial`), a część czysta dostaje stan z zewnątrz: `AirportDatabase.LoadFrom` przyjmuje linie plików, a `AircraftSearch` odczyt tras, ulubione i formatowanie wysokości jako parametry. Jednostka wysokości jest parametrem metod formatujących (`AltitudeFormatter`, teksty kart), a obliczenia koloru po wysokości są w `AltitudeBlend`, bez `Android.Graphics.Color`. `RouteCache` nadal wymaga wydzielenia logowania Androida. Nowa logika niezależna od Androida powinna dostać test, a jej plik trzeba dopisać jako `Compile Include` w pliku csproj testów.
+
 ## Struktura projektu
 
 ```
@@ -269,6 +279,7 @@ Map/          renderowanie mapy: kontroler, kafelki, projekcja, kształty ikon, 
 Services/     współdzielone usługi: klienci HTTP, pozycja GPS, usługa pierwszoplanowa, ruch na żywo
 Settings/     definicje i zapis ustawień
 Resources/    ikony i zasoby graficzne
+Tests/        testy jednostkowe (xUnit)
 Scripts/      skrypty PowerShell: konfiguracja komputera, build Release, Android Auto DHU
 RELEASE_NOTES.md  historia wersji: co zostało wydane w kolejnych wydaniach
 release-history.csv  wersja, commit i SHA-256 każdej zbudowanej paczki
@@ -278,9 +289,14 @@ Mapa na telefonie i w Android Auto używa tego samego `MapController`, więc zmi
 
 ## Plany
 
-- Pełne nazwy typów samolotów.
+- Sprawdzenie w Desktop Head Unit i na telefonie: lotniska, popupy, ulubione, synchronizacja telefonu z samochodem.
 - Cache kafelków na dysku.
-- Przycisk izolacji w Android Auto.
+- Filtry samolotów: zakres wysokości, rodzaj, linia lotnicza, ukrycie samolotów na ziemi.
+- Pełne nazwy typów samolotów (np. A21N jako Airbus A321neo) z tabeli wbudowanej.
+- Alerty „samolot w pobliżu” (wojskowy, wybrany typ, linia) w promieniu wybranym przez użytkownika.
+- Wybór źródła danych (adsb.lol, airplanes.live, adsb.fi, własny tar1090), zapasowe źródło przy 429 i zaokrąglanie współrzędnych wysyłanych do API.
+- Zastąpienie `AllowAllHostsValidator` listą znanych hostów Android Auto.
+- GitHub Actions z buildem i testami, zrzuty ekranu w README.
 
 ## Ważna uwaga
 

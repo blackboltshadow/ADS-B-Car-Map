@@ -58,7 +58,7 @@ namespace AdsbCarMap.Data
             ElevationFeet = elevationFeet;
             HasScheduledService = hasScheduledService;
             IsMilitary = isMilitary;
-            SearchText = AirportDatabase.Fold(icao + " " + iata + " " + name + " " + municipality);
+            SearchText = TextFolding.Fold(icao + " " + iata + " " + name + " " + municipality);
         }
 
         /// <summary>

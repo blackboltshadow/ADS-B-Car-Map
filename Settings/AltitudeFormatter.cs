@@ -26,7 +26,7 @@ namespace AdsbCarMap.Settings
     /// <summary>
     /// Formats altitudes according to the unit chosen in the settings. Shared by the map, the search results and the aircraft card, so the phone and Android Auto always agree.
     /// </summary>
-    public static class AltitudeFormatter
+    public static partial class AltitudeFormatter
     {
         /// <summary>
         /// Feet to meters conversion factor.
@@ -37,16 +37,6 @@ namespace AdsbCarMap.Settings
         /// Culture used for the digit grouping of the displayed numbers.
         /// </summary>
         private static readonly CultureInfo DisplayCulture = new CultureInfo("pl-PL");
-
-        /// <summary>
-        /// Formats an altitude given in feet in the unit from the settings.
-        /// </summary>
-        /// <param name="feet">Altitude in feet.</param>
-        /// <returns>Text such as "10 668 m", "35 000 ft" or "FL350".</returns>
-        public static string Format(double feet)
-        {
-            return Format(feet, AppSettings.AltitudeUnit);
-        }
 
         /// <summary>
         /// Formats an altitude given in feet in the given unit.
@@ -71,10 +61,10 @@ namespace AdsbCarMap.Settings
         /// Formats an altitude for the aircraft card: the chosen unit first, then the metric (or feet, when the unit is metric) equivalent in parentheses.
         /// </summary>
         /// <param name="feet">Altitude in feet.</param>
+        /// <param name="unit">Unit shown first.</param>
         /// <returns>Text such as "10 668 m (35 000 ft)" or "FL350 (10 668 m)".</returns>
-        public static string FormatWithEquivalent(double feet)
+        public static string FormatWithEquivalent(double feet, AltitudeUnit unit)
         {
-            AltitudeUnit unit = AppSettings.AltitudeUnit;
             AltitudeUnit other = unit == AltitudeUnit.Metric ? AltitudeUnit.Feet : AltitudeUnit.Metric;
 
             return Format(feet, unit) + " (" + Format(feet, other) + ")";
@@ -85,13 +75,14 @@ namespace AdsbCarMap.Settings
         /// </summary>
         /// <param name="meters">Altitude in meters.</param>
         /// <param name="isLast">Whether this is the highest threshold, meaning "and above".</param>
+        /// <param name="unit">Unit of the result.</param>
         /// <returns>Label text.</returns>
-        public static string FormatLegend(double meters, bool isLast)
+        public static string FormatLegend(double meters, bool isLast, AltitudeUnit unit)
         {
             double feet = meters / MetersPerFoot;
             string text;
 
-            switch (AppSettings.AltitudeUnit)
+            switch (unit)
             {
                 case AltitudeUnit.Feet:
                     text = string.Format(DisplayCulture, "{0:N0} ft", Math.Round(feet / 100.0) * 100.0);

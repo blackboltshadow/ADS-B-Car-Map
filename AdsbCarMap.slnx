@@ -2,4 +2,5 @@
   <Project Path="AdsbCarMap.csproj">
     <Deploy />
   </Project>
+  <Project Path="Tests/AdsbCarMap.Tests.csproj" />
 </Solution>

@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AdsbCarMap.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Data\GeoMath.cs" Link="Linked\GeoMath.cs" />
+    <Compile Include="..\Data\Aircraft.cs" Link="Linked\Aircraft.cs" />
+    <Compile Include="..\Data\AircraftKind.cs" Link="Linked\AircraftKind.cs" />
+    <Compile Include="..\Data\AircraftClassifier.cs" Link="Linked\AircraftClassifier.cs" />
+    <Compile Include="..\Data\AdsbClient.cs" Link="Linked\AdsbClient.cs" />
+    <Compile Include="..\Data\RateLimitedException.cs" Link="Linked\RateLimitedException.cs" />
+    <Compile Include="..\Map\WebMercator.cs" Link="Linked\WebMercator.cs" />
+    <Compile Include="..\Map\TileKey.cs" Link="Linked\TileKey.cs" />
+    <Compile Include="..\Map\VisibleTile.cs" Link="Linked\VisibleTile.cs" />
+    <Compile Include="..\Data\TextFolding.cs" Link="Linked\TextFolding.cs" />
+    <Compile Include="..\Data\Airport.cs" Link="Linked\Airport.cs" />
+    <Compile Include="..\Data\AirportDatabase.cs" Link="Linked\AirportDatabase.cs" />
+    <Compile Include="..\Data\AircraftSearch.cs" Link="Linked\AircraftSearch.cs" />
+    <Compile Include="..\Data\SearchResult.cs" Link="Linked\SearchResult.cs" />
+    <Compile Include="..\Data\RouteLookupState.cs" Link="Linked\RouteLookupState.cs" />
+    <Compile Include="..\Settings\AltitudeFormatter.cs" Link="Linked\AltitudeFormatter.cs" />
+    <Compile Include="..\Map\AltitudeBlend.cs" Link="Linked\AltitudeBlend.cs" />
+    <Compile Include="..\Map\SelectedAircraftInfo.cs" Link="Linked\SelectedAircraftInfo.cs" />
+    <Compile Include="..\Map\AircraftCardText.cs" Link="Linked\AircraftCardText.cs" />
+    <Compile Include="..\Map\AirportCardText.cs" Link="Linked\AirportCardText.cs" />
+    <Compile Include="..\Data\FlightRoute.cs" Link="Linked\FlightRoute.cs" />
+    <Compile Include="..\Data\RouteClient.cs" Link="Linked\RouteClient.cs" />
+    <Compile Include="..\Map\SelectionState.cs" Link="Linked\SelectionState.cs" />
+    <Compile Include="..\Settings\SettingDefinition.cs" Link="Linked\SettingDefinition.cs" />
+    <Compile Include="..\Settings\SettingsHistory.cs" Link="Linked\SettingsHistory.cs" />
+    <Compile Include="..\Settings\AirportCategory.cs" Link="Linked\AirportCategory.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="xunit" Version="2.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.*" />
+    <PackageReference Include="coverlet.collector" Version="6.*" />
+  </ItemGroup>
+
+</Project>

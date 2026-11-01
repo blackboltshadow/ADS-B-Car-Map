@@ -26,6 +26,13 @@
 	    <AndroidSigningKeyAlias>adsbcarmap</AndroidSigningKeyAlias>
     </PropertyGroup>
 
+  <!-- The unit test project lives in Tests\ and must not be compiled into the app. -->
+  <ItemGroup>
+    <Compile Remove="Tests\**" />
+    <None Remove="Tests\**" />
+    <AndroidResource Remove="Tests\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Xamarin.AndroidX.Car.App.App" Version="1.4.0.2" />
   </ItemGroup>

@@ -7,7 +7,7 @@ namespace AdsbCarMap.Map
     /// <summary>
     /// Builds the texts describing the selected airport. Shared by the phone card and the Android Auto popup.
     /// </summary>
-    public static class AirportCardText
+    public static partial class AirportCardText
     {
         /// <summary>
         /// Culture used for the digit grouping of the displayed numbers.
@@ -54,8 +54,9 @@ namespace AdsbCarMap.Map
         /// <param name="hasUserLocation">Whether the user position is known.</param>
         /// <param name="userLatitude">Latitude of the user.</param>
         /// <param name="userLongitude">Longitude of the user.</param>
+        /// <param name="unit">Altitude unit chosen by the user.</param>
         /// <returns>Text lines.</returns>
-        public static List<string> BuildLines(Airport airport, IReadOnlyList<Runway> runways, bool hasUserLocation, double userLatitude, double userLongitude)
+        public static List<string> BuildLines(Airport airport, IReadOnlyList<Runway> runways, bool hasUserLocation, double userLatitude, double userLongitude, AltitudeUnit unit)
         {
             List<string> lines = new List<string>();
             List<string> codes = new List<string>();
@@ -77,7 +78,7 @@ namespace AdsbCarMap.Map
 
             if (airport.ElevationFeet.HasValue)
             {
-                lines.Add("Wysokość: " + AltitudeFormatter.FormatWithEquivalent(airport.ElevationFeet.Value));
+                lines.Add("Wysokość: " + AltitudeFormatter.FormatWithEquivalent(airport.ElevationFeet.Value, unit));
             }
 
             if (hasUserLocation)
@@ -88,7 +89,7 @@ namespace AdsbCarMap.Map
                 lines.Add(string.Format(DisplayCulture, "Odległość: {0:N0} km, kierunek {1}", kilometers, GeoMath.CompassPoint(bearing)));
             }
 
-            string runwayText = BuildRunways(runways);
+            string runwayText = BuildRunways(runways, unit);
 
             if (runwayText.Length > 0)
             {
@@ -102,15 +103,16 @@ namespace AdsbCarMap.Map
         /// Lists the longest runways with their designators and lengths.
         /// </summary>
         /// <param name="runways">Runways of the airport.</param>
+        /// <param name="unit">Altitude unit chosen by the user; feet give lengths in feet, other units in meters.</param>
         /// <returns>Text such as "Pasy: 15/33 · 3 690 m, 11/29 · 2 800 m", or an empty string when there are none.</returns>
-        private static string BuildRunways(IReadOnlyList<Runway> runways)
+        private static string BuildRunways(IReadOnlyList<Runway> runways, AltitudeUnit unit)
         {
             if (runways.Count == 0)
             {
                 return string.Empty;
             }
 
-            bool feet = AppSettings.AltitudeUnit == AltitudeUnit.Feet;
+            bool feet = unit == AltitudeUnit.Feet;
             List<string> items = new List<string>();
 
             foreach (Runway runway in runways.OrderByDescending(item => item.LengthFeet).Take(MaxRunways))
