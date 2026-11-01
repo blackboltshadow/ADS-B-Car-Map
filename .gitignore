@@ -11,3 +11,5 @@ obj/
 *.apk
 *.log
 *.binlog
+
+logs/
