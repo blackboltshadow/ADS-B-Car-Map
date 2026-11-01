@@ -38,7 +38,9 @@ namespace AdsbCarMap.Auto
         {
             ItemList.Builder listBuilder = new ItemList.Builder();
             IReadOnlyList<Aircraft> aircraft = LiveTraffic.GetSnapshot().Aircraft;
-            List<Aircraft> results = AircraftSearch.Search(aircraft, AppServices.Routes, query, MaxResults);
+            List<Aircraft> results = string.IsNullOrWhiteSpace(query)
+                ? AircraftSearch.ListAll(aircraft, MaxResults)
+                : AircraftSearch.Search(aircraft, AppServices.Routes, query, MaxResults);
 
             foreach (Aircraft item in results)
             {
@@ -58,7 +60,7 @@ namespace AdsbCarMap.Auto
             }
 
             listBuilder.SetNoItemsMessage(string.IsNullOrWhiteSpace(query)
-                ? "Wpisz lot, rejestrację, typ lub lotnisko"
+                ? "Brak samolotów w zasięgu"
                 : "Brak pasujących samolotów");
 
             return new SearchTemplate.Builder(new DelegateSearchCallback(OnQueryChanged))

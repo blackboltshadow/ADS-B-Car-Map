@@ -585,6 +585,52 @@ namespace AdsbCarMap.Map
         private long aircraftLoadEndedTicks;
 
         /// <summary>
+        /// Non-zero when the last aircraft download failed, for example because the network is unavailable.
+        /// </summary>
+        private int aircraftFailed;
+
+        /// <summary>
+        /// Paint used to fill the background circle of the status icon.
+        /// </summary>
+        private readonly Paint statusFillPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// State shown by the status icon in the bottom left corner.
+        /// </summary>
+        private enum StatusKind
+        {
+            /// <summary>
+            /// Everything works.
+            /// </summary>
+            Ok,
+
+            /// <summary>
+            /// The last aircraft download failed.
+            /// </summary>
+            Offline,
+
+            /// <summary>
+            /// The server asked to wait before the next request.
+            /// </summary>
+            RateLimited,
+
+            /// <summary>
+            /// The aircraft list is being downloaded.
+            /// </summary>
+            SearchingAircraft,
+
+            /// <summary>
+            /// Details (route) of the selected aircraft are being downloaded.
+            /// </summary>
+            FetchingDetails,
+
+            /// <summary>
+            /// Map tiles are being downloaded.
+            /// </summary>
+            LoadingMap,
+        }
+
+        /// <summary>
         /// Area covered by the popup in the last frame, or null when no popup was drawn. The object is replaced every frame and is not modified after publication.
         /// </summary>
         private RectF? popupBounds;
@@ -1609,6 +1655,7 @@ namespace AdsbCarMap.Map
                     }
 
                     LiveTraffic.Update(fetched, fetchedAtUtc, latitude, longitude);
+                    Volatile.Write(ref aircraftFailed, 0);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -1620,9 +1667,10 @@ namespace AdsbCarMap.Map
                     delay = exception.RetryAfter > delay ? exception.RetryAfter : delay;
                     LiveTraffic.ReportRateLimited(delay);
                 }
-                catch (Exception exception) when (exception is HttpRequestException || exception is OperationCanceledException || exception is JsonException)
+                catch (Exception exception)
                 {
                     Log.Warn(LogTag, "Pobieranie samolotów nie powiodło się: " + exception.Message);
+                    Volatile.Write(ref aircraftFailed, 1);
                 }
 
                 Volatile.Write(ref aircraftLoadEndedTicks, DateTime.UtcNow.Ticks);
@@ -1995,37 +2043,156 @@ namespace AdsbCarMap.Map
 
             versionPaint.TextSize = 11.0f * screenDensity;
             string versionText = "v" + BuildInfo.Version;
-            canvas.DrawText(versionText, 8f * screenDensity, height - 8f * screenDensity, versionPaint);
+            float statusDiameter = 18f * screenDensity;
+            float statusLeft = 8f * screenDensity;
+            float baseline = height - 8f * screenDensity;
+            StatusKind status = GetStatusKind();
 
-            DrawLoadingIndicator(canvas, 8f * screenDensity + versionPaint.MeasureText(versionText) + 12f * screenDensity, height - 8f * screenDensity, screenDensity);
+            DrawStatusIcon(canvas, status, statusLeft + statusDiameter / 2f, baseline - 4f * screenDensity, statusDiameter / 2f, screenDensity);
+
+            float versionLeft = statusLeft + statusDiameter + 6f * screenDensity;
+            canvas.DrawText(versionText, versionLeft, baseline, versionPaint);
+
+            string? statusText = GetStatusText(status);
+
+            if (statusText != null)
+            {
+                canvas.DrawText(statusText, versionLeft + versionPaint.MeasureText(versionText) + 12f * screenDensity, baseline, versionPaint);
+            }
         }
 
         /// <summary>
-        /// Draws a spinner with a description next to the version number while the aircraft or the map tiles are being loaded.
+        /// Determines the state shown by the status icon. The most important problem wins: no network, request limit, then the running downloads.
         /// </summary>
-        /// <param name="canvas">Surface canvas.</param>
-        /// <param name="left">Left edge of the indicator in pixels.</param>
-        /// <param name="baseline">Text baseline of the indicator in pixels.</param>
-        /// <param name="screenDensity">Screen density factor.</param>
-        private void DrawLoadingIndicator(Canvas canvas, float left, float baseline, float screenDensity)
+        /// <returns>State of the application.</returns>
+        private StatusKind GetStatusKind()
         {
-            bool loadingAircraft = Volatile.Read(ref aircraftLoading) != 0
+            bool aircraftBusy = Volatile.Read(ref aircraftLoading) != 0
                 || DateTime.UtcNow - new DateTime(Volatile.Read(ref aircraftLoadEndedTicks), DateTimeKind.Utc) < LoadingIndicatorMinimumVisible;
-            bool loadingTilesNow = !loadingTiles.IsEmpty;
 
-            if (!loadingAircraft && !loadingTilesNow)
+            if (LiveTraffic.GetRateLimitRemaining() > TimeSpan.Zero)
             {
-                return;
+                return StatusKind.RateLimited;
             }
 
-            float size = 12f * screenDensity;
-            float top = baseline - size;
-            float startAngle = (Environment.TickCount64 % SpinnerTurnMilliseconds) * 360f / SpinnerTurnMilliseconds;
+            if (Volatile.Read(ref aircraftFailed) != 0)
+            {
+                return StatusKind.Offline;
+            }
 
-            spinnerPaint.StrokeWidth = 2f * screenDensity;
-            spinnerBounds.Set(left + screenDensity, top + screenDensity, left + size - screenDensity, baseline - screenDensity);
-            canvas.DrawArc(spinnerBounds, startAngle, 270f, false, spinnerPaint);
-            canvas.DrawText(loadingAircraft ? "Wczytywanie samolotów…" : "Wczytywanie mapy…", left + size + 6f * screenDensity, baseline, versionPaint);
+            string? callsign = null;
+
+            lock (stateLock)
+            {
+                if (primaryHex != null)
+                {
+                    callsign = latestAircraft.FirstOrDefault(item => item.Hex == primaryHex)?.Callsign;
+                }
+            }
+
+            if (callsign != null && routeCache.GetState(callsign) == RouteLookupState.Pending)
+            {
+                return StatusKind.FetchingDetails;
+            }
+
+            if (aircraftBusy)
+            {
+                return StatusKind.SearchingAircraft;
+            }
+
+            return loadingTiles.IsEmpty ? StatusKind.Ok : StatusKind.LoadingMap;
+        }
+
+        /// <summary>
+        /// Returns the description shown next to the version number.
+        /// </summary>
+        /// <param name="status">State of the application.</param>
+        /// <returns>Text, or null when the state needs no description.</returns>
+        private static string? GetStatusText(StatusKind status)
+        {
+            switch (status)
+            {
+                case StatusKind.Offline:
+                    return "Brak połączenia z siecią – samoloty niedostępne";
+                case StatusKind.RateLimited:
+                    return "Limit zapytań – ponowienie za " + Math.Ceiling(LiveTraffic.GetRateLimitRemaining().TotalSeconds).ToString(CultureInfo.InvariantCulture) + " s";
+                case StatusKind.SearchingAircraft:
+                    return "Wyszukiwanie samolotów…";
+                case StatusKind.FetchingDetails:
+                    return "Pobieranie danych samolotu…";
+                case StatusKind.LoadingMap:
+                    return "Wczytywanie mapy…";
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>
+        /// Draws the round status icon: a green check, a red exclamation mark, an orange pause, a radar, a magnifier or a map spinner.
+        /// </summary>
+        /// <param name="canvas">Surface canvas.</param>
+        /// <param name="status">State to show.</param>
+        /// <param name="centerX">Horizontal center of the icon in pixels.</param>
+        /// <param name="centerY">Vertical center of the icon in pixels.</param>
+        /// <param name="radius">Radius of the icon background in pixels.</param>
+        /// <param name="screenDensity">Screen density factor.</param>
+        private void DrawStatusIcon(Canvas canvas, StatusKind status, float centerX, float centerY, float radius, float screenDensity)
+        {
+            switch (status)
+            {
+                case StatusKind.Ok:
+                    statusFillPaint.Color = Color.Rgb(46, 160, 67);
+                    break;
+                case StatusKind.Offline:
+                    statusFillPaint.Color = Color.Rgb(214, 48, 49);
+                    break;
+                case StatusKind.RateLimited:
+                    statusFillPaint.Color = Color.Rgb(230, 126, 34);
+                    break;
+                default:
+                    statusFillPaint.Color = Color.Rgb(41, 121, 255);
+                    break;
+            }
+
+            canvas.DrawCircle(centerX, centerY, radius, statusFillPaint);
+
+            spinnerPaint.StrokeWidth = 1.8f * screenDensity;
+
+            float phase = (Environment.TickCount64 % SpinnerTurnMilliseconds) * 360f / SpinnerTurnMilliseconds;
+
+            switch (status)
+            {
+                case StatusKind.Ok:
+                    canvas.DrawLine(centerX - 0.45f * radius, centerY, centerX - 0.12f * radius, centerY + 0.38f * radius, spinnerPaint);
+                    canvas.DrawLine(centerX - 0.12f * radius, centerY + 0.38f * radius, centerX + 0.5f * radius, centerY - 0.38f * radius, spinnerPaint);
+                    break;
+                case StatusKind.Offline:
+                    canvas.DrawLine(centerX, centerY - 0.5f * radius, centerX, centerY + 0.1f * radius, spinnerPaint);
+                    canvas.DrawPoint(centerX, centerY + 0.5f * radius, spinnerPaint);
+                    break;
+                case StatusKind.RateLimited:
+                    canvas.DrawLine(centerX - 0.27f * radius, centerY - 0.4f * radius, centerX - 0.27f * radius, centerY + 0.4f * radius, spinnerPaint);
+                    canvas.DrawLine(centerX + 0.27f * radius, centerY - 0.4f * radius, centerX + 0.27f * radius, centerY + 0.4f * radius, spinnerPaint);
+                    break;
+                case StatusKind.SearchingAircraft:
+                    {
+                        float sweepRadius = 0.6f * radius;
+                        double angle = phase * Math.PI / 180.0;
+
+                        canvas.DrawCircle(centerX, centerY, sweepRadius, spinnerPaint);
+                        canvas.DrawLine(centerX, centerY, centerX + sweepRadius * (float)Math.Cos(angle), centerY + sweepRadius * (float)Math.Sin(angle), spinnerPaint);
+                        break;
+                    }
+
+                case StatusKind.FetchingDetails:
+                    canvas.DrawCircle(centerX - 0.1f * radius, centerY - 0.1f * radius, 0.36f * radius, spinnerPaint);
+                    canvas.DrawLine(centerX + 0.16f * radius, centerY + 0.16f * radius, centerX + 0.55f * radius, centerY + 0.55f * radius, spinnerPaint);
+                    break;
+                case StatusKind.LoadingMap:
+                    spinnerBounds.Set(centerX - 0.55f * radius, centerY - 0.55f * radius, centerX + 0.55f * radius, centerY + 0.55f * radius);
+                    canvas.DrawArc(spinnerBounds, phase, 270f, false, spinnerPaint);
+                    break;
+            }
         }
 
         /// <summary>
