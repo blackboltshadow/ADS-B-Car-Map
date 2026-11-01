@@ -97,7 +97,7 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 
 ## Konfiguracja aplikacji
 
-Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązują na telefonie oraz w Android Auto. Przy ustawieniach „Etykiety samolotów”, „Legenda wysokości” i „Jednostka wysokości” jest okrągły przycisk „i”, który otwiera okienko z opisem, co dokładnie robi to ustawienie, wraz z przykładem (etykieta w bieżącej wielkości, pasek legendy z bieżącymi progami, ta sama wysokość w trzech jednostkach). Liczby wpisuje się w polach tekstowych, ustawienia włącz/wyłącz zmienia się przełącznikami, a wybór jednostki listą rozwijaną. Wartości spoza dozwolonego zakresu są ucinane, puste pola zostają bez zmiany.
+Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązują na telefonie oraz w Android Auto. Przy ustawieniach liczbowych, przełącznikach i liście jednostki jest okrągły przycisk „i”, który otwiera okienko z opisem, co dokładnie robi to ustawienie, wraz z przykładem (etykieta w bieżącej wielkości, pasek legendy z bieżącymi progami, ta sama wysokość w trzech jednostkach). Liczby wpisuje się w polach tekstowych, ustawienia włącz/wyłącz zmienia się przełącznikami, a wybór jednostki listą rozwijaną. Wartości spoza dozwolonego zakresu są ucinane, puste pola zostają bez zmiany.
 
 | Ustawienie | Domyślnie | Zakres | Znaczenie |
 |---|---|---|---|
@@ -107,20 +107,27 @@ Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązuj�
 | Maksymalny zoom | 13 | 1–18 | największe przybliżenie |
 | Kafelki w pamięci | 128 | 16–1024 | liczba zdekodowanych kafelków w pamięci (zawsze co najmniej tyle, ile widać na ekranie plus zapas) |
 | Ponowienie kafelka [s] | 15 | 1–600 | po jakim czasie ponawiane jest nieudane pobranie kafelka |
-| Długość śladu [min] | 30 | 0–120 | jak długo pamiętany jest ślad lotu (0 wyłącza ślady) |
-| Maks. punktów śladu | 700 | 10–5000 | limit punktów jednego śladu |
-| Grubość śladu [dp] | 3 | 0,5–20 | |
-| Krycie najstarszego śladu | 140 | 0–255 | |
-| Krycie najnowszego śladu | 255 | 0–255 | |
-| Obwódka śladu [dp] | 1 | 0–10 | ciemna obwódka pod śladem |
+| Długość śladu [min] | 30 | 0–120 | jak długo pamiętany jest ślad lotu (0 wyłącza ślady), suwak co 1 min |
+| Maks. punktów śladu | 700 | 10–5000 | limit punktów jednego śladu, suwak co 10 |
+| Grubość śladu [dp] | 3 | 0,5–20 | suwak co 0,5 dp |
+| Krycie najstarszego śladu | 140 | 0–255 | suwak co 5 |
+| Krycie najnowszego śladu | 255 | 0–255 | suwak co 5 |
+| Obwódka śladu [dp] | 1 | 0–10 | ciemna obwódka pod śladem, suwak co 0,5 dp |
 | Krycie obwódki | 140 | 0–255 | |
 | Przyciemnienie mapy | 90 | 0–220 | krycie czarnej warstwy nad kafelkami (0 wyłącza), im więcej, tym ciemniejsza mapa |
-| Obwódka samolotów [dp] | 1,2 | 0–6 | ciemna obwódka wokół ikon (0 wyłącza) |
+| Rozmiar ikon samolotów | ×1,0 | ×0,6–×2,0 | suwak co 0,1, mnoży rozmiar wszystkich ikon, kółek zaznaczenia i śledzenia oraz odsunięcie etykiety, na telefonie i w Android Auto. Grubość obwódki nie zmienia się z rozmiarem ikony. |
+| Obwódka samolotów [dp] | 1,2 | 0–6 | suwak co 0,1 dp (0 wyłącza obwódkę). Oba suwaki są w jednej ramce „Ikony samolotów” po skali kolorów wysokości, nad suwakami jest podgląd wszystkich ikon samolotów w bieżącym rozmiarze i grubości obwódki. |
 | Etykiety samolotów | wyłączone | przełącznik | pokazuje lub ukrywa etykiety (to samo robi przycisk na mapie) |
 | Legenda wysokości | włączona | przełącznik | pokazuje lub ukrywa pasek legendy kolorów wysokości |
 | Jednostka wysokości | metry | lista wyboru | metry (m, km), stopy (ft) albo poziom lotu (FL). Dotyczy etykiet na mapie, wyników wyszukiwania, karty i popupu samolotu oraz legendy, na telefonie i w Android Auto. Karta pokazuje dodatkowo równoważną wartość w nawiasie. Jednostka dotyczy też edytora skali kolorów. |
 | Wielkość liter etykiet [dp] | 13 | 6–40 | suwak co 0,5 dp z podglądem przykładowej etykiety w wybranej wielkości |
-| Skala kolorów wysokości | 300 / 1200 / 3000 / 6000 / 12000 m | 50–20000 m | jeden edytor zamiast pięciu pól: pasek z gradientem i pięcioma znacznikami (pomarańczowy, żółty, zielony, niebieski, fioletowy). Znacznik przeciąga się palcem (nie przejdzie przez sąsiada, wartości przyciągają się do 50 m albo 100 ft), a dotknięcie otwiera okienko do wpisania dokładnej wartości w wybranej jednostce. Szary punkt po lewej to ziemia (0), a pierwszy próg nie może być niższy niż 50 m, żeby strefa pomarańczowa nie zniknęła. Skala paska jest pierwiastkowa, żeby niskie progi się nie zlewały. Pod paskiem jest podgląd śladu wznoszącego się samolotu w tych samych kolorach co na mapie. Kolory są stałe. Sekcja jest wydzielona w ramce, a przycisk „Przywróć domyślne kolory” ustawia domyślne progi (do zastosowania przyciskiem „Zapisz”). Wartości są zapisywane w metrach. |
+| Skala kolorów wysokości | 300 / 1200 / 3000 / 6000 / 12000 m | 50–20000 m | jeden edytor zamiast pięciu pól: pasek z gradientem i pięcioma znacznikami (pomarańczowy, żółty, zielony, niebieski, fioletowy). Znacznik przeciąga się palcem (nie przejdzie przez sąsiada, wartości przyciągają się do 50 m albo 100 ft), a dotknięcie otwiera okienko do wpisania dokładnej wartości w wybranej jednostce. Szary punkt po lewej to ziemia (0), a pierwszy próg nie może być niższy niż 50 m, żeby strefa pomarańczowa nie zniknęła. Skala paska jest pierwiastkowa, żeby niskie progi się nie zlewały. Pod paskiem jest podgląd śladu wznoszącego się samolotu w tych samych kolorach co na mapie. Kolory są stałe. Sekcja jest wydzielona w ramce, a przycisk „Przywróć domyślne kolory” ustawia domyślne progi i zapisuje je od razu. Wartości są zapisywane w metrach. |
+
+Każda zmiana zapisuje się od razu, na telefonie i w Android Auto, bez przycisku „Zapisz”. Pola liczbowe zapisują się po opuszczeniu pola (Gotowe albo dotknięcie innego miejsca), suwaki i lista na bieżąco. Przy suwakach, liście jednostki i polach liczbowych jest przycisk „↺” (cofnij), widoczny, gdy jest co cofać: każde dotknięcie cofa kolejną zmianę o jeden krok (przeciągnięcie suwaka i wpisanie wartości to po jednej zmianie). Historia zmian jest w pamięci aplikacji: zostaje po wyjściu z ustawień, ale znika po zamknięciu aplikacji. Przełączniki i skala kolorów nie mają cofania. Ramki „Ikony samolotów” i „Ślady samolotów” mają własne przyciski przywracające domyślne wartości, a na dole jest „Przywróć wszystkie domyślne”. Przywrócenie domyślnych też można cofnąć „↺”.
+
+Wszystkie suwaki: dotknięcie niebieskiej wartości pod nazwą (✎) otwiera okienko do wpisania dokładnej liczby z zakresu, także pomiędzy pozycjami suwaka.
+
+Ustawienia śladu (od „Długość śladu” do „Krycie obwódki”) są w jednej ramce „Ślady samolotów”, po ramce „Ikony samolotów”. Na górze ramki jest podgląd śladów trzech samolotów (dron, śmigłowiec, samolot pasażerski) rysowanych tym samym kodem co mapa, z bieżącymi wartościami suwaków i z progami kolorów wysokości. Podgląd zmienia się na bieżąco podczas przesuwania suwaków.
 
 **Wskazówki**
 - Wolniejszy wyświetlacz w samochodzie? Zwiększ „Odstęp klatek mapy” (np. do 50–66 ms).

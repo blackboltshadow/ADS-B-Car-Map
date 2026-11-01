@@ -44,7 +44,8 @@ namespace AdsbCarMap.Settings
     /// <param name="Choices">Names of the options of a <see cref="SettingKind.Choice"/> setting, or null for other kinds.</param>
     /// <param name="Step">Step of a <see cref="SettingKind.Slider"/> setting, or 0 for other kinds.</param>
     /// <param name="Help">Description shown in the info popup next to the setting, or null when the setting has none.</param>
-    public sealed record SettingDefinition(string Key, string Label, double DefaultValue, double Minimum, double Maximum, bool IsInteger, SettingKind Kind = SettingKind.Number, IReadOnlyList<string>? Choices = null, double Step = 0.0, string? Help = null)
+    /// <param name="Unit">Unit text shown after the value of a slider, including a leading space when needed.</param>
+    public sealed record SettingDefinition(string Key, string Label, double DefaultValue, double Minimum, double Maximum, bool IsInteger, SettingKind Kind = SettingKind.Number, IReadOnlyList<string>? Choices = null, double Step = 0.0, string? Help = null, string Unit = "")
     {
         /// <summary>
         /// Creates a setting edited with a slider.
@@ -55,10 +56,12 @@ namespace AdsbCarMap.Settings
         /// <param name="minimum">Smallest allowed value.</param>
         /// <param name="maximum">Largest allowed value.</param>
         /// <param name="step">Distance between two neighboring slider positions.</param>
+        /// <param name="unit">Unit text shown after the value, including a leading space when needed.</param>
+        /// <param name="help">Description shown in the info popup, or null.</param>
         /// <returns>Setting definition.</returns>
-        public static SettingDefinition CreateSlider(string key, string label, double defaultValue, double minimum, double maximum, double step)
+        public static SettingDefinition CreateSlider(string key, string label, double defaultValue, double minimum, double maximum, double step, string unit = " dp", string? help = null)
         {
-            return new SettingDefinition(key, label, defaultValue, minimum, maximum, false, SettingKind.Slider, null, step);
+            return new SettingDefinition(key, label, defaultValue, minimum, maximum, false, SettingKind.Slider, null, step, help, unit);
         }
 
         /// <summary>

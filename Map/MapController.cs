@@ -103,11 +103,6 @@ namespace AdsbCarMap.Map
         private const double MetersPerFoot = 0.3048;
 
         /// <summary>
-        /// Smallest sum of the RGB channel differences between the ends of a trail segment for which the segment is drawn with a gradient instead of a solid color.
-        /// </summary>
-        private const int TrailGradientMinimumDifference = 6;
-
-        /// <summary>
         /// Color of the user position marker.
         /// </summary>
         private static readonly Color UserColor = Color.Rgb(66, 133, 244);
@@ -323,19 +318,9 @@ namespace AdsbCarMap.Map
         private readonly Paint aircraftPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Paint used to draw the aircraft trails.
+        /// Draws the aircraft trails, the same way as the trail preview on the settings screen.
         /// </summary>
-        private readonly Paint trailPaint = new Paint(PaintFlags.AntiAlias);
-
-        /// <summary>
-        /// Paint used to draw the dark outline under the aircraft trails.
-        /// </summary>
-        private readonly Paint trailOutlinePaint = new Paint(PaintFlags.AntiAlias);
-
-        /// <summary>
-        /// Path of the trail outline, reused for consecutive aircraft.
-        /// </summary>
-        private readonly AndroidPath trailOutlinePath = new AndroidPath();
+        private readonly TrailPainter trailPainter = new TrailPainter();
 
         /// <summary>
         /// Paint used to draw the aircraft labels.
@@ -672,13 +657,6 @@ namespace AdsbCarMap.Map
             this.routeCache = routeCache;
             this.selectionState = selectionState;
             locationTracker = new LocationTracker(SetUserLocation);
-
-            trailPaint.SetStyle(Paint.Style.Stroke);
-            trailPaint.StrokeCap = Paint.Cap.Round;
-
-            trailOutlinePaint.SetStyle(Paint.Style.Stroke);
-            trailOutlinePaint.StrokeCap = Paint.Cap.Round;
-            trailOutlinePaint.StrokeJoin = Paint.Join.Round;
 
             followedPaint.SetStyle(Paint.Style.Stroke);
             followedPaint.Color = FollowedAircraftColor;
@@ -1986,9 +1964,6 @@ namespace AdsbCarMap.Map
             LogTileStatistics(tiles.Count, missingTiles, zoomLevel);
 
             labelPaint.TextSize = AppSettings.LabelTextSize * screenDensity;
-            trailPaint.StrokeWidth = AppSettings.TrailWidth * screenDensity;
-            trailOutlinePaint.StrokeWidth = (AppSettings.TrailWidth + 2.0f * AppSettings.TrailOutlineWidth) * screenDensity;
-            trailOutlinePaint.Color = Color.Argb(AppSettings.TrailOutlineAlpha, 0, 0, 0);
             followedPaint.StrokeWidth = 2.0f * screenDensity;
             selectedPaint.StrokeWidth = 2.5f * screenDensity;
 
@@ -2016,6 +1991,8 @@ namespace AdsbCarMap.Map
                 projected.Add((item, screen.X, screen.Y));
             }
 
+            float iconScale = AppSettings.IconScale;
+
             foreach ((Aircraft Item, float X, float Y) entry in projected)
             {
                 if (entry.X < -40f || entry.Y < -40f || entry.X > width + 40f || entry.Y > height + 40f)
@@ -2034,12 +2011,12 @@ namespace AdsbCarMap.Map
 
                 if (entry.Item.Hex == followed)
                 {
-                    canvas.DrawCircle(entry.X, entry.Y, 20.0f * screenDensity, followedPaint);
+                    canvas.DrawCircle(entry.X, entry.Y, 20.0f * screenDensity * iconScale, followedPaint);
                 }
 
                 if (selection.Contains(entry.Item.Hex))
                 {
-                    canvas.DrawCircle(entry.X, entry.Y, 25.0f * screenDensity, selectedPaint);
+                    canvas.DrawCircle(entry.X, entry.Y, 25.0f * screenDensity * iconScale, selectedPaint);
                 }
             }
 
@@ -2551,13 +2528,14 @@ namespace AdsbCarMap.Map
             canvas.Save();
             canvas.Translate(x, y);
             canvas.Rotate(rotation);
-            canvas.Scale(screenDensity * shape.Scale, screenDensity * shape.Scale);
+            float iconScale = AppSettings.IconScale;
+            canvas.Scale(screenDensity * shape.Scale * iconScale, screenDensity * shape.Scale * iconScale);
 
             float outlineWidth = AppSettings.AircraftOutlineWidth;
 
             if (outlineWidth > 0.0f)
             {
-                aircraftOutlinePaint.StrokeWidth = 2.0f * outlineWidth / shape.Scale;
+                aircraftOutlinePaint.StrokeWidth = 2.0f * outlineWidth / (shape.Scale * iconScale);
                 canvas.DrawPath(shape.Path, aircraftOutlinePaint);
             }
 
@@ -2574,7 +2552,7 @@ namespace AdsbCarMap.Map
                 ? name + " " + AltitudeFormatter.Format(item.AltitudeFeet.Value)
                 : name;
 
-            float labelX = x + 14f * screenDensity;
+            float labelX = x + 14f * screenDensity * iconScale;
             float labelY = y + 4f * screenDensity;
 
             canvas.DrawText(label, labelX, labelY, labelPaint);
@@ -2619,66 +2597,32 @@ namespace AdsbCarMap.Map
             }
 
             int segmentCount = trail.Length;
-            int minAlpha = AppSettings.TrailMinAlpha;
-            int maxAlpha = AppSettings.TrailMaxAlpha;
             float[] xs = new float[segmentCount + 1];
             float[] ys = new float[segmentCount + 1];
+            Color[] colors = new Color[segmentCount + 1];
 
             for (int index = 0; index < segmentCount; index++)
             {
                 (float X, float Y) point = WebMercator.ProjectToScreen(trail[index].Latitude, trail[index].Longitude, centerLatitude, centerLongitude, zoomLevel, width, height);
                 xs[index] = point.X;
                 ys[index] = point.Y;
+                colors[index] = GetAltitudeColor(trail[index].OnGround, trail[index].AltitudeFeet);
             }
 
             xs[segmentCount] = aircraftX;
             ys[segmentCount] = aircraftY;
+            colors[segmentCount] = GetAltitudeColor(item.OnGround, item.AltitudeFeet);
 
-            trailOutlinePath.Reset();
-            trailOutlinePath.MoveTo(xs[0], ys[0]);
-
-            for (int index = 1; index <= segmentCount; index++)
-            {
-                trailOutlinePath.LineTo(xs[index], ys[index]);
-            }
-
-            canvas.DrawPath(trailOutlinePath, trailOutlinePaint);
-
-            Color startColor = GetAltitudeColor(trail[0].OnGround, trail[0].AltitudeFeet);
-
-            for (int index = 1; index <= segmentCount; index++)
-            {
-                Color endColor = index < segmentCount
-                    ? GetAltitudeColor(trail[index].OnGround, trail[index].AltitudeFeet)
-                    : GetAltitudeColor(item.OnGround, item.AltitudeFeet);
-
-                int startAlpha = minAlpha + (maxAlpha - minAlpha) * (index - 1) / segmentCount;
-                int endAlpha = minAlpha + (maxAlpha - minAlpha) * index / segmentCount;
-                int difference = Math.Abs(startColor.R - endColor.R) + Math.Abs(startColor.G - endColor.G) + Math.Abs(startColor.B - endColor.B);
-
-                if (difference > TrailGradientMinimumDifference)
-                {
-                    using LinearGradient gradient = new LinearGradient(
-                        xs[index - 1],
-                        ys[index - 1],
-                        xs[index],
-                        ys[index],
-                        Color.Argb(startAlpha, startColor.R, startColor.G, startColor.B),
-                        Color.Argb(endAlpha, endColor.R, endColor.G, endColor.B),
-                        Shader.TileMode.Clamp!);
-
-                    trailPaint.SetShader(gradient);
-                    canvas.DrawLine(xs[index - 1], ys[index - 1], xs[index], ys[index], trailPaint);
-                    trailPaint.SetShader(null);
-                }
-                else
-                {
-                    trailPaint.Color = Color.Argb(endAlpha, endColor.R, endColor.G, endColor.B);
-                    canvas.DrawLine(xs[index - 1], ys[index - 1], xs[index], ys[index], trailPaint);
-                }
-
-                startColor = endColor;
-            }
+            trailPainter.Draw(
+                canvas,
+                xs,
+                ys,
+                colors,
+                AppSettings.TrailWidth * density,
+                AppSettings.TrailOutlineWidth * density,
+                AppSettings.TrailOutlineAlpha,
+                AppSettings.TrailMinAlpha,
+                AppSettings.TrailMaxAlpha);
         }
 
         /// <summary>

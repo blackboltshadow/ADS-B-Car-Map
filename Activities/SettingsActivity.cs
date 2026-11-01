@@ -5,6 +5,7 @@ using Android.Graphics;
 using Android.Graphics.Drawables;
 using Android.OS;
 using Android.Text;
+using Android.Views.InputMethods;
 using Android.Views;
 using Android.Widget;
 
@@ -16,6 +17,16 @@ namespace AdsbCarMap.Activities
     [Activity(Label = "Ustawienia", Exported = false, Theme = "@android:style/Theme.Material")]
     public class SettingsActivity : Activity
     {
+        /// <summary>
+        /// Color of the titles and labels of the settings.
+        /// </summary>
+        private static readonly Color PrimaryTextColor = Color.White;
+
+        /// <summary>
+        /// Color of the hints and of the current values shown under the titles.
+        /// </summary>
+        private static readonly Color SecondaryTextColor = Color.Rgb(180, 180, 180);
+
         /// <summary>
         /// Functions reading the current value of the control of each setting. Return null when the control holds no valid value.
         /// </summary>
@@ -37,6 +48,31 @@ namespace AdsbCarMap.Activities
         private int altitudeScaleThresholds;
 
         /// <summary>
+        /// Undo buttons by setting. A button is visible only while the value in the control differs from the saved one.
+        /// </summary>
+        private readonly Dictionary<SettingDefinition, View> undoButtons = new Dictionary<SettingDefinition, View>();
+
+        /// <summary>
+        /// Card shared by all trail settings, created with the first of them.
+        /// </summary>
+        private LinearLayout? trailCard;
+
+        /// <summary>
+        /// Preview of the sample aircraft trails inside <see cref="trailCard"/>.
+        /// </summary>
+        private TrailsPreview? trailsPreview;
+
+        /// <summary>
+        /// Card shared by the aircraft icon size and outline sliders, created with the first of them.
+        /// </summary>
+        private LinearLayout? aircraftIconCard;
+
+        /// <summary>
+        /// Preview of all aircraft icons inside <see cref="aircraftIconCard"/>.
+        /// </summary>
+        private AircraftIconsPreview? aircraftIconsPreview;
+
+        /// <summary>
         /// Threshold settings shown in the altitude scale editor, in the order of their handles.
         /// </summary>
         private readonly List<SettingDefinition> altitudeScaleSettings = new List<SettingDefinition>();
@@ -51,6 +87,15 @@ namespace AdsbCarMap.Activities
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
             SetContentView(BuildContent());
+        }
+
+        /// <summary>
+        /// Commits a number that is still being typed, because a setting is saved when its field loses focus.
+        /// </summary>
+        protected override void OnPause()
+        {
+            CurrentFocus?.ClearFocus();
+            base.OnPause();
         }
 
         /// <summary>
@@ -106,9 +151,19 @@ namespace AdsbCarMap.Activities
                         AddScaleThreshold(root, definition);
                         break;
                     default:
-                        AddNumber(root, definition);
+                        AddNumber(AppSettings.TrailSettings.Contains(definition) ? GetTrailCard(root) : root, definition);
                         break;
                 }
+            }
+
+            if (aircraftIconCard != null)
+            {
+                aircraftIconCard.AddView(CreateResetButton("Przywróć domyślne ikony", new List<SettingDefinition> { AppSettings.IconScaleSetting, AppSettings.AircraftOutlineWidthSetting }, "Przywrócono domyślne ustawienia ikon"));
+            }
+
+            if (trailCard != null)
+            {
+                trailCard.AddView(CreateResetButton("Przywróć domyślne ślady", AppSettings.TrailSettings, "Przywrócono domyślne ustawienia śladów"));
             }
 
             LinearLayout buttons = new LinearLayout(this);
@@ -116,15 +171,7 @@ namespace AdsbCarMap.Activities
             buttons.SetPadding(0, Dp(8), 0, 0);
             root.AddView(buttons);
 
-            Button saveButton = new Button(this);
-            saveButton.Text = "Zapisz";
-            saveButton.Click += (sender, args) => SaveSettings();
-            buttons.AddView(saveButton);
-
-            Button resetButton = new Button(this);
-            resetButton.Text = "Przywróć domyślne";
-            resetButton.Click += (sender, args) => ResetSettings();
-            buttons.AddView(resetButton);
+            buttons.AddView(CreateResetButton("Przywróć wszystkie domyślne", AppSettings.All, "Przywrócono ustawienia domyślne"));
 
             LoadSettingInputs();
 
@@ -134,10 +181,17 @@ namespace AdsbCarMap.Activities
         /// <summary>
         /// Adds a label with a numeric text field for a setting.
         /// </summary>
-        /// <param name="root">Container of the screen.</param>
+        /// <param name="container">Container of the screen or of the card the field belongs to.</param>
         /// <param name="definition">Setting.</param>
-        private void AddNumber(LinearLayout root, SettingDefinition definition)
+        private void AddNumber(LinearLayout container, SettingDefinition definition)
         {
+            LinearLayout row = new LinearLayout(this);
+            row.Orientation = Orientation.Horizontal;
+            row.SetGravity(GravityFlags.CenterVertical);
+            row.SetMinimumHeight(Dp(28));
+            row.SetPadding(0, Dp(4), 0, 0);
+            container.AddView(row);
+
             TextView label = new TextView(this);
             label.Text = string.Format(
                 CultureInfo.InvariantCulture,
@@ -146,16 +200,18 @@ namespace AdsbCarMap.Activities
                 FormatValue(definition, definition.DefaultValue),
                 FormatValue(definition, definition.Minimum),
                 FormatValue(definition, definition.Maximum));
-            label.SetPadding(0, Dp(4), 0, 0);
             label.TextSize = 13f;
-            root.AddView(label);
+            label.SetTextColor(PrimaryTextColor);
+            row.AddView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+            AddUndoButton(row, definition);
+            AddInfoButton(row, definition);
 
             EditText input = new EditText(this);
             input.InputType = definition.IsInteger
                 ? InputTypes.ClassNumber
                 : InputTypes.ClassNumber | InputTypes.NumberFlagDecimal;
             input.SetSingleLine(true);
-            root.AddView(input);
+            container.AddView(input);
 
             settingReaders[definition] = () =>
             {
@@ -164,6 +220,45 @@ namespace AdsbCarMap.Activities
                 return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double value) ? value : null;
             };
             settingWriters[definition] = value => input.Text = FormatValue(definition, value);
+
+            input.ImeOptions = ImeAction.Done;
+
+            System.Action commit = () =>
+            {
+                double saved = AppSettings.Get(definition);
+                string text = (input.Text ?? string.Empty).Trim().Replace(',', '.');
+
+                if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double typed))
+                {
+                    double normalized = definition.Normalize(typed);
+
+                    if (Differs(normalized, saved))
+                    {
+                        SaveValue(definition, normalized);
+                        RecordChange(definition, saved);
+                    }
+                }
+
+                input.Text = FormatValue(definition, AppSettings.Get(definition));
+            };
+
+            input.FocusChange += (sender, args) =>
+            {
+                if (!args.HasFocus)
+                {
+                    commit();
+                }
+            };
+
+            input.EditorAction += (sender, args) =>
+            {
+                if (args.ActionId == ImeAction.Done)
+                {
+                    input.ClearFocus();
+                }
+
+                args.Handled = false;
+            };
         }
 
         /// <summary>
@@ -177,17 +272,27 @@ namespace AdsbCarMap.Activities
             LinearLayout row = new LinearLayout(this);
             row.Orientation = Orientation.Horizontal;
             row.SetGravity(GravityFlags.CenterVertical);
+            row.SetMinimumHeight(Dp(28));
             card.AddView(row);
 
             Switch toggle = new Switch(this);
             toggle.Text = definition.Label;
-            toggle.TextSize = 15f;
-            toggle.SetTypeface(null, TypefaceStyle.Bold);
+            StyleTitle(toggle);
             row.AddView(toggle, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
             AddInfoButton(row, definition);
 
             settingReaders[definition] = () => toggle.Checked ? 1.0 : 0.0;
             settingWriters[definition] = value => toggle.Checked = value >= 0.5;
+
+            toggle.CheckedChange += (sender, args) =>
+            {
+                double value = args.IsChecked ? 1.0 : 0.0;
+
+                if (Differs(value, AppSettings.Get(definition)))
+                {
+                    SaveValue(definition, value);
+                }
+            };
         }
 
         /// <summary>
@@ -201,13 +306,14 @@ namespace AdsbCarMap.Activities
             LinearLayout row = new LinearLayout(this);
             row.Orientation = Orientation.Horizontal;
             row.SetGravity(GravityFlags.CenterVertical);
+            row.SetMinimumHeight(Dp(28));
             card.AddView(row);
 
             TextView label = new TextView(this);
             label.Text = definition.Label;
-            label.TextSize = 15f;
-            label.SetTypeface(null, TypefaceStyle.Bold);
+            StyleTitle(label);
             row.AddView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+            AddUndoButton(row, definition);
             AddInfoButton(row, definition);
 
             FrameLayout field = new FrameLayout(this);
@@ -236,6 +342,18 @@ namespace AdsbCarMap.Activities
             arrow.Clickable = false;
             field.AddView(arrow, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent, GravityFlags.End | GravityFlags.CenterVertical) { RightMargin = Dp(12) });
 
+            spinner.ItemSelected += (sender, args) =>
+            {
+                double saved = AppSettings.Get(definition);
+                double selected = spinner.SelectedItemPosition;
+
+                if (Differs(selected, saved))
+                {
+                    SaveValue(definition, selected);
+                    RecordChange(definition, saved);
+                }
+            };
+
             settingReaders[definition] = () => spinner.SelectedItemPosition;
             settingWriters[definition] = value => spinner.SetSelection((int)Math.Round(value));
         }
@@ -247,14 +365,42 @@ namespace AdsbCarMap.Activities
         /// <param name="definition">Setting.</param>
         private void AddSlider(LinearLayout root, SettingDefinition definition)
         {
-            TextView label = new TextView(this);
-            label.SetPadding(0, Dp(4), 0, 0);
-            label.TextSize = 13f;
-            root.AddView(label);
+            bool isIconSetting = definition == AppSettings.IconScaleSetting || definition == AppSettings.AircraftOutlineWidthSetting;
+            bool isTrailSetting = AppSettings.TrailSettings.Contains(definition);
+            bool isGrouped = isIconSetting || isTrailSetting;
+            LinearLayout card = isIconSetting ? GetAircraftIconCard(root) : isTrailSetting ? GetTrailCard(root) : CreateCard(root);
+
+            LinearLayout titleRow = new LinearLayout(this);
+            titleRow.Orientation = Orientation.Horizontal;
+            titleRow.SetGravity(GravityFlags.CenterVertical);
+            titleRow.SetMinimumHeight(Dp(28));
+            card.AddView(titleRow);
+
+            TextView title = new TextView(this);
+            title.Text = definition.Label;
+            StyleTitle(title);
+
+            if (isGrouped)
+            {
+                title.TextSize = 13f;
+                title.SetTypeface(null, TypefaceStyle.Normal);
+                titleRow.SetPadding(0, Dp(10), 0, 0);
+            }
+
+            titleRow.AddView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+            AddUndoButton(titleRow, definition);
+            AddInfoButton(titleRow, definition);
+
+            TextView valueText = new TextView(this);
+            StyleSecondary(valueText);
+            valueText.SetTextColor(Color.Rgb(130, 180, 255));
+            valueText.SetPadding(0, Dp(4), 0, Dp(4));
+            valueText.Clickable = true;
+            card.AddView(valueText);
 
             SeekBar bar = new SeekBar(this);
             bar.Max = (int)Math.Round((definition.Maximum - definition.Minimum) / definition.Step);
-            root.AddView(bar);
+            card.AddView(bar);
 
             TextView? preview = null;
 
@@ -265,24 +411,135 @@ namespace AdsbCarMap.Activities
                 preview.SetTextColor(Color.White);
                 preview.SetShadowLayer(3f, 0f, 0f, Color.Black);
                 preview.SetPadding(Dp(12), Dp(12), Dp(12), Dp(12));
-                root.AddView(preview);
+                card.AddView(preview);
             }
 
             System.Action<double> refresh = value =>
             {
-                label.Text = string.Format(CultureInfo.InvariantCulture, "{0}: {1} dp  (domyślnie {2})", definition.Label, FormatValue(definition, value), FormatValue(definition, definition.DefaultValue));
+                valueText.Text = definition == AppSettings.IconScaleSetting
+                    ? string.Format(CultureInfo.InvariantCulture, "×{0}  (domyślnie ×{1})", FormatValue(definition, value), FormatValue(definition, definition.DefaultValue))
+                    : string.Format(CultureInfo.InvariantCulture, "{0}{1}  (domyślnie {2})", FormatValue(definition, value), definition.Unit, FormatValue(definition, definition.DefaultValue));
+                valueText.Text += "  ✎";
+
+                if (trailsPreview != null && isTrailSetting)
+                {
+                    if (definition == AppSettings.TrailWidthSetting)
+                    {
+                        trailsPreview.TrailWidth = (float)value;
+                    }
+                    else if (definition == AppSettings.TrailMinAlphaSetting)
+                    {
+                        trailsPreview.TrailMinAlpha = (int)Math.Round(value);
+                    }
+                    else if (definition == AppSettings.TrailMaxAlphaSetting)
+                    {
+                        trailsPreview.TrailMaxAlpha = (int)Math.Round(value);
+                    }
+                    else if (definition == AppSettings.TrailOutlineWidthSetting)
+                    {
+                        trailsPreview.TrailOutlineWidth = (float)value;
+                    }
+                    else if (definition == AppSettings.TrailOutlineAlphaSetting)
+                    {
+                        trailsPreview.TrailOutlineAlpha = (int)Math.Round(value);
+                    }
+
+                    trailsPreview.Invalidate();
+                }
+
+                if (aircraftIconsPreview != null && definition == AppSettings.IconScaleSetting)
+                {
+                    aircraftIconsPreview.IconScale = (float)value;
+                }
+
+                if (aircraftIconsPreview != null && definition == AppSettings.AircraftOutlineWidthSetting)
+                {
+                    aircraftIconsPreview.OutlineWidth = (float)value;
+                }
+
                 preview?.SetTextSize(Android.Util.ComplexUnitType.Dip, (float)value);
                 preview?.Text = "LOT1234 " + AltitudeFormatter.Format(35000);
+                UpdateUndoVisibility(definition);
             };
 
-            bar.ProgressChanged += (sender, args) => refresh(definition.Minimum + args.Progress * definition.Step);
+            double current = definition.DefaultValue;
 
-            settingReaders[definition] = () => definition.Minimum + bar.Progress * definition.Step;
-            settingWriters[definition] = value =>
+            System.Action<double> setValue = value =>
             {
-                bar.Progress = (int)Math.Round((value - definition.Minimum) / definition.Step);
-                refresh(value);
+                current = Math.Clamp(value, definition.Minimum, definition.Maximum);
+                bar.Progress = (int)Math.Round((current - definition.Minimum) / definition.Step);
+                refresh(current);
             };
+
+            double gestureStart = definition.DefaultValue;
+
+            bar.StartTrackingTouch += (sender, args) => gestureStart = AppSettings.Get(definition);
+
+            bar.ProgressChanged += (sender, args) =>
+            {
+                if (args.FromUser)
+                {
+                    current = definition.Minimum + args.Progress * definition.Step;
+                    refresh(current);
+                    SaveValue(definition, current);
+                }
+            };
+
+            bar.StopTrackingTouch += (sender, args) =>
+            {
+                if (Differs(gestureStart, AppSettings.Get(definition)))
+                {
+                    RecordChange(definition, gestureStart);
+                }
+            };
+
+            System.Action<double> commitValue = value =>
+            {
+                double previous = AppSettings.Get(definition);
+
+                setValue(value);
+                SaveValue(definition, current);
+
+                if (Differs(previous, AppSettings.Get(definition)))
+                {
+                    RecordChange(definition, previous);
+                }
+            };
+
+            valueText.Click += (sender, args) => ShowExactValueDialog(definition, current, commitValue);
+
+            settingReaders[definition] = () => current;
+            settingWriters[definition] = setValue;
+        }
+
+        /// <summary>
+        /// Opens a dialog in which the exact value of a slider setting can be typed, for example a value between two slider positions.
+        /// </summary>
+        /// <param name="definition">Slider setting.</param>
+        /// <param name="current">Current value.</param>
+        /// <param name="apply">Action that applies the typed value to the slider.</param>
+        private void ShowExactValueDialog(SettingDefinition definition, double current, System.Action<double> apply)
+        {
+            EditText input = new EditText(this);
+            input.InputType = InputTypes.ClassNumber | InputTypes.NumberFlagDecimal;
+            input.SetSingleLine(true);
+            input.Text = FormatValue(definition, current);
+            input.SetSelectAllOnFocus(true);
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
+            builder.SetTitle(definition.Label + " (" + FormatValue(definition, definition.Minimum) + "–" + FormatValue(definition, definition.Maximum) + definition.Unit + ")");
+            builder.SetView(input);
+            builder.SetNegativeButton("Anuluj", (sender, args) => { });
+            builder.SetPositiveButton("OK", (sender, args) =>
+            {
+                string text = (input.Text ?? string.Empty).Trim().Replace(',', '.');
+
+                if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double typed))
+                {
+                    apply(typed);
+                }
+            });
+            builder.Show();
         }
 
         /// <summary>
@@ -298,23 +555,26 @@ namespace AdsbCarMap.Activities
 
                 TextView title = new TextView(this);
                 title.Text = "Skala kolorów wysokości";
-                title.TextSize = 16f;
-                title.SetTypeface(null, TypefaceStyle.Bold);
+                StyleTitle(title);
                 card.AddView(title);
 
                 TextView hint = new TextView(this);
                 hint.Text = "Przeciągnij znacznik, aby zmienić próg, albo dotknij go, aby wpisać wartość. Wartości są w jednostce wybranej wyżej.";
-                hint.TextSize = 12f;
-                hint.SetTextColor(Color.Rgb(180, 180, 180));
+                StyleSecondary(hint);
                 hint.SetPadding(0, Dp(4), 0, 0);
                 card.AddView(hint);
 
                 altitudeScale = new AltitudeScaleView(this);
+                altitudeScale.ValuesChanged += SaveAltitudeScale;
                 card.AddView(altitudeScale);
 
                 Button resetColors = new Button(this);
                 resetColors.Text = "Przywróć domyślne kolory";
-                resetColors.Click += (sender, args) => ResetAltitudeScale();
+                resetColors.Click += (sender, args) =>
+                {
+                    ResetSettings(altitudeScaleSettings);
+                    Toast.MakeText(this, "Przywrócono domyślne kolory", ToastLength.Short)?.Show();
+                };
                 card.AddView(resetColors);
             }
 
@@ -325,6 +585,93 @@ namespace AdsbCarMap.Activities
 
             settingReaders[definition] = () => scale.GetValue(index);
             settingWriters[definition] = value => scale.SetValue(index, value);
+        }
+
+        /// <summary>
+        /// Returns the card shared by the aircraft icon size and outline sliders, creating it with its title and the preview of all icons at the first call. The preview is placed above the sliders, so it stays visible under the finger while a slider is dragged.
+        /// </summary>
+        /// <param name="root">Container of the screen.</param>
+        /// <returns>The shared card.</returns>
+        private LinearLayout GetAircraftIconCard(LinearLayout root)
+        {
+            if (aircraftIconCard != null)
+            {
+                return aircraftIconCard;
+            }
+
+            LinearLayout card = CreateCard(root);
+
+            TextView title = new TextView(this);
+            title.Text = "Ikony samolotów";
+            StyleTitle(title);
+            card.AddView(title);
+
+            aircraftIconsPreview = new AircraftIconsPreview(this);
+
+            LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
+            previewParams.SetMargins(0, Dp(8), 0, 0);
+            card.AddView(aircraftIconsPreview, previewParams);
+
+            aircraftIconCard = card;
+
+            return card;
+        }
+
+        /// <summary>
+        /// Returns the card shared by all trail settings, creating it with its title and the trail preview at the first call. The preview is placed above the controls, so it stays visible while a slider is dragged.
+        /// </summary>
+        /// <param name="root">Container of the screen.</param>
+        /// <returns>The shared card.</returns>
+        private LinearLayout GetTrailCard(LinearLayout root)
+        {
+            if (trailCard != null)
+            {
+                return trailCard;
+            }
+
+            LinearLayout card = CreateCard(root);
+
+            TextView title = new TextView(this);
+            title.Text = "Ślady samolotów";
+            StyleTitle(title);
+            card.AddView(title);
+
+            TextView hint = new TextView(this);
+            hint.Text = "Podgląd pokazuje ślady drona, śmigłowca i samolotu pasażerskiego z bieżącymi ustawieniami. Dotknij niebieskiej wartości pod nazwą suwaka (✎), aby wpisać dokładną liczbę.";
+            StyleSecondary(hint);
+            hint.SetPadding(0, Dp(4), 0, 0);
+            card.AddView(hint);
+
+            trailsPreview = new TrailsPreview(this);
+
+            LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
+            previewParams.SetMargins(0, Dp(8), 0, 0);
+            card.AddView(trailsPreview, previewParams);
+
+            trailCard = card;
+
+            return card;
+        }
+
+        /// <summary>
+        /// Applies the style of a setting title: white, bold, the same size everywhere.
+        /// </summary>
+        /// <param name="view">Text view, switch or other text control.</param>
+        private static void StyleTitle(TextView view)
+        {
+            view.TextSize = 15f;
+            view.SetTextColor(PrimaryTextColor);
+            view.SetTypeface(null, TypefaceStyle.Bold);
+        }
+
+        /// <summary>
+        /// Applies the style of a secondary text such as a hint or the current value: gray and small.
+        /// </summary>
+        /// <param name="view">Text view.</param>
+        private static void StyleSecondary(TextView view)
+        {
+            view.TextSize = 12f;
+            view.SetTextColor(SecondaryTextColor);
         }
 
         /// <summary>
@@ -352,6 +699,188 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
+        /// Creates a small round button with a symbol, used for the undo and info buttons.
+        /// </summary>
+        /// <param name="symbol">Text drawn in the button.</param>
+        /// <param name="description">Description for accessibility services.</param>
+        /// <returns>The button, not yet added to any layout.</returns>
+        private TextView CreateRoundButton(string symbol, string description)
+        {
+            TextView button = new TextView(this);
+            button.Text = symbol;
+            button.TextSize = 14f;
+            button.SetTextColor(Color.White);
+            button.Gravity = GravityFlags.Center;
+            button.ContentDescription = description;
+
+            GradientDrawable circle = new GradientDrawable();
+            circle.SetShape(ShapeType.Oval);
+            circle.SetColor(Color.Argb(60, 255, 255, 255));
+            circle.SetStroke(Dp(1), Color.Argb(150, 255, 255, 255));
+            button.Background = circle;
+
+            return button;
+        }
+
+        /// <summary>
+        /// Shows the undo button of a setting only when the value in its control differs from the saved one.
+        /// </summary>
+        /// <param name="definition">Setting.</param>
+        private void UpdateUndoVisibility(SettingDefinition definition)
+        {
+            if (!undoButtons.TryGetValue(definition, out View? button))
+            {
+                return;
+            }
+
+            button.Visibility = SettingsHistory.Count(definition.Key) > 0 ? ViewStates.Visible : ViewStates.Invisible;
+        }
+
+        /// <summary>
+        /// Tells whether two setting values differ by more than the rounding of the stored float.
+        /// </summary>
+        /// <param name="first">First value.</param>
+        /// <param name="second">Second value.</param>
+        /// <returns>True when the values differ.</returns>
+        private static bool Differs(double first, double second)
+        {
+            return Math.Abs(first - second) > 0.000001;
+        }
+
+        /// <summary>
+        /// Saves a setting at once, so that the map, on the phone and in the car, uses the new value immediately.
+        /// </summary>
+        /// <param name="definition">Setting.</param>
+        /// <param name="value">New value.</param>
+        private void SaveValue(SettingDefinition definition, double value)
+        {
+            AppSettings.Save(new Dictionary<SettingDefinition, double> { { definition, value } });
+
+            if (definition == AppSettings.AltitudeUnitSetting)
+            {
+                altitudeScale?.Invalidate();
+
+                if (settingWriters.TryGetValue(AppSettings.LabelTextSizeSetting, out System.Action<double>? refreshLabelPreview))
+                {
+                    refreshLabelPreview(AppSettings.Get(AppSettings.LabelTextSizeSetting));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Remembers the value a setting had before it was changed, so that the change can be undone, and shows the undo button.
+        /// </summary>
+        /// <param name="definition">Setting.</param>
+        /// <param name="previous">Value before the change.</param>
+        private void RecordChange(SettingDefinition definition, double previous)
+        {
+            SettingsHistory.Push(definition.Key, previous);
+            UpdateUndoVisibility(definition);
+        }
+
+        /// <summary>
+        /// Undoes the last change of a setting: saves the previous value and puts it into the control.
+        /// </summary>
+        /// <param name="definition">Setting.</param>
+        private void UndoSetting(SettingDefinition definition)
+        {
+            if (!SettingsHistory.TryPop(definition.Key, out double previous))
+            {
+                return;
+            }
+
+            SaveValue(definition, previous);
+
+            if (settingWriters.TryGetValue(definition, out System.Action<double>? write))
+            {
+                write(AppSettings.Get(definition));
+            }
+
+            UpdateUndoVisibility(definition);
+        }
+
+        /// <summary>
+        /// Saves the thresholds of the altitude scale editor after the user changed them.
+        /// </summary>
+        private void SaveAltitudeScale()
+        {
+            if (altitudeScale == null)
+            {
+                return;
+            }
+
+            Dictionary<SettingDefinition, double> values = new Dictionary<SettingDefinition, double>();
+
+            for (int index = 0; index < altitudeScaleSettings.Count; index++)
+            {
+                values[altitudeScaleSettings[index]] = altitudeScale.GetValue(index);
+            }
+
+            AppSettings.Save(values);
+        }
+
+        /// <summary>
+        /// Restores the default values of the given settings, saves them at once and remembers the previous values so that the reset can be undone.
+        /// </summary>
+        /// <param name="definitions">Settings to reset.</param>
+        private void ResetSettings(IEnumerable<SettingDefinition> definitions)
+        {
+            foreach (SettingDefinition definition in definitions.ToList())
+            {
+                double previous = AppSettings.Get(definition);
+
+                if (Differs(previous, definition.DefaultValue))
+                {
+                    SaveValue(definition, definition.DefaultValue);
+                    RecordChange(definition, previous);
+                }
+
+                if (settingWriters.TryGetValue(definition, out System.Action<double>? write))
+                {
+                    write(AppSettings.Get(definition));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates a button that restores the default values of a group of settings.
+        /// </summary>
+        /// <param name="text">Text of the button.</param>
+        /// <param name="definitions">Settings restored by the button.</param>
+        /// <param name="message">Message shown after the reset.</param>
+        /// <returns>The button, not yet added to any layout.</returns>
+        private Button CreateResetButton(string text, IReadOnlyList<SettingDefinition> definitions, string message)
+        {
+            Button button = new Button(this);
+            button.Text = text;
+            button.Click += (sender, args) =>
+            {
+                ResetSettings(definitions);
+                Toast.MakeText(this, message, ToastLength.Short)?.Show();
+            };
+
+            return button;
+        }
+
+        /// <summary>
+        /// Adds a round "undo" button that puts the last saved value of the setting back into its control. Nothing is saved until the Save button is pressed.
+        /// </summary>
+        /// <param name="row">Row to which the button is added.</param>
+        /// <param name="definition">Setting.</param>
+        private void AddUndoButton(LinearLayout row, SettingDefinition definition)
+        {
+            TextView button = CreateRoundButton("↺", "Cofnij do zapisanej wartości: " + definition.Label);
+            button.Visibility = ViewStates.Invisible;
+            undoButtons[definition] = button;
+
+            button.Click += (sender, args) => UndoSetting(definition);
+
+            LinearLayout.LayoutParams parameters = new LinearLayout.LayoutParams(Dp(28), Dp(28));
+            parameters.SetMargins(Dp(12), 0, 0, 0);
+            row.AddView(button, parameters);
+        }
+
+        /// <summary>
         /// Adds a round "i" button that opens a popup with the description of the setting. Does nothing when the setting has no description.
         /// </summary>
         /// <param name="row">Row to which the button is added.</param>
@@ -363,19 +892,8 @@ namespace AdsbCarMap.Activities
                 return;
             }
 
-            TextView button = new TextView(this);
-            button.Text = "i";
-            button.TextSize = 14f;
+            TextView button = CreateRoundButton("i", "Opis ustawienia: " + definition.Label);
             button.SetTypeface(null, TypefaceStyle.BoldItalic);
-            button.SetTextColor(Color.White);
-            button.Gravity = GravityFlags.Center;
-            button.ContentDescription = "Opis ustawienia: " + definition.Label;
-
-            GradientDrawable circle = new GradientDrawable();
-            circle.SetShape(ShapeType.Oval);
-            circle.SetColor(Color.Argb(60, 255, 255, 255));
-            circle.SetStroke(Dp(1), Color.Argb(150, 255, 255, 255));
-            button.Background = circle;
 
             button.Click += (sender, args) =>
             {
@@ -475,19 +993,6 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Puts the default thresholds into the altitude scale editor. Like every other change, they are saved with the Save button.
-        /// </summary>
-        private void ResetAltitudeScale()
-        {
-            foreach (SettingDefinition definition in altitudeScaleSettings)
-            {
-                settingWriters[definition](definition.DefaultValue);
-            }
-
-            Toast.MakeText(this, "Przywrócono domyślne kolory, zapisz, aby zastosować", ToastLength.Short)?.Show();
-        }
-
-        /// <summary>
         /// Puts the current setting values into the controls.
         /// </summary>
         private void LoadSettingInputs()
@@ -495,39 +1000,8 @@ namespace AdsbCarMap.Activities
             foreach (KeyValuePair<SettingDefinition, System.Action<double>> entry in settingWriters)
             {
                 entry.Value(AppSettings.Get(entry.Key));
+                UpdateUndoVisibility(entry.Key);
             }
-        }
-
-        /// <summary>
-        /// Reads the controls and saves the settings. Empty or invalid fields keep the previous value.
-        /// </summary>
-        private void SaveSettings()
-        {
-            Dictionary<SettingDefinition, double> values = new Dictionary<SettingDefinition, double>();
-
-            foreach (KeyValuePair<SettingDefinition, Func<double?>> entry in settingReaders)
-            {
-                double? value = entry.Value();
-
-                if (value.HasValue)
-                {
-                    values[entry.Key] = value.Value;
-                }
-            }
-
-            AppSettings.Save(values);
-            LoadSettingInputs();
-            Toast.MakeText(this, "Zapisano ustawienia", ToastLength.Short)?.Show();
-        }
-
-        /// <summary>
-        /// Restores the default settings and refreshes the controls.
-        /// </summary>
-        private void ResetSettings()
-        {
-            AppSettings.ResetToDefaults();
-            LoadSettingInputs();
-            Toast.MakeText(this, "Przywrócono ustawienia domyślne", ToastLength.Short)?.Show();
         }
 
         /// <summary>

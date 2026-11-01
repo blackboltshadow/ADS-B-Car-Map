@@ -16,77 +16,82 @@ namespace AdsbCarMap.Settings
         /// <summary>
         /// Interval between aircraft requests in seconds.
         /// </summary>
-        public static readonly SettingDefinition FetchIntervalSetting = new SettingDefinition("fetch_interval_s", "Odświeżanie samolotów [s]", 3.0, 1.0, 60.0, false);
+        public static readonly SettingDefinition FetchIntervalSetting = new SettingDefinition("fetch_interval_s", "Odświeżanie samolotów [s]", 3.0, 1.0, 60.0, false, Help: "Co ile sekund aplikacja pobiera z serwera ADS-B (adsb.lol) aktualną listę samolotów w widocznym obszarze mapy. Mniejsza wartość daje świeższe pozycje, ale więcej zapytań. Gdy serwer odmówi (kod 429, limit zapytań), aplikacja sama poczeka dłużej, a ikona stanu w lewym dolnym rogu pokaże odliczanie.");
 
         /// <summary>
         /// Interval between drawing frames in milliseconds.
         /// </summary>
-        public static readonly SettingDefinition RenderIntervalSetting = new SettingDefinition("render_interval_ms", "Odstęp klatek mapy [ms]", 33.0, 16.0, 1000.0, true);
+        public static readonly SettingDefinition RenderIntervalSetting = new SettingDefinition("render_interval_ms", "Odstęp klatek mapy [ms]", 33.0, 16.0, 1000.0, true, Help: "Czas między kolejnymi klatkami rysowania mapy w milisekundach. 33 ms to około 30 klatek na sekundę, 16 ms to około 60. Mniejsza wartość daje płynniejszy ruch, ale zużywa więcej baterii i procesora, co w samochodzie ma znaczenie dla płynności interfejsu.");
 
         /// <summary>
         /// Minimum zoom level.
         /// </summary>
-        public static readonly SettingDefinition MinZoomSetting = new SettingDefinition("min_zoom", "Minimalny zoom", 4.0, 1.0, 18.0, true);
+        public static readonly SettingDefinition MinZoomSetting = new SettingDefinition("min_zoom", "Minimalny zoom", 4.0, 1.0, 18.0, true, Help: "Najmniejsze dozwolone przybliżenie mapy. Niski poziom pokazuje duży obszar (4 to mniej więcej cały kraj lub kontynent), wysoki to pojedyncze miasta. Obszar, z którego pobierane są samoloty, zależy od widocznego fragmentu mapy, więc po oddaleniu aplikacja prosi serwer o większy zasięg, aż do jego limitu.");
 
         /// <summary>
         /// Maximum zoom level.
         /// </summary>
-        public static readonly SettingDefinition MaxZoomSetting = new SettingDefinition("max_zoom", "Maksymalny zoom", 13.0, 1.0, 18.0, true);
+        public static readonly SettingDefinition MaxZoomSetting = new SettingDefinition("max_zoom", "Maksymalny zoom", 13.0, 1.0, 18.0, true, Help: "Największe dozwolone przybliżenie mapy. Poziom 13 pokazuje pojedyncze dzielnice i lotniska z dużą szczegółowością, wyższe poziomy wymagają pobierania znacznie więcej kafelków mapy. Jeśli minimalny zoom jest większy od maksymalnego, aplikacja używa mniejszej z tych dwóch wartości jako minimum.");
 
         /// <summary>
         /// Maximum number of decoded tiles kept in memory.
         /// </summary>
-        public static readonly SettingDefinition MaxCachedTilesSetting = new SettingDefinition("max_cached_tiles", "Kafelki w pamięci", 128.0, 16.0, 1024.0, true);
+        public static readonly SettingDefinition MaxCachedTilesSetting = new SettingDefinition("max_cached_tiles", "Kafelki w pamięci", 128.0, 16.0, 1024.0, true, Help: "Ile gotowych kafelków mapy (obrazków 256 × 256 px) aplikacja trzyma w pamięci operacyjnej. Więcej kafelków oznacza, że przesuwanie i powrót w to samo miejsce nie wymagają ponownego pobierania, ale zajmuje więcej pamięci. Kafelki nie są jeszcze zapisywane na dysku, więc po ponownym uruchomieniu pobierane są od nowa.");
 
         /// <summary>
         /// Time in seconds before a failed tile download is retried.
         /// </summary>
-        public static readonly SettingDefinition TileRetrySetting = new SettingDefinition("tile_retry_s", "Ponowienie kafelka [s]", 15.0, 1.0, 600.0, true);
+        public static readonly SettingDefinition TileRetrySetting = new SettingDefinition("tile_retry_s", "Ponowienie kafelka [s]", 15.0, 1.0, 600.0, true, Help: "Po ilu sekundach aplikacja ponowi pobieranie kafelka mapy, którego nie udało się pobrać (np. przy braku zasięgu). Krótszy czas szybciej uzupełni mapę po powrocie sieci, ale częściej obciąża serwer kafelków OpenStreetMap, który ma politykę uczciwego użytkowania.");
 
         /// <summary>
         /// Time the trail is remembered, in minutes.
         /// </summary>
-        public static readonly SettingDefinition TrailDurationSetting = new SettingDefinition("trail_duration_min", "Długość śladu [min]", 30.0, 0.0, 120.0, false);
+        public static readonly SettingDefinition TrailDurationSetting = SettingDefinition.CreateSlider("trail_duration_min", "Długość śladu", 30.0, 0.0, 120.0, 1.0, " min", "Jak długo, w minutach, aplikacja pamięta pozycje samolotu i rysuje je jako ślad za ikoną. Ślad starszy niż ta wartość jest usuwany. Wartość 0 wyłącza ślady całkowicie. Ślady zbiera aplikacja od momentu, gdy samolot pojawi się w widocznym obszarze, więc po uruchomieniu zaczynają się puste.");
 
         /// <summary>
         /// Maximum number of trail points of one aircraft.
         /// </summary>
-        public static readonly SettingDefinition MaxTrailPointsSetting = new SettingDefinition("trail_max_points", "Maks. punktów śladu", 700.0, 10.0, 5000.0, true);
+        public static readonly SettingDefinition MaxTrailPointsSetting = SettingDefinition.CreateSlider("trail_max_points", "Maks. punktów śladu", 700.0, 10.0, 5000.0, 10.0, " pkt", "Górny limit liczby punktów, z których składa się ślad jednego samolotu. Gdy limit zostanie przekroczony, najstarsze punkty są usuwane, nawet jeśli czas śladu jeszcze nie minął. Ogranicza zużycie pamięci i czas rysowania przy dużej liczbie samolotów.");
 
         /// <summary>
         /// Width of the trail line in dp.
         /// </summary>
-        public static readonly SettingDefinition TrailWidthSetting = new SettingDefinition("trail_width_dp", "Grubość śladu [dp]", 3.0, 0.5, 20.0, false);
+        public static readonly SettingDefinition TrailWidthSetting = SettingDefinition.CreateSlider("trail_width_dp", "Grubość śladu", 3.0, 0.5, 20.0, 0.5, " dp", "Grubość linii śladu za samolotem w dp (jednostka niezależna od gęstości ekranu, więc ślad wygląda podobnie na różnych telefonach i w samochodzie). Kolor śladu zależy od wysokości, tak jak kolor ikony.");
 
         /// <summary>
         /// Opacity of the oldest trail segment.
         /// </summary>
-        public static readonly SettingDefinition TrailMinAlphaSetting = new SettingDefinition("trail_min_alpha", "Krycie najstarszego śladu (0-255)", 140.0, 0.0, 255.0, true);
+        public static readonly SettingDefinition TrailMinAlphaSetting = SettingDefinition.CreateSlider("trail_min_alpha", "Krycie najstarszego śladu (0-255)", 140.0, 0.0, 255.0, 5.0, "", "Przezroczystość najstarszego końca śladu: 0 to niewidoczny, 255 to w pełni kryjący. Ślad stopniowo przechodzi od tej wartości (daleko za samolotem) do wartości dla najnowszego odcinka (przy samolocie), dzięki czemu starsza część wyraźnie znika. Wartość nie może być większa niż krycie najnowszego odcinka.");
 
         /// <summary>
         /// Opacity of the newest trail segment.
         /// </summary>
-        public static readonly SettingDefinition TrailMaxAlphaSetting = new SettingDefinition("trail_max_alpha", "Krycie najnowszego śladu (0-255)", 255.0, 0.0, 255.0, true);
+        public static readonly SettingDefinition TrailMaxAlphaSetting = SettingDefinition.CreateSlider("trail_max_alpha", "Krycie najnowszego śladu (0-255)", 255.0, 0.0, 255.0, 5.0, "", "Przezroczystość najnowszego odcinka śladu, tuż za ikoną samolotu: 0 to niewidoczny, 255 to w pełni kryjący. Razem z kryciem najstarszego śladu tworzy gradient przezroczystości wzdłuż całego śladu.");
 
         /// <summary>
         /// Width of the dark trail outline on each side in dp.
         /// </summary>
-        public static readonly SettingDefinition TrailOutlineWidthSetting = new SettingDefinition("trail_outline_dp", "Obwódka śladu [dp]", 1.0, 0.0, 10.0, false);
+        public static readonly SettingDefinition TrailOutlineWidthSetting = SettingDefinition.CreateSlider("trail_outline_dp", "Obwódka śladu", 1.0, 0.0, 10.0, 0.5, " dp", "Grubość ciemnej obwódki, którą aplikacja rysuje pod śladem z każdej strony, w dp. Obwódka poprawia czytelność kolorowego śladu na jasnych fragmentach mapy. Wartość 0 wyłącza obwódkę.");
 
         /// <summary>
         /// Opacity of the dark trail outline.
         /// </summary>
-        public static readonly SettingDefinition TrailOutlineAlphaSetting = new SettingDefinition("trail_outline_alpha", "Krycie obwódki (0-255)", 140.0, 0.0, 255.0, true);
+        public static readonly SettingDefinition TrailOutlineAlphaSetting = SettingDefinition.CreateSlider("trail_outline_alpha", "Krycie obwódki (0-255)", 140.0, 0.0, 255.0, 5.0, "", "Przezroczystość ciemnej obwódki śladu: 0 to niewidoczna, 255 to w pełni kryjąca. Dotyczy tylko obwódki śladu. Obwódkę ikon samolotów ustawia się osobno w sekcji „Ikony samolotów”.");
 
         /// <summary>
         /// Opacity of the black layer that dims the map tiles.
         /// </summary>
-        public static readonly SettingDefinition MapDimSetting = new SettingDefinition("map_dim_alpha", "Przyciemnienie mapy (0-220)", 90.0, 0.0, 220.0, true);
+        public static readonly SettingDefinition MapDimSetting = new SettingDefinition("map_dim_alpha", "Przyciemnienie mapy (0-220)", 90.0, 0.0, 220.0, true, Help: "Siła czarnej warstwy nakładanej na kafelki mapy: 0 to mapa bez przyciemnienia, 220 to bardzo ciemna. Przyciemniona mapa sprawia, że kolorowe ikony i ślady samolotów są lepiej widoczne, szczególnie w samochodzie lub w nocy.");
+
+        /// <summary>
+        /// Size of the aircraft icons as a multiple of the default size, on the phone and in Android Auto.
+        /// </summary>
+        public static readonly SettingDefinition IconScaleSetting = SettingDefinition.CreateSlider("icon_scale", "Rozmiar ikon samolotów", 1.0, 0.6, 2.0, 0.1);
 
         /// <summary>
         /// Width of the dark outline of the aircraft icons on each side in dp.
         /// </summary>
-        public static readonly SettingDefinition AircraftOutlineWidthSetting = new SettingDefinition("aircraft_outline_dp", "Obwódka samolotów [dp]", 1.2, 0.0, 6.0, false);
+        public static readonly SettingDefinition AircraftOutlineWidthSetting = SettingDefinition.CreateSlider("aircraft_outline_dp", "Obwódka samolotów", 1.2, 0.0, 6.0, 0.1);
 
         /// <summary>
         /// Switch for the visibility of the aircraft labels.
@@ -141,17 +146,14 @@ namespace AdsbCarMap.Settings
             ShowLabelsSetting,
             ShowAltitudeLegendSetting,
             AltitudeUnitSetting,
+            LabelTextSizeSetting,
             AltitudeOrangeSetting,
             AltitudeYellowSetting,
             AltitudeGreenSetting,
             AltitudeBlueSetting,
             AltitudePurpleSetting,
-            FetchIntervalSetting,
-            RenderIntervalSetting,
-            MinZoomSetting,
-            MaxZoomSetting,
-            MaxCachedTilesSetting,
-            TileRetrySetting,
+            IconScaleSetting,
+            AircraftOutlineWidthSetting,
             TrailDurationSetting,
             MaxTrailPointsSetting,
             TrailWidthSetting,
@@ -159,9 +161,27 @@ namespace AdsbCarMap.Settings
             TrailMaxAlphaSetting,
             TrailOutlineWidthSetting,
             TrailOutlineAlphaSetting,
+            FetchIntervalSetting,
+            RenderIntervalSetting,
+            MinZoomSetting,
+            MaxZoomSetting,
+            MaxCachedTilesSetting,
+            TileRetrySetting,
             MapDimSetting,
-            AircraftOutlineWidthSetting,
-            LabelTextSizeSetting,
+        };
+
+        /// <summary>
+        /// Settings that describe the aircraft trails. They share one section on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> TrailSettings = new List<SettingDefinition>
+        {
+            TrailDurationSetting,
+            MaxTrailPointsSetting,
+            TrailWidthSetting,
+            TrailMinAlphaSetting,
+            TrailMaxAlphaSetting,
+            TrailOutlineWidthSetting,
+            TrailOutlineAlphaSetting,
         };
 
         /// <summary>
@@ -248,6 +268,11 @@ namespace AdsbCarMap.Settings
         /// Opacity of the black layer that dims the map tiles.
         /// </summary>
         public static int MapDim => (int)Get(MapDimSetting);
+
+        /// <summary>
+        /// Size of the aircraft icons as a multiple of the default size.
+        /// </summary>
+        public static float IconScale => (float)Get(IconScaleSetting);
 
         /// <summary>
         /// Width of the dark outline of the aircraft icons on each side in dp.
