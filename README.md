@@ -187,6 +187,23 @@ dotnet build -c Debug -t:Install "-p:AdbTarget=-s <numer-seryjny-urządzenia>"
 
 Numer seryjny urządzenia pokaże `adb devices`. Każdy build zwiększa numer kompilacji w `BuildNumber.txt`, który jest też `versionCode` aplikacji. Wersja wyświetlana to `0.2.<numer kompilacji>` (widoczna w lewym dolnym rogu mapy).
 
+**Skrypty pomocnicze (`Scripts/`)**
+
+| Skrypt | Działanie |
+|---|---|
+| `Setup-Environment.ps1` | Przygotowuje nowy komputer: kopiuje pliki podpisu i kontaktu z wybranego katalogu (np. pendrive'a) do `%USERPROFILE%`, opcjonalnie ustawia `JAVA_HOME` i zmienne z hasłami oraz dopisuje katalog `platform-tools` (ADB) do PATH użytkownika. |
+| `Release.ps1` | Buduje podpisany plik `aab` w konfiguracji Release. Gdy istnieje `adsbcarmap-signing.props` lub zmienna `ADSBCARMAP_STOREPASS`, nie pyta o hasło, a w przeciwnym razie prosi o nie i ustawia zmienne tylko na czas działania. |
+| `DHU_Start.ps1` | Przekierowuje port `5277` i uruchamia Desktop Head Unit (emulator samochodu). |
+| `DHU_Logs.ps1` | Czyści logcat i zapisuje go do `logs/android-auto.log` (katalog ignorowany przez git). |
+
+**Praca na drugim komputerze.** Kod pobierz z GitHuba (`git clone`). Poza repozytorium trzeba przenieść trzy pliki z `%USERPROFILE%`: `adsbcarmap-release.jks`, `adsbcarmap-signing.props` i `adsbcarmap-contact.props`. Bez tego samego klucza podpisu nie zaktualizujesz aplikacji zainstalowanej na telefonie, trzeba by ją odinstalować. Przenoś je na zaszyfrowanym nośniku i usuń po pracy. Potem uruchom:
+
+```powershell
+.\Scripts\Setup-Environment.ps1 -SourceDirectory E:\ -JavaHome "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot" -PlatformTools "C:\Android\platform-tools"
+```
+
+Wszystkie parametry są opcjonalne (`-SetSigningVariables` zapisuje hasła w zmiennych środowiskowych zamiast w pliku `.props`). Po skrypcie zrestartuj Visual Studio i terminale. Emulator Desktop Head Unit zainstalujesz przez SDK Manager (Android Auto Desktop Head Unit Emulator).
+
 ## Źródła danych i atrybucja
 
 | Dane | Źródło | Uwagi |
@@ -222,6 +239,7 @@ Map/          renderowanie mapy: kontroler, kafelki, projekcja, kształty ikon, 
 Services/     współdzielone usługi: klienci HTTP, pozycja GPS, usługa pierwszoplanowa, ruch na żywo
 Settings/     definicje i zapis ustawień
 Resources/    ikony i zasoby graficzne
+Scripts/      skrypty PowerShell: konfiguracja komputera, build Release, Android Auto DHU
 ```
 
 Mapa na telefonie i w Android Auto używa tego samego `MapController`, więc zmiany w rysowaniu dotyczą obu.
