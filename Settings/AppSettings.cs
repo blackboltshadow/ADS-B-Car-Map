@@ -124,6 +124,11 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition AltitudePurpleSetting = new SettingDefinition("alt_purple_m", "Fioletowy od [m]", 12000.0, 0.0, 20000.0, true);
 
         /// <summary>
+        /// Przełącznik paska legendy kolorów wysokości u dołu mapy: 0 ukrywa, 1 pokazuje.
+        /// </summary>
+        public static readonly SettingDefinition ShowAltitudeLegendSetting = new SettingDefinition("show_altitude_legend", "Legenda wysokości (0 = ukryta, 1 = widoczna)", 1.0, 0.0, 1.0, true);
+
+        /// <summary>
         /// Wszystkie ustawienia w kolejności wyświetlania.
         /// </summary>
         public static readonly IReadOnlyList<SettingDefinition> All = new List<SettingDefinition>
@@ -144,6 +149,7 @@ namespace AdsbCarMap.Settings
             MapDimSetting,
             AircraftOutlineWidthSetting,
             ShowLabelsSetting,
+            ShowAltitudeLegendSetting,
             LabelTextSizeSetting,
             AltitudeOrangeSetting,
             AltitudeYellowSetting,
@@ -246,6 +252,11 @@ namespace AdsbCarMap.Settings
         /// Informacja, czy etykiety z opisem samolotów są widoczne na mapie.
         /// </summary>
         public static bool ShowLabels => Get(ShowLabelsSetting) >= 0.5;
+
+        /// <summary>
+        /// Informacja, czy pasek legendy kolorów wysokości jest widoczny na mapie.
+        /// </summary>
+        public static bool ShowAltitudeLegend => Get(ShowAltitudeLegendSetting) >= 0.5;
 
         /// <summary>
         /// Wielkość tekstu etykiet samolotów w dp.

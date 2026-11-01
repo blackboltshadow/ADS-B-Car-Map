@@ -120,6 +120,11 @@ namespace AdsbCarMap.Map
         };
 
         /// <summary>
+        /// Smallest sum of the RGB channel differences between the ends of a trail segment for which the segment is drawn with a gradient instead of a solid color.
+        /// </summary>
+        private const int TrailGradientMinimumDifference = 6;
+
+        /// <summary>
         /// Color of the user position marker.
         /// </summary>
         private static readonly Color UserColor = Color.Rgb(66, 133, 244);
@@ -590,6 +595,26 @@ namespace AdsbCarMap.Map
         private int aircraftFailed;
 
         /// <summary>
+        /// Paint used to draw the gradient bar of the altitude legend.
+        /// </summary>
+        private readonly Paint legendPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Paint used to draw the dark outline of the altitude legend bar.
+        /// </summary>
+        private readonly Paint legendOutlinePaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Paint used to draw the altitude legend labels.
+        /// </summary>
+        private readonly Paint legendTextPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Rectangle of the altitude legend bar, reused every frame.
+        /// </summary>
+        private readonly RectF legendBounds = new RectF();
+
+        /// <summary>
         /// Paint used to fill the background circle of the status icon.
         /// </summary>
         private readonly Paint statusFillPaint = new Paint(PaintFlags.AntiAlias);
@@ -684,6 +709,10 @@ namespace AdsbCarMap.Map
 
             labelPaint.Color = Color.White;
             labelPaint.SetShadowLayer(3f, 0f, 0f, Color.Black);
+
+            legendTextPaint.Color = Color.White;
+            legendTextPaint.TextAlign = Paint.Align.Center;
+            legendTextPaint.SetShadowLayer(3f, 0f, 0f, Color.Black);
 
             attributionPaint.Color = Color.White;
             attributionPaint.TextAlign = Paint.Align.Right;
@@ -2038,6 +2067,11 @@ namespace AdsbCarMap.Map
                 DrawPopup(canvas, popup, popupArea, screenDensity);
             }
 
+            if (AppSettings.ShowAltitudeLegend)
+            {
+                DrawAltitudeLegend(canvas, width, height, screenDensity);
+            }
+
             attributionPaint.TextSize = 11.0f * screenDensity;
             canvas.DrawText(TileProvider.OpenStreetMapAttribution, width - 8f * screenDensity, height - 8f * screenDensity, attributionPaint);
 
@@ -2059,6 +2093,73 @@ namespace AdsbCarMap.Map
             {
                 canvas.DrawText(statusText, versionLeft + versionPaint.MeasureText(versionText) + 12f * screenDensity, baseline, versionPaint);
             }
+        }
+
+        /// <summary>
+        /// Draws the altitude legend above the bottom edge: a gradient bar with the same colors and thresholds as the aircraft icons and trails. The thresholds are spaced evenly, because the colors blend linearly between them.
+        /// </summary>
+        /// <param name="canvas">Surface canvas.</param>
+        /// <param name="width">Screen width in pixels.</param>
+        /// <param name="height">Screen height in pixels.</param>
+        /// <param name="screenDensity">Screen density factor.</param>
+        private void DrawAltitudeLegend(Canvas canvas, int width, int height, float screenDensity)
+        {
+            double[] stops = frameAltitudeStops;
+            int stepCount = AltitudeStopColors.Length;
+            float barWidth = Math.Min(width - 32f * screenDensity, Math.Clamp(width * 0.4f, 240f * screenDensity, 400f * screenDensity));
+            float barHeight = 7f * screenDensity;
+            float left = (width - barWidth) / 2f;
+            float bottom = height - 8f * screenDensity - 16f * screenDensity;
+            float top = bottom - barHeight;
+            float outline = screenDensity;
+
+            int[] colors = new int[stepCount + 1];
+            float[] positions = new float[stepCount + 1];
+
+            colors[0] = AltitudeStopColors[0].ToArgb();
+            positions[0] = 0f;
+
+            for (int index = 0; index < stepCount; index++)
+            {
+                colors[index + 1] = AltitudeStopColors[index].ToArgb();
+                positions[index + 1] = (index + 1f) / stepCount;
+            }
+
+            legendBounds.Set(left - outline, top - outline, left + barWidth + outline, bottom + outline);
+            legendOutlinePaint.Color = Color.Argb(170, 0, 0, 0);
+            canvas.DrawRoundRect(legendBounds, barHeight / 2f + outline, barHeight / 2f + outline, legendOutlinePaint);
+
+            using LinearGradient gradient = new LinearGradient(left, 0f, left + barWidth, 0f, colors, positions, Shader.TileMode.Clamp!);
+
+            legendPaint.SetShader(gradient);
+            legendBounds.Set(left, top, left + barWidth, bottom);
+            canvas.DrawRoundRect(legendBounds, barHeight / 2f, barHeight / 2f, legendPaint);
+            legendPaint.SetShader(null);
+
+            legendTextPaint.TextSize = 9f * screenDensity;
+
+            for (int index = 0; index <= stepCount; index++)
+            {
+                double meters = index == 0 ? 0.0 : stops[Math.Min(index - 1, stops.Length - 1)];
+                string text = FormatAltitudeLabel(meters, index == stepCount);
+
+                canvas.DrawText(text, left + barWidth * index / stepCount, top - 3f * screenDensity, legendTextPaint);
+            }
+        }
+
+        /// <summary>
+        /// Formats an altitude threshold for the legend: meters below one kilometer, kilometers otherwise, with a plus sign for the highest one.
+        /// </summary>
+        /// <param name="meters">Altitude in meters.</param>
+        /// <param name="isLast">Whether this is the highest threshold, meaning "and above".</param>
+        /// <returns>Label text.</returns>
+        private static string FormatAltitudeLabel(double meters, bool isLast)
+        {
+            string text = meters < 1000.0
+                ? Math.Round(meters).ToString("0", CultureInfo.CurrentCulture) + " m"
+                : (meters / 1000.0).ToString("0.#", CultureInfo.CurrentCulture) + " km";
+
+            return isLast ? text + "+" : text;
         }
 
         /// <summary>
@@ -2564,16 +2665,40 @@ namespace AdsbCarMap.Map
 
             canvas.DrawPath(trailOutlinePath, trailOutlinePaint);
 
+            Color startColor = GetAltitudeColor(trail[0].OnGround, trail[0].AltitudeFeet);
+
             for (int index = 1; index <= segmentCount; index++)
             {
-                Color color = index < segmentCount
+                Color endColor = index < segmentCount
                     ? GetAltitudeColor(trail[index].OnGround, trail[index].AltitudeFeet)
                     : GetAltitudeColor(item.OnGround, item.AltitudeFeet);
 
-                int alpha = minAlpha + (maxAlpha - minAlpha) * index / segmentCount;
+                int startAlpha = minAlpha + (maxAlpha - minAlpha) * (index - 1) / segmentCount;
+                int endAlpha = minAlpha + (maxAlpha - minAlpha) * index / segmentCount;
+                int difference = Math.Abs(startColor.R - endColor.R) + Math.Abs(startColor.G - endColor.G) + Math.Abs(startColor.B - endColor.B);
 
-                trailPaint.Color = Color.Argb(alpha, color.R, color.G, color.B);
-                canvas.DrawLine(xs[index - 1], ys[index - 1], xs[index], ys[index], trailPaint);
+                if (difference > TrailGradientMinimumDifference)
+                {
+                    using LinearGradient gradient = new LinearGradient(
+                        xs[index - 1],
+                        ys[index - 1],
+                        xs[index],
+                        ys[index],
+                        Color.Argb(startAlpha, startColor.R, startColor.G, startColor.B),
+                        Color.Argb(endAlpha, endColor.R, endColor.G, endColor.B),
+                        Shader.TileMode.Clamp!);
+
+                    trailPaint.SetShader(gradient);
+                    canvas.DrawLine(xs[index - 1], ys[index - 1], xs[index], ys[index], trailPaint);
+                    trailPaint.SetShader(null);
+                }
+                else
+                {
+                    trailPaint.Color = Color.Argb(endAlpha, endColor.R, endColor.G, endColor.B);
+                    canvas.DrawLine(xs[index - 1], ys[index - 1], xs[index], ys[index], trailPaint);
+                }
+
+                startColor = endColor;
             }
         }
 
