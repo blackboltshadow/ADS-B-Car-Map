@@ -2,6 +2,32 @@
 
 Opis tego, co zostało wydane w kolejnych wersjach, od najnowszej. Wersja ma postać `0.<druga>.<trzecia>` i jest w pliku `Version.txt`: przy nowym wydaniu rośnie druga cyfra, a trzecia wraca do 0 (0.3.0), przy poprawce rośnie tylko trzecia (0.3.1); decyduje o tym osoba przygotowująca wydanie. Numer kompilacji (`versionCode`) nigdy nie jest zerowany. Do wersji 0.2.163 trzecia cyfra była numerem kompilacji. Od wersji 0.2.163 każdej wersji odpowiada tag w git (`v<wersja>`) i wiersz w `release-history.csv` (commit, rozmiar i SHA-256 paczki). Podsumowanie commitów dla wersji można wygenerować skryptem `Scripts\Release-Notes.ps1`. Wcześniejsze wersje nie mają tagów.
 
+## 0.3.1 (2026-11-01)
+
+Zmiany od wersji 0.2.163. Wersja 0.3.0 nie została wydana, linia 0.3 zaczyna się od 0.3.1.
+
+**Lotniska i pasy startowe**
+- Lotniska na mapie z bazy OurAirports (około 71 tys.: duże, średnie, małe, wojskowe i helipady) z kodami IATA lub ICAO, a od zoomu 11 także z pasami startowymi. Lotniska są pod samolotami, wojskowe są czerwone, etykiety się nie nakładają.
+- Dotknięcie lotniska pokazuje kartę na telefonie (kody, miasto, wysokość, odległość i kierunek od Ciebie, pasy) i popup w Android Auto. Zaznaczenie jest wspólne dla telefonu i samochodu.
+- Wyszukiwarka („Wyszukaj”) szuka lotnisk razem z samolotami: po kodzie, nazwie i mieście, bez względu na polskie znaki. Lotniska są przed samolotami o takim samym dopasowaniu, a w samochodzie dwa wiersze z sześciu zostają dla samolotów.
+- Ulubione lotniska: osobny ekran w menu z dodawaniem, zmianą kolejności, szczegółami i przyciskiem „Pokaż na mapie”. Ulubione są widoczne zawsze od zoomu 5 i wspólne dla telefonu i samochodu.
+- Ekran „O aplikacji” z wersją, licencją, źródłami danych (OpenStreetMap, adsb.lol, adsbdb, OurAirports) i informacją o prywatności.
+
+**Ustawienia lotnisk**
+- Jedna sekcja z głównym przełącznikiem, podglądem, suwakiem wielkości kodów, przełącznikiem kodów, rodzajami lotnisk (pola wyboru), filtrem małych lotnisk z utwardzonym pasem od 800 m, kontrolką zakresu zoomu od–do, przełącznikiem „Tylko ulubione lotniska” i przyciskiem przywracania domyślnych. Po wyłączeniu lotnisk reszta sekcji jest wyszarzona.
+
+Tekst „Co nowego” w Google Play dla tej wersji:
+
+```
+Lotniska:
+• Lotniska na mapie: duże, średnie, małe, wojskowe i helipady, z kodami i pasami startowymi
+• Karta lotniska na telefonie, popup w Android Auto, lotniska w wyszukiwarce
+• Ulubione lotniska: osobny ekran, wspólne dla telefonu i samochodu
+• Ustawienia: rodzaje, zakres zoomu, rozmiar kodów, tylko ulubione
+
+Nowe: ekran „O aplikacji”, ikony samolotów i ślady z podglądem w ustawieniach.
+```
+
 ## 0.2.163 (2026-11-01)
 
 Zmiany od wersji 0.2.112.
