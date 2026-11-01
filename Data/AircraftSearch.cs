@@ -1,3 +1,4 @@
+using AdsbCarMap.Services;
 using AdsbCarMap.Settings;
 
 namespace AdsbCarMap.Data
@@ -7,6 +8,11 @@ namespace AdsbCarMap.Data
     /// </summary>
     public static class AircraftSearch
     {
+        /// <summary>
+        /// Number of the nearest airports listed first when the query is empty.
+        /// </summary>
+        private const int NearestAirportsForEmptyQuery = 3;
+
         /// <summary>
         /// Returns the aircraft whose flight, ICAO address, registration, type or route contain all the words of the query. Only routes that are already downloaded are considered, so the API is not queried for every aircraft.
         /// </summary>
@@ -119,6 +125,206 @@ namespace AdsbCarMap.Data
             }
 
             return string.Join(" · ", parts);
+        }
+
+        /// <summary>
+        /// Searches airports and aircraft together. Rows are ordered by how well they match the query, and when two rows match equally an airport comes before an aircraft. At least <paramref name="reservedForAircraft"/> rows are left for aircraft when that many aircraft match, so that a short list is not filled with airports only. With an empty query the favorite airports and the nearest airports come first, then the aircraft.
+        /// </summary>
+        /// <param name="aircraft">Aircraft to search.</param>
+        /// <param name="airports">Airport data.</param>
+        /// <param name="routes">Flight route cache.</param>
+        /// <param name="query">Query, words separated by spaces.</param>
+        /// <param name="maxResults">Maximum number of rows.</param>
+        /// <param name="reservedForAircraft">Number of rows kept for aircraft.</param>
+        /// <param name="nearLatitude">Latitude of the point whose neighborhood is listed for an empty query.</param>
+        /// <param name="nearLongitude">Longitude of the point whose neighborhood is listed for an empty query.</param>
+        /// <returns>Rows of the result list.</returns>
+        public static List<SearchResult> SearchAll(IReadOnlyList<Aircraft> aircraft, AirportDatabase airports, RouteCache routes, string query, int maxResults, int reservedForAircraft, double nearLatitude, double nearLongitude)
+        {
+            List<string> terms = query
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(AirportDatabase.Fold)
+                .ToList();
+            List<SearchResult> airportRows = new List<SearchResult>();
+            List<SearchResult> aircraftRows = new List<SearchResult>();
+
+            if (terms.Count == 0)
+            {
+                foreach (string code in AppServices.Favorites.Codes)
+                {
+                    Airport? favorite = airports.FindByIcao(code);
+
+                    if (favorite != null)
+                    {
+                        airportRows.Add(new SearchResult(favorite, null, 0));
+                    }
+                }
+
+                foreach (Airport airport in airports.GetNearest(nearLatitude, nearLongitude, NearestAirportsForEmptyQuery, AirportType.Medium))
+                {
+                    if (!airportRows.Any(row => row.Airport == airport))
+                    {
+                        airportRows.Add(new SearchResult(airport, null, 0));
+                    }
+                }
+
+                foreach (Aircraft item in ListAll(aircraft, maxResults))
+                {
+                    aircraftRows.Add(new SearchResult(null, item, 0));
+                }
+            }
+            else
+            {
+                foreach ((Airport Airport, int Quality) match in airports.Search(terms, maxResults, AppSettings.IsAirportCategoryEnabled(AirportCategory.Heliport), airport => AppServices.Favorites.Contains(airport.Icao)))
+                {
+                    airportRows.Add(new SearchResult(match.Airport, null, match.Quality));
+                }
+
+                foreach (Aircraft item in aircraft)
+                {
+                    int quality = GetAircraftMatchQuality(item, routes.Peek(item.Callsign), terms);
+
+                    if (quality > 0)
+                    {
+                        aircraftRows.Add(new SearchResult(null, item, quality));
+                    }
+                }
+
+                aircraftRows = aircraftRows
+                    .OrderByDescending(item => item.Quality)
+                    .ThenBy(item => item.Aircraft!.Callsign ?? item.Aircraft.Hex, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+
+            List<SearchResult> ordered = airportRows
+                .Concat(aircraftRows)
+                .OrderByDescending(item => item.Quality)
+                .ThenBy(item => item.Airport == null ? 1 : 0)
+                .ToList();
+
+            List<SearchResult> taken = ordered.Take(maxResults).ToList();
+            int reserved = Math.Min(reservedForAircraft, aircraftRows.Count);
+            int missing = reserved - taken.Count(item => item.Aircraft != null);
+
+            while (missing > 0)
+            {
+                int lastAirport = taken.FindLastIndex(item => item.Airport != null);
+
+                if (lastAirport < 0)
+                {
+                    break;
+                }
+
+                taken.RemoveAt(lastAirport);
+                taken.Add(aircraftRows.First(item => !taken.Contains(item)));
+                missing--;
+            }
+
+            return taken
+                .OrderByDescending(item => item.Quality)
+                .ThenBy(item => item.Airport == null ? 1 : 0)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Returns the title of an airport row: the code and the name.
+        /// </summary>
+        /// <param name="airport">Airport.</param>
+        /// <returns>Text such as "WAW · Warsaw Chopin Airport", with a star in front for a favorite.</returns>
+        public static string GetAirportTitle(Airport airport)
+        {
+            return (AppServices.Favorites.Contains(airport.Icao) ? "★ " : string.Empty) + airport.Code + " · " + airport.Name;
+        }
+
+        /// <summary>
+        /// Returns the description of an airport row: the place, the size class and the elevation in the unit from the settings.
+        /// </summary>
+        /// <param name="airport">Airport.</param>
+        /// <returns>Text such as "Warsaw, PL · duże lotnisko · 110 m".</returns>
+        public static string DescribeAirport(Airport airport)
+        {
+            List<string> parts = new List<string>();
+
+            if (airport.Municipality.Length > 0)
+            {
+                parts.Add(airport.Municipality + ", " + airport.Country);
+            }
+            else
+            {
+                parts.Add(airport.Country);
+            }
+
+            parts.Add(airport.Type == AirportType.Large ? "duże lotnisko" : airport.Type == AirportType.Medium ? "średnie lotnisko" : airport.Type == AirportType.Heliport ? "helipad" : "małe lotnisko");
+
+            if (airport.IsMilitary)
+            {
+                parts.Add("wojskowe");
+            }
+
+            if (airport.ElevationFeet.HasValue)
+            {
+                parts.Add(AltitudeFormatter.Format(airport.ElevationFeet.Value));
+            }
+
+            return string.Join(" · ", parts);
+        }
+
+        /// <summary>
+        /// Rates how well an aircraft matches the words of a query: the weakest match among the words, or 0 when some word does not match.
+        /// </summary>
+        /// <param name="item">Aircraft.</param>
+        /// <param name="route">Route, or null when unknown.</param>
+        /// <param name="terms">Folded words of the query.</param>
+        /// <returns>0 for no match, otherwise 1 to 3.</returns>
+        private static int GetAircraftMatchQuality(Aircraft item, FlightRoute? route, IReadOnlyList<string> terms)
+        {
+            string?[] fields = new string?[]
+            {
+                item.Callsign,
+                item.Hex,
+                item.Registration,
+                item.TypeCode,
+                route?.OriginCode,
+                route?.OriginCity,
+                route?.DestinationCode,
+                route?.DestinationCity,
+                route?.AirlineName,
+            };
+            string[] folded = fields.Where(field => !string.IsNullOrEmpty(field)).Select(field => AirportDatabase.Fold(field!)).ToArray();
+            int quality = AirportDatabase.ExactMatch;
+
+            foreach (string term in terms)
+            {
+                int termQuality = 0;
+
+                foreach (string field in folded)
+                {
+                    if (field == term)
+                    {
+                        termQuality = AirportDatabase.ExactMatch;
+
+                        break;
+                    }
+
+                    if (field.StartsWith(term, StringComparison.Ordinal) || field.Contains(" " + term, StringComparison.Ordinal))
+                    {
+                        termQuality = Math.Max(termQuality, AirportDatabase.PrefixMatch);
+                    }
+                    else if (field.Contains(term, StringComparison.Ordinal))
+                    {
+                        termQuality = Math.Max(termQuality, AirportDatabase.ContainsMatch);
+                    }
+                }
+
+                if (termQuality == 0)
+                {
+                    return 0;
+                }
+
+                quality = Math.Min(quality, termQuality);
+            }
+
+            return quality;
         }
 
         /// <summary>

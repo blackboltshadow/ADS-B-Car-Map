@@ -8,7 +8,7 @@ using CarAction = AndroidX.Car.App.Model.Action;
 namespace AdsbCarMap.Auto
 {
     /// <summary>
-    /// Android Auto screen for searching aircraft by flight, registration, type and route. Picking an aircraft centers the map on it, isolates it and shows its popup.
+    /// Android Auto screen for searching aircraft by flight, registration, type and route, and airports by code, name and city. Airports come first when they match equally well as aircraft. Picking an aircraft centers the map on it, isolates it and shows its popup; picking an airport selects it and centers the map on it.
     /// </summary>
     public class SearchScreen : Screen
     {
@@ -16,6 +16,11 @@ namespace AdsbCarMap.Auto
         /// Maximum number of results in the list.
         /// </summary>
         private const int MaxResults = 6;
+
+        /// <summary>
+        /// Number of rows kept for aircraft when many airports match.
+        /// </summary>
+        private const int ReservedForAircraft = 2;
 
         /// <summary>
         /// Current search text.
@@ -31,19 +36,32 @@ namespace AdsbCarMap.Auto
         }
 
         /// <summary>
-        /// Builds the search template with the list of matching aircraft.
+        /// Builds the search template with the list of matching airports and aircraft.
         /// </summary>
         /// <returns>Template shown on the car screen.</returns>
         public override ITemplate OnGetTemplate()
         {
             ItemList.Builder listBuilder = new ItemList.Builder();
             IReadOnlyList<Aircraft> aircraft = LiveTraffic.GetSnapshot().Aircraft;
-            List<Aircraft> results = string.IsNullOrWhiteSpace(query)
-                ? AircraftSearch.ListAll(aircraft, MaxResults)
-                : AircraftSearch.Search(aircraft, AppServices.Routes, query, MaxResults);
+            (double Latitude, double Longitude) center = LiveTraffic.GetCenter();
+            List<SearchResult> results = AircraftSearch.SearchAll(aircraft, AppServices.Airports, AppServices.Routes, query, MaxResults, ReservedForAircraft, center.Latitude, center.Longitude);
 
-            foreach (Aircraft item in results)
+            foreach (SearchResult result in results)
             {
+                if (result.Airport != null)
+                {
+                    string icao = result.Airport.Icao;
+                    Row.Builder airportRow = new Row.Builder()
+                        .SetTitle(AircraftSearch.GetAirportTitle(result.Airport))
+                        .SetOnClickListener(new DelegateClickListener(() => SelectAirport(icao)));
+
+                    airportRow.AddText(AircraftSearch.DescribeAirport(result.Airport));
+                    listBuilder.AddItem(airportRow.Build());
+
+                    continue;
+                }
+
+                Aircraft item = result.Aircraft!;
                 string hex = item.Hex;
                 Row.Builder rowBuilder = new Row.Builder()
                     .SetTitle(AircraftSearch.GetName(item))
@@ -60,8 +78,8 @@ namespace AdsbCarMap.Auto
             }
 
             listBuilder.SetNoItemsMessage(string.IsNullOrWhiteSpace(query)
-                ? "Brak samolotów w zasięgu"
-                : "Brak pasujących samolotów");
+                ? "Brak samolotów i lotnisk w zasięgu"
+                : "Brak pasujących samolotów i lotnisk");
 
             return new SearchTemplate.Builder(new DelegateSearchCallback(OnQueryChanged))
                 .SetHeaderAction(CarAction.Back)
@@ -89,6 +107,16 @@ namespace AdsbCarMap.Auto
         private void SelectAircraft(string hex)
         {
             LiveTraffic.RequestFocus(hex);
+            ScreenManager.Pop();
+        }
+
+        /// <summary>
+        /// Requests selecting the picked airport and centering all maps on it (the phone and the car), then returns to the map.
+        /// </summary>
+        /// <param name="icao">ICAO code of the airport.</param>
+        private void SelectAirport(string icao)
+        {
+            LiveTraffic.RequestAirportFocus(icao);
             ScreenManager.Pop();
         }
     }

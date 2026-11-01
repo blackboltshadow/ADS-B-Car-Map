@@ -27,6 +27,14 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 - Podczas ładowania brakujące kafelki są zastępowane powiększonym fragmentem kafelka o niższym poziomie, a kafelki sąsiednie są wczytywane z wyprzedzeniem, więc przy przesuwaniu nie widać czarnych dziur.
 - Przycisk „center” wraca do Twojej pozycji GPS (niebieska kropka).
 
+**Lotniska**
+- Dane z projektu OurAirports (domena publiczna), dołączone do aplikacji: około 71 tys. lotnisk i helipadów (duże, średnie, małe i helipady, bez wodnosamolotowych i zamkniętych) oraz pasy startowe. Dane odświeża skrypt `Scripts\Update-AirportData.ps1`, uruchamiany automatycznie przed każdym wydaniem.
+- Lotniska rysują się pod samolotami: domyślnie duże od zoomu 4, średnie od 6, małe od 8 i helipady od 10 (suwak „Lotniska od zoomu” przesuwa wszystkie te progi razem, a pola „Rodzaje lotnisk na mapie” wybierają, które rodzaje są widoczne). Znacznik jest większy dla większego lotniska, lotniska wojskowe są czerwone. Obok znacznika jest kod IATA (a gdy go brak, ICAO), a etykiety, które by się nakładały, są pomijane od tych mniej ważnych. Od zoomu 11 widać pasy startowe.
+- Dotknięcie lotniska (gdy pod palcem nie ma samolotu) zaznacza je: na telefonie pojawia się karta, a w Android Auto popup, z nazwą, kodami IATA i ICAO, miastem i krajem, wysokością w wybranej jednostce, odległością i kierunkiem od Ciebie oraz najdłuższymi pasami. Karta ma przycisk „Wyśrodkuj”. Zaznaczenie lotniska jest wspólne dla telefonu i samochodu.
+- Wyszukiwarka (telefon i Android Auto) szuka też lotnisk po kodzie, nazwie i mieście (bez względu na polskie znaki). Wyniki są uporządkowane według dopasowania, a przy takim samym dopasowaniu lotniska są przed samolotami. W samochodzie dwa wiersze z sześciu są zawsze zarezerwowane dla samolotów. Przy pustym polu na górze są trzy najbliższe lotniska. Wybór lotniska zaznacza je, centruje na nim mapę i przybliża do zoomu 11.
+- **Ulubione lotniska:** osobny ekran w menu („Ulubione lotniska”). Ulubione są zawsze widoczne na mapie od zoomu 5, bez względu na wybrane rodzaje i filtr małych lotnisk, ze złotym pierścieniem i etykietą o najwyższym priorytecie. Dodajesz je gwiazdką na karcie lotniska, przyciskiem „＋” w wynikach wyszukiwania na tym ekranie albo w oknie szczegółów. Lista pozwala zmieniać kolejność (▲ ▼), usuwać (✕) i po dotknięciu wiersza zobaczyć szczegóły lotniska z przyciskiem „Pokaż na mapie”. W wyszukiwarce ulubione są przed innymi lotniskami o takim samym dopasowaniu, a przy pustym polu stoją na początku. Lista jest wspólna dla telefonu i samochodu (w samochodzie popup oznacza ulubione, zarządzanie jest na telefonie) i jest zapisana osobno od ustawień: „Przywróć wszystkie domyślne” jej nie kasuje.
+- Ekran „O aplikacji” (menu) zawiera wersję, licencję, źródła danych z atrybucją (OpenStreetMap, adsb.lol, adsbdb, OurAirports) i informację o prywatności. Atrybucja „© OpenStreetMap” zostaje też na mapie.
+
 **Samoloty**
 - Pozycje z ADS-B odświeżane domyślnie co 3 sekundy, a między odpowiedziami przesuwane na podstawie kursu i prędkości, żeby ruch był płynny.
 - **Ikona zależna od rodzaju:** samolot pasażerski, szerokokadłubowy, mały odrzutowiec, turbośmigłowiec, awionetka, śmigłowiec, myśliwiec, wojskowy transportowiec, szybowiec, balon, dron, obiekt naziemny. Rodzaj wynika z kategorii nadajnika ADS-B, znacznika wojskowego i kodu typu ICAO.
@@ -79,7 +87,7 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 
 | Element | Gdzie |
 |---|---|
-| Menu (trzy kreski) | prawy górny róg: „Szukaj samolotu” i „Ustawienia” |
+| Menu (trzy kreski) | prawy górny róg: „Wyszukaj”, „Ulubione lotniska”, „Ustawienia” i „O aplikacji” |
 | `I`, `M`, etykiety i filtr wojskowych | prawy górny róg, pod menu |
 | `+`, `−`, „center” | prawy dolny róg |
 | Wersja aplikacji | lewy dolny róg mapy |
@@ -118,6 +126,12 @@ Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązuj�
 | Rozmiar ikon samolotów | ×1,0 | ×0,6–×2,0 | suwak co 0,1, mnoży rozmiar wszystkich ikon, kółek zaznaczenia i śledzenia oraz odsunięcie etykiety, na telefonie i w Android Auto. Grubość obwódki nie zmienia się z rozmiarem ikony. |
 | Obwódka samolotów [dp] | 1,2 | 0–6 | suwak co 0,1 dp (0 wyłącza obwódkę). Oba suwaki są w jednej ramce „Ikony samolotów” po skali kolorów wysokości, nad suwakami jest podgląd wszystkich ikon samolotów w bieżącym rozmiarze i grubości obwódki. |
 | Etykiety samolotów | wyłączone | przełącznik | pokazuje lub ukrywa etykiety (to samo robi przycisk na mapie) |
+| Lotniska na mapie | włączone | przełącznik | pokazuje lotniska i pasy startowe |
+| Rodzaje lotnisk na mapie | duże, średnie, wojskowe | pola wyboru | zaznaczasz, które rodzaje widzisz: duże, średnie, małe, wojskowe (czerwone, każdej wielkości) i helipady (jasnoniebieskie, domyślnie wyłączone). Zoom: duże od 4, średnie od 6, małe od 8, helipady od 10; małych jest najwyżej 60, a helipadów 40 na klatkę (najbliższe środka ekranu). Pola zastąpiły dawny wybór zakresu z listy. |
+| Małe: tylko z utwardzonym pasem od 800 m | wyłączone | przełącznik | ogranicza małe lotniska do tych z asfaltowym lub betonowym pasem od 800 m (w Polsce kilkanaście z ponad 300, na świecie około 4800 z ponad 42 tys.). Przełącznik jest wyszarzony, dopóki małe lotniska są odznaczone, a jego przycisk „i” zostaje aktywny i to wyjaśnia. Ulubione lotniska omijają ten filtr. |
+| Kody lotnisk | włączone | przełącznik | kod IATA albo ICAO obok znacznika |
+| Lotniska od zoomu | 4 | 2–12 | suwak co 1: od tego poziomu widać duże lotniska, 2 poziomy bliżej średnie, 4 małe, 6 helipady (domyślnie 4 / 6 / 8 / 10). Progi nie są wyższe niż największy dozwolony zoom mapy. Pod markerami w podglądzie jest zapis aktualnych progów. Ulubione są widoczne od zoomu 5 niezależnie od tej wartości. |
+| Wielkość kodów lotnisk [dp] | 11 | 6–30 | suwak co 0,5 dp |
 | Legenda wysokości | włączona | przełącznik | pokazuje lub ukrywa pasek legendy kolorów wysokości |
 | Jednostka wysokości | metry | lista wyboru | metry (m, km), stopy (ft) albo poziom lotu (FL). Dotyczy etykiet na mapie, wyników wyszukiwania, karty i popupu samolotu oraz legendy, na telefonie i w Android Auto. Karta pokazuje dodatkowo równoważną wartość w nawiasie. Jednostka dotyczy też edytora skali kolorów. |
 | Wielkość liter etykiet [dp] | 13 | 6–40 | suwak co 0,5 dp z podglądem przykładowej etykiety w wybranej wielkości |
@@ -126,6 +140,8 @@ Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązuj�
 Każda zmiana zapisuje się od razu, na telefonie i w Android Auto, bez przycisku „Zapisz”. Pola liczbowe zapisują się po opuszczeniu pola (Gotowe albo dotknięcie innego miejsca), suwaki i lista na bieżąco. Przy suwakach, liście jednostki i polach liczbowych jest przycisk „↺” (cofnij), widoczny, gdy jest co cofać: każde dotknięcie cofa kolejną zmianę o jeden krok (przeciągnięcie suwaka i wpisanie wartości to po jednej zmianie). Historia zmian jest w pamięci aplikacji: zostaje po wyjściu z ustawień, ale znika po zamknięciu aplikacji. Przełączniki i skala kolorów nie mają cofania. Ramki „Ikony samolotów” i „Ślady samolotów” mają własne przyciski przywracające domyślne wartości, a na dole jest „Przywróć wszystkie domyślne”. Przywrócenie domyślnych też można cofnąć „↺”.
 
 Wszystkie suwaki: dotknięcie niebieskiej wartości pod nazwą (✎) otwiera okienko do wpisania dokładnej liczby z zakresu, także pomiędzy pozycjami suwaka.
+
+Ustawienia lotnisk są w jednej ramce „Lotniska” po skali kolorów wysokości. Na górze ramki jest podgląd pięciu rodzajów lotnisk z nazwami rodzajów (duże, średnie, małe, wojskowe, helipady) pod markerami w wielkości kodów; rodzaje wyłączone są wyszarzone. Ten sam podgląd jest w okienkach „i” tych ustawień, a ramka ma przycisk „Przywróć domyślne lotniska”.
 
 Ustawienia śladu (od „Długość śladu” do „Krycie obwódki”) są w jednej ramce „Ślady samolotów”, po ramce „Ikony samolotów”. Na górze ramki jest podgląd śladów trzech samolotów (dron, śmigłowiec, samolot pasażerski) rysowanych tym samym kodem co mapa, z bieżącymi wartościami suwaków i z progami kolorów wysokości. Podgląd zmienia się na bieżąco podczas przesuwania suwaków.
 
@@ -202,8 +218,9 @@ Numer seryjny urządzenia pokaże `adb devices`. Każdy build zwiększa numer ko
 | Skrypt | Działanie |
 |---|---|
 | `Setup-Environment.ps1` | Przygotowuje nowy komputer: kopiuje pliki podpisu i kontaktu z wybranego katalogu (np. pendrive'a) do `%USERPROFILE%`, opcjonalnie ustawia `JAVA_HOME` i zmienne z hasłami oraz dopisuje katalog `platform-tools` (ADB) do PATH użytkownika. |
-| `Release.ps1` | Buduje podpisany plik `aab` w konfiguracji Release. Gdy istnieje `adsbcarmap-signing.props` lub zmienna `ADSBCARMAP_STOREPASS`, nie pyta o hasło, a w przeciwnym razie prosi o nie i ustawia zmienne tylko na czas działania. Po udanym buildzie tworzy adnotowany tag `v<wersja z Version.txt>` (np. `v0.3.0`), a jeśli taki tag już istnieje, przerywa z podpowiedzią, żeby najpierw podbić wersję na bieżącym commicie, z wersją, `versionCode`, commitem, nazwą, rozmiarem i SHA-256 paczki, oraz dopisuje te wartości do `release-history.csv`. Wersja musi być zatwierdzona w `Version.txt` przed buildem. Przed buildem wymaga czystego drzewa (poza `BuildNumber.txt` i `release-history.csv`). Przełączniki: `-NoTag` (sam build), `-Push` (wysyła tag na GitHuba), `-Force` (pomija sprawdzenie drzewa). |
+| `Release.ps1` | Buduje podpisany plik `aab` w konfiguracji Release. Gdy istnieje `adsbcarmap-signing.props` lub zmienna `ADSBCARMAP_STOREPASS`, nie pyta o hasło, a w przeciwnym razie prosi o nie i ustawia zmienne tylko na czas działania. Po udanym buildzie tworzy adnotowany tag `v<wersja z Version.txt>` (np. `v0.3.0`), a jeśli taki tag już istnieje, przerywa z podpowiedzią, żeby najpierw podbić wersję na bieżącym commicie, z wersją, `versionCode`, commitem, nazwą, rozmiarem i SHA-256 paczki, oraz dopisuje te wartości do `release-history.csv`. Wersja musi być zatwierdzona w `Version.txt` przed buildem. Przed buildem wymaga czystego drzewa (poza `BuildNumber.txt` i `release-history.csv`). Przełączniki: `-NoTag` (sam build), `-Push` (wysyła tag na GitHuba), `-Force` (pomija sprawdzenie drzewa), `-SkipAirportData` (nie pobiera danych lotnisk). Przed buildem, gdy istnieje `Assets\Airports\airports.meta`, skrypt sam uruchamia `Update-AirportData.ps1`; jeśli dane się zmieniły, drzewo jest brudne i trzeba zatwierdzić nowe pliki przed ponownym uruchomieniem. |
 | `Bump-Version.ps1` | Zmienia wersję w `Version.txt` przed wydaniem. Wymaga dokładnie jednego przełącznika, bo to Ty decydujesz: `-Minor` (nowe wydanie, druga cyfra rośnie, trzecia wraca do 0, np. 0.3.0 → 0.4.0) albo `-Patch` (poprawka, tylko trzecia cyfra, np. 0.3.0 → 0.3.1). Po skrypcie zatwierdź `Version.txt` i uruchom `Release.ps1`. |
+| `Update-AirportData.ps1` | Pobiera najnowsze dane lotnisk i pasów startowych z OurAirports (domena publiczna) i zapisuje zwięzłe pliki `Assets\Airports\airports.tsv`, `runways.tsv` i `airports.meta` (liczby wierszy i SHA-256). Zostają duże, średnie i małe lotniska (bez śmigłowcowych, wodnosamolotowych i zamkniętych) oraz pasy ze współrzędnymi obu końców. Lotnisko wojskowe jest zgadywane po nazwie. Pliki są nadpisywane tylko wtedy, gdy dane się zmieniły. Parametry: `-OutputDirectory`, `-Url`. |
 | `Release-Notes.ps1` | Tworzy notatki wydania: podsumowanie commitów od poprzedniego tagu wydania, pogrupowane na Add, Fix, Change, Remove i Other. Wypisuje je i zapisuje w `release-notes\<wersja>.md` (katalog ignorowany przez git). Parametry: `-From`, `-To`, `-Version`, `-NoFile`. |
 | `DHU_Start.ps1` | Przekierowuje port `5277` i uruchamia Desktop Head Unit (emulator samochodu). |
 | `DHU_Logs.ps1` | Czyści logcat i zapisuje go do `logs/android-auto.log` (katalog ignorowany przez git). |
@@ -260,7 +277,6 @@ Mapa na telefonie i w Android Auto używa tego samego `MapController`, więc zmi
 
 ## Plany
 
-- Lotniska na mapie (źródło: OurAirports) z kodami, informacją po dotknięciu i wyszukiwaniem lotnisk.
 - Pełne nazwy typów samolotów.
 - Cache kafelków na dysku.
 - Przycisk izolacji w Android Auto.

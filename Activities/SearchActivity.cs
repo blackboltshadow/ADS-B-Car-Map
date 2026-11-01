@@ -12,70 +12,75 @@ using Android.Widget;
 namespace AdsbCarMap.Activities
 {
     /// <summary>
-    /// Okno wyszukiwania samolotów po locie, rejestracji, typie i trasie. Wybór samolotu centruje na nim mapę.
+    /// Search window for aircraft by flight, registration, type and route, and for airports by code, name and city. Airports come before aircraft that match equally well. Picking an aircraft centers the map on it, picking an airport selects it and centers the map on it.
     /// </summary>
-    [Activity(Label = "Szukaj samolotu", Exported = false, Theme = "@android:style/Theme.Material")]
+    [Activity(Label = "Wyszukaj", Exported = false, Theme = "@android:style/Theme.Material")]
     public class SearchActivity : Activity
     {
         /// <summary>
-        /// Tag używany w logach Androida.
+        /// Tag used in the Android log.
         /// </summary>
         private const string LogTag = "AdsbCarMap";
 
         /// <summary>
-        /// Maksymalna liczba wyników wyszukiwania na liście.
+        /// Maximum number of results in the list.
         /// </summary>
         private const int MaxResults = 100;
 
         /// <summary>
-        /// Odstęp odświeżania listy wyników w milisekundach.
+        /// Number of rows kept for aircraft when many airports match.
+        /// </summary>
+        private const int ReservedForAircraft = 20;
+
+        /// <summary>
+        /// Interval between refreshes of the results list in milliseconds.
         /// </summary>
         private const int RefreshIntervalMilliseconds = 2000;
 
         /// <summary>
-        /// Wiek danych w sekundach, po którym okno samo pobiera samoloty, gdy żadna mapa ich nie odświeża.
+        /// Age of the data in seconds after which the window downloads the aircraft itself, when no map refreshes them.
         /// </summary>
         private const double StaleDataSeconds = 10.0;
 
         /// <summary>
-        /// Promień zapytania o samoloty wykonywanego przez to okno, w milach morskich.
+        /// Radius of the aircraft request made by this window, in nautical miles.
         /// </summary>
         private const double FetchRadiusNauticalMiles = 100.0;
 
         /// <summary>
-        /// Handler głównego wątku używany do okresowego odświeżania.
+        /// Main thread handler used for the periodic refresh.
         /// </summary>
         private readonly Handler handler = new Handler(Looper.MainLooper!);
 
         /// <summary>
-        /// Pole tekstowe wyszukiwarki.
+        /// Search text field.
         /// </summary>
         private EditText? searchInput;
 
         /// <summary>
-        /// Informacja o liczbie i wieku danych.
+        /// Information about the number and the age of the data.
         /// </summary>
         private TextView? statusText;
 
         /// <summary>
-        /// Kontener z wynikami wyszukiwania.
+        /// Container of the search results.
         /// </summary>
         private LinearLayout? resultsLayout;
 
         /// <summary>
-        /// Zadanie okresowego odświeżania, null gdy Activity nie jest widoczna.
+        /// Periodic refresh task, null when the activity is not visible.
         /// </summary>
         private Java.Lang.Runnable? refreshRunnable;
 
         /// <summary>
-        /// Informacja, czy okno pobiera właśnie samoloty.
+        /// Whether the window is downloading aircraft at the moment.
         /// </summary>
         private bool isFetching;
 
         /// <summary>
-        /// Buduje ekran wyszukiwania i włącza strzałkę powrotu.
+        /// Builds the search screen and enables the back arrow.
         /// </summary>
-        /// <param name="savedInstanceState">Zapisany stan Activity.</param>
+        /// <param name="savedInstanceState">Saved state of the activity.</param>
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
@@ -85,10 +90,10 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Zamyka okno po dotknięciu strzałki powrotu.
+        /// Closes the window when the back arrow is tapped.
         /// </summary>
-        /// <param name="item">Wybrana pozycja paska.</param>
-        /// <returns>True, gdy obsłużono pozycję.</returns>
+        /// <param name="item">Selected bar item.</param>
+        /// <returns>True when the item was handled.</returns>
         public override bool OnOptionsItemSelected(IMenuItem item)
         {
             if (item.ItemId == Android.Resource.Id.Home)
@@ -102,7 +107,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Uruchamia okresowe odświeżanie wyników.
+        /// Starts the periodic refresh of the results.
         /// </summary>
         protected override void OnResume()
         {
@@ -113,7 +118,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Zatrzymuje okresowe odświeżanie wyników.
+        /// Stops the periodic refresh of the results.
         /// </summary>
         protected override void OnPause()
         {
@@ -127,9 +132,9 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Tworzy cały widok ekranu.
+        /// Creates the whole view of the screen.
         /// </summary>
-        /// <returns>Widok z nieruchomą wyszukiwarką na górze i przewijaną listą wyników pod nią.</returns>
+        /// <returns>View with a fixed search field at the top and a scrollable list of results under it.</returns>
         private View BuildContent()
         {
             LinearLayout root = new LinearLayout(this);
@@ -164,7 +169,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Odświeża wyniki, w razie potrzeby pobiera świeże dane i planuje kolejne odświeżenie.
+        /// Refreshes the results, downloads fresh data when needed and schedules the next refresh.
         /// </summary>
         private void RefreshTick()
         {
@@ -184,9 +189,9 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Pobiera samoloty wokół środka ostatniego zapytania, gdy żadna mapa nie dostarcza świeżych danych.
+        /// Downloads the aircraft around the center of the last request, when no map provides fresh data.
         /// </summary>
-        /// <returns>Zadanie reprezentujące pobieranie.</returns>
+        /// <returns>Task representing the download.</returns>
         private async Task FetchAircraftAsync()
         {
             isFetching = true;
@@ -210,7 +215,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Wyświetla samoloty pasujące do tekstu wyszukiwarki.
+        /// Shows the airports and aircraft matching the text of the search field.
         /// </summary>
         private void RenderResults()
         {
@@ -220,35 +225,79 @@ namespace AdsbCarMap.Activities
             }
 
             (IReadOnlyList<Aircraft> Aircraft, DateTime TimestampUtc) snapshot = LiveTraffic.GetSnapshot();
+            (double Latitude, double Longitude) center = LiveTraffic.GetCenter();
             string query = searchInput.Text ?? string.Empty;
-            bool isQueryEmpty = string.IsNullOrWhiteSpace(query);
-            List<Aircraft> results = isQueryEmpty
-                ? AircraftSearch.ListAll(snapshot.Aircraft, MaxResults)
-                : AircraftSearch.Search(snapshot.Aircraft, AppServices.Routes, query, MaxResults);
+            List<SearchResult> results = AircraftSearch.SearchAll(snapshot.Aircraft, AppServices.Airports, AppServices.Routes, query, MaxResults, ReservedForAircraft, center.Latitude, center.Longitude);
+            int aircraftCount = results.Count(item => item.Aircraft != null);
 
             statusText.Text = snapshot.Aircraft.Count == 0
                 ? (isFetching ? "Pobieranie samolotów…" : "Brak danych o samolotach")
                 : string.Format(
                     CultureInfo.InvariantCulture,
-                    "Samolotów w zasięgu: {0}, pokazano {1}, dane sprzed {2:0} s",
+                    "Samolotów w zasięgu: {0}, pokazano {1} samolotów i {2} lotnisk, dane sprzed {3:0} s",
                     snapshot.Aircraft.Count,
-                    results.Count,
+                    aircraftCount,
+                    results.Count - aircraftCount,
                     (DateTime.UtcNow - snapshot.TimestampUtc).TotalSeconds);
 
             resultsLayout.RemoveAllViews();
 
             for (int index = 0; index < results.Count; index++)
             {
-                resultsLayout.AddView(CreateRow(results[index], index));
+                SearchResult result = results[index];
+
+                resultsLayout.AddView(result.Airport != null ? CreateAirportRow(result.Airport, index) : CreateRow(result.Aircraft!, index));
             }
         }
 
         /// <summary>
-        /// Tworzy wiersz listy: w pierwszej linii lot i rejestracja, w drugiej linia lotnicza, w trzeciej typ, trasa i wysokość. Parzyste wiersze mają jaśniejsze tło.
+        /// Creates a list row of an airport: the code and the name in the first line, the place, the size class and the elevation in the second. Even rows have a lighter background.
         /// </summary>
-        /// <param name="item">Samolot.</param>
-        /// <param name="index">Numer wiersza na liście.</param>
-        /// <returns>Klikalny wiersz listy.</returns>
+        /// <param name="airport">Airport.</param>
+        /// <param name="index">Number of the row on the list.</param>
+        /// <returns>Clickable list row.</returns>
+        private View CreateAirportRow(Airport airport, int index)
+        {
+            string icao = airport.Icao;
+
+            LinearLayout row = new LinearLayout(this);
+            row.Orientation = Orientation.Vertical;
+            row.SetPadding(Dp(12), Dp(10), Dp(12), Dp(10));
+            row.SetBackgroundColor(index % 2 == 0 ? Color.Argb(28, 255, 255, 255) : Color.Transparent);
+            row.Clickable = true;
+            row.Click += (sender, args) => SelectAirport(icao);
+
+            LinearLayout header = new LinearLayout(this);
+            header.Orientation = Orientation.Horizontal;
+            row.AddView(header);
+
+            TextView name = new TextView(this);
+            name.Text = AircraftSearch.GetAirportTitle(airport);
+            name.TextSize = 18f;
+            name.SetTypeface(null, TypefaceStyle.Bold);
+            header.AddView(name, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+
+            TextView kind = new TextView(this);
+            kind.Text = "LOTNISKO";
+            kind.TextSize = 11f;
+            kind.SetTextColor(airport.IsMilitary ? Color.Rgb(235, 80, 80) : Color.Rgb(120, 190, 255));
+            header.AddView(kind, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
+
+            TextView details = new TextView(this);
+            details.Text = AircraftSearch.DescribeAirport(airport);
+            details.TextSize = 13f;
+            details.SetTextColor(Color.Rgb(190, 190, 190));
+            row.AddView(details);
+
+            return row;
+        }
+
+        /// <summary>
+        /// Creates a list row of an aircraft: the flight and the registration in the first line, the airline in the second, the type, route and altitude in the third. Even rows have a lighter background.
+        /// </summary>
+        /// <param name="item">Aircraft.</param>
+        /// <param name="index">Number of the row on the list.</param>
+        /// <returns>Clickable list row.</returns>
         private View CreateRow(Aircraft item, int index)
         {
             string hex = item.Hex;
@@ -304,9 +353,9 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Prosi mapy o śledzenie wybranego samolotu i wraca do mapy.
+        /// Asks the maps to follow the picked aircraft and returns to the map.
         /// </summary>
-        /// <param name="hex">Adres ICAO samolotu.</param>
+        /// <param name="hex">ICAO address of the aircraft.</param>
         private void SelectAircraft(string hex)
         {
             LiveTraffic.RequestFocus(hex);
@@ -314,10 +363,20 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Przelicza dp na piksele ekranu telefonu.
+        /// Asks the maps to select the picked airport and center on it, then returns to the map.
         /// </summary>
-        /// <param name="value">Wartość w dp.</param>
-        /// <returns>Wartość w pikselach.</returns>
+        /// <param name="icao">ICAO code of the airport.</param>
+        private void SelectAirport(string icao)
+        {
+            LiveTraffic.RequestAirportFocus(icao);
+            Finish();
+        }
+
+        /// <summary>
+        /// Converts dp to pixels of the phone screen.
+        /// </summary>
+        /// <param name="value">Value in dp.</param>
+        /// <returns>Value in pixels.</returns>
         private int Dp(int value)
         {
             return (int)(value * (Resources?.DisplayMetrics?.Density ?? 1.0f));

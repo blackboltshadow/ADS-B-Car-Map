@@ -48,6 +48,16 @@ namespace AdsbCarMap.Activities
         private const int MenuSettingsId = 2;
 
         /// <summary>
+        /// Identifier of the menu item that opens the information about the application.
+        /// </summary>
+        private const int MenuAboutId = 3;
+
+        /// <summary>
+        /// Identifier of the menu item that opens the favorite airports.
+        /// </summary>
+        private const int MenuFavoritesId = 4;
+
+        /// <summary>
         /// Controller of the map drawn on the phone screen.
         /// </summary>
         private readonly MapController controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes, AppServices.Selection);
@@ -76,6 +86,11 @@ namespace AdsbCarMap.Activities
         /// Card of the primary selected aircraft.
         /// </summary>
         private AircraftCardView? aircraftCard;
+
+        /// <summary>
+        /// Card of the selected airport, shown instead of the aircraft card.
+        /// </summary>
+        private AirportCardView? airportCard;
 
         /// <summary>
         /// Map view filling the screen.
@@ -233,6 +248,25 @@ namespace AdsbCarMap.Activities
                 return;
             }
 
+            Airport? airport = controller.GetSelectedAirport();
+
+            if (airport != null && airportCard != null)
+            {
+                (bool Known, double Latitude, double Longitude) user = controller.GetUserLocation();
+
+                aircraftCard.Visibility = ViewStates.Gone;
+                airportCard.Bind(airport, AppServices.Airports.GetRunways(airport), user.Known, user.Latitude, user.Longitude, AppServices.Favorites.Contains(airport.Icao));
+                airportCard.Visibility = ViewStates.Visible;
+                UpdateCoveredArea();
+
+                return;
+            }
+
+            if (airportCard != null)
+            {
+                airportCard.Visibility = ViewStates.Gone;
+            }
+
             SelectedAircraftInfo? info = controller.GetPrimaryInfo();
 
             if (info == null || controller.IsMultiSelect)
@@ -257,7 +291,9 @@ namespace AdsbCarMap.Activities
         /// </summary>
         private void UpdateCoveredArea()
         {
-            if (aircraftCard == null || mapView == null || aircraftCard.Visibility != ViewStates.Visible || aircraftCard.Width == 0)
+            View? card = airportCard != null && airportCard.Visibility == ViewStates.Visible ? airportCard : aircraftCard;
+
+            if (card == null || mapView == null || card.Visibility != ViewStates.Visible || card.Width == 0)
             {
                 controller.SetCoveredArea(null);
 
@@ -265,10 +301,10 @@ namespace AdsbCarMap.Activities
             }
 
             controller.SetCoveredArea(new Android.Graphics.RectF(
-                aircraftCard.Left - mapView.Left,
-                aircraftCard.Top - mapView.Top,
-                aircraftCard.Right - mapView.Left,
-                aircraftCard.Bottom - mapView.Top));
+                card.Left - mapView.Left,
+                card.Top - mapView.Top,
+                card.Right - mapView.Left,
+                card.Bottom - mapView.Top));
         }
 
         /// <summary>
@@ -385,6 +421,26 @@ namespace AdsbCarMap.Activities
             cardParams.SetMargins(Dp(12), Dp(12), Dp(12), Dp(32));
             root.AddView(aircraftCard, cardParams);
 
+            airportCard = new AirportCardView(this);
+            airportCard.Visibility = ViewStates.Gone;
+            airportCard.CenterClicked += () => controller.CenterOnSelectedAirport();
+            airportCard.CloseClicked += () => controller.ClearSelection();
+            airportCard.FavoriteClicked += () =>
+            {
+                Airport? selected = controller.GetSelectedAirport();
+
+                if (selected != null)
+                {
+                    AppServices.Favorites.Toggle(selected.Icao);
+                    UpdateCard();
+                }
+            };
+            airportCard.LayoutChange += (sender, args) => UpdateCoveredArea();
+
+            FrameLayout.LayoutParams airportCardParams = new FrameLayout.LayoutParams(cardWidth, ViewGroup.LayoutParams.WrapContent, GravityFlags.Bottom | GravityFlags.Start);
+            airportCardParams.SetMargins(Dp(12), Dp(12), Dp(12), Dp(32));
+            root.AddView(airportCard, airportCardParams);
+
             UpdateModeButtons();
 
             ImageButton zoomInButton = CreateRoundButton(Resource.Drawable.ic_zoom_in, "Przybliż");
@@ -411,6 +467,7 @@ namespace AdsbCarMap.Activities
             root.AddView(buttonColumn, columnParams);
 
             aircraftCard.BringToFront();
+            airportCard?.BringToFront();
 
             return root;
         }
@@ -549,14 +606,16 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Shows the menu with the search and the settings under the menu button.
+        /// Shows the menu with the search, the favorite airports, the settings and the information about the application under the menu button.
         /// </summary>
         /// <param name="anchor">Button under which the menu appears.</param>
         private void ShowMenu(View anchor)
         {
             PopupMenu popup = new PopupMenu(this, anchor);
-            popup.Menu?.Add(0, MenuSearchId, 0, "Szukaj samolotu");
-            popup.Menu?.Add(0, MenuSettingsId, 1, "Ustawienia");
+            popup.Menu?.Add(0, MenuSearchId, 0, "Wyszukaj");
+            popup.Menu?.Add(0, MenuFavoritesId, 1, "Ulubione lotniska");
+            popup.Menu?.Add(0, MenuSettingsId, 2, "Ustawienia");
+            popup.Menu?.Add(0, MenuAboutId, 3, "O aplikacji");
             popup.MenuItemClick += (sender, args) =>
             {
                 args.Handled = true;
@@ -568,6 +627,14 @@ namespace AdsbCarMap.Activities
                 else if (args.Item?.ItemId == MenuSettingsId)
                 {
                     StartActivity(new Intent(this, typeof(SettingsActivity)));
+                }
+                else if (args.Item?.ItemId == MenuFavoritesId)
+                {
+                    StartActivity(new Intent(this, typeof(FavoriteAirportsActivity)));
+                }
+                else if (args.Item?.ItemId == MenuAboutId)
+                {
+                    StartActivity(new Intent(this, typeof(AboutActivity)));
                 }
             };
             popup.Show();

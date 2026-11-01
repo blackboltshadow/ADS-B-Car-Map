@@ -51,6 +51,28 @@ namespace AdsbCarMap.Services
         public static SelectionState Selection { get; } = new SelectionState();
 
         /// <summary>
+        /// Airports and runways bundled with the application, loaded in the background at the first use.
+        /// </summary>
+        public static AirportDatabase Airports { get; } = CreateAirports();
+
+        /// <summary>
+        /// Favorite airports, shared by the phone and Android Auto.
+        /// </summary>
+        public static FavoriteAirports Favorites { get; } = new FavoriteAirports();
+
+        /// <summary>
+        /// Creates the airport database and starts loading it in the background.
+        /// </summary>
+        /// <returns>The database, not yet loaded.</returns>
+        private static AirportDatabase CreateAirports()
+        {
+            AirportDatabase database = new AirportDatabase();
+            database.StartLoading();
+
+            return database;
+        }
+
+        /// <summary>
         /// Creates an HTTP client with a timeout and the User-Agent header.
         /// </summary>
         /// <param name="baseAddress">Base address, or null when not needed.</param>

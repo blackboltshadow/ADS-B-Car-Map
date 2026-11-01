@@ -58,6 +58,36 @@ namespace AdsbCarMap.Services
         public static event Action<string>? FocusRequested;
 
         /// <summary>
+        /// Event raised when the user picks an airport to show. The argument is the ICAO code.
+        /// </summary>
+        public static event Action<string>? AirportFocusRequested;
+
+        /// <summary>
+        /// ICAO code of the airport from the last request to show.
+        /// </summary>
+        private static string? pendingAirportIcao;
+
+        /// <summary>
+        /// Moment of the last request to show an airport, in UTC.
+        /// </summary>
+        private static DateTime pendingAirportUtc = DateTime.MinValue;
+
+        /// <summary>
+        /// Whether the position of the user is known.
+        /// </summary>
+        private static bool hasUserLocation;
+
+        /// <summary>
+        /// Latitude of the user.
+        /// </summary>
+        private static double userLatitude;
+
+        /// <summary>
+        /// Longitude of the user.
+        /// </summary>
+        private static double userLongitude;
+
+        /// <summary>
         /// Returns the last aircraft list and the moment it was downloaded.
         /// </summary>
         /// <returns>Aircraft list and the time in UTC.</returns>
@@ -143,6 +173,60 @@ namespace AdsbCarMap.Services
             }
 
             FocusRequested?.Invoke(hex);
+        }
+
+        /// <summary>
+        /// Stores the position of the user, so that screens without a map can show distances.
+        /// </summary>
+        /// <param name="latitude">Latitude of the user.</param>
+        /// <param name="longitude">Longitude of the user.</param>
+        public static void SetUserLocation(double latitude, double longitude)
+        {
+            lock (SyncRoot)
+            {
+                userLatitude = latitude;
+                userLongitude = longitude;
+                hasUserLocation = true;
+            }
+        }
+
+        /// <summary>
+        /// Returns the last known position of the user.
+        /// </summary>
+        /// <returns>Whether the position is known, the latitude and the longitude.</returns>
+        public static (bool Known, double Latitude, double Longitude) GetUserLocation()
+        {
+            lock (SyncRoot)
+            {
+                return (hasUserLocation, userLatitude, userLongitude);
+            }
+        }
+
+        /// <summary>
+        /// Asks the active maps to select an airport and center on it. The request is also remembered for a short time for a map that starts a moment later.
+        /// </summary>
+        /// <param name="icao">ICAO code of the airport.</param>
+        public static void RequestAirportFocus(string icao)
+        {
+            lock (SyncRoot)
+            {
+                pendingAirportIcao = icao;
+                pendingAirportUtc = DateTime.UtcNow;
+            }
+
+            AirportFocusRequested?.Invoke(icao);
+        }
+
+        /// <summary>
+        /// Returns the ICAO code of a recent request to show an airport that no active map may have received.
+        /// </summary>
+        /// <returns>ICAO code, or null when there is no recent request.</returns>
+        public static string? GetPendingAirportFocus()
+        {
+            lock (SyncRoot)
+            {
+                return DateTime.UtcNow - pendingAirportUtc <= PendingFocusLifetime ? pendingAirportIcao : null;
+            }
         }
 
         /// <summary>

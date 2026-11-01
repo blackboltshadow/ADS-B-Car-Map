@@ -53,6 +53,26 @@ namespace AdsbCarMap.Activities
         private readonly Dictionary<SettingDefinition, View> undoButtons = new Dictionary<SettingDefinition, View>();
 
         /// <summary>
+        /// Card shared by the airport settings, created with the first of them.
+        /// </summary>
+        private LinearLayout? airportSettingsCard;
+
+        /// <summary>
+        /// Preview of sample airports inside <see cref="airportSettingsCard"/>.
+        /// </summary>
+        private AirportsPreview? airportsPreview;
+
+        /// <summary>
+        /// Switch that limits the small airports to those with a paved runway. Disabled while the small airports are switched off.
+        /// </summary>
+        private Switch? smallPavedToggle;
+
+        /// <summary>
+        /// Note under the switch that explains why it is disabled.
+        /// </summary>
+        private TextView? smallPavedHint;
+
+        /// <summary>
         /// Card shared by all trail settings, created with the first of them.
         /// </summary>
         private LinearLayout? trailCard;
@@ -147,6 +167,9 @@ namespace AdsbCarMap.Activities
                     case SettingKind.Slider:
                         AddSlider(root, definition);
                         break;
+                    case SettingKind.MultiChoice:
+                        AddMultiChoice(root, definition);
+                        break;
                     case SettingKind.Scale:
                         AddScaleThreshold(root, definition);
                         break;
@@ -159,6 +182,11 @@ namespace AdsbCarMap.Activities
             if (aircraftIconCard != null)
             {
                 aircraftIconCard.AddView(CreateResetButton("Przywróć domyślne ikony", new List<SettingDefinition> { AppSettings.IconScaleSetting, AppSettings.AircraftOutlineWidthSetting }, "Przywrócono domyślne ustawienia ikon"));
+            }
+
+            if (airportSettingsCard != null)
+            {
+                airportSettingsCard.AddView(CreateResetButton("Przywróć domyślne lotniska", AppSettings.AirportSettings, "Przywrócono domyślne ustawienia lotnisk"));
             }
 
             if (trailCard != null)
@@ -174,6 +202,7 @@ namespace AdsbCarMap.Activities
             buttons.AddView(CreateResetButton("Przywróć wszystkie domyślne", AppSettings.All, "Przywrócono ustawienia domyślne"));
 
             LoadSettingInputs();
+            UpdateDependentControls();
 
             return scrollView;
         }
@@ -268,7 +297,8 @@ namespace AdsbCarMap.Activities
         /// <param name="definition">Setting.</param>
         private void AddSwitch(LinearLayout root, SettingDefinition definition)
         {
-            LinearLayout card = CreateCard(root);
+            bool isGrouped = AppSettings.AirportSettings.Contains(definition);
+            LinearLayout card = isGrouped ? GetAirportSettingsCard(root) : CreateCard(root);
             LinearLayout row = new LinearLayout(this);
             row.Orientation = Orientation.Horizontal;
             row.SetGravity(GravityFlags.CenterVertical);
@@ -278,8 +308,26 @@ namespace AdsbCarMap.Activities
             Switch toggle = new Switch(this);
             toggle.Text = definition.Label;
             StyleTitle(toggle);
+
+            if (isGrouped)
+            {
+                StyleSubTitle(toggle);
+                row.SetPadding(0, Dp(6), 0, 0);
+            }
+
             row.AddView(toggle, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
             AddInfoButton(row, definition);
+
+            if (definition == AppSettings.SmallAirportsPavedSetting)
+            {
+                smallPavedToggle = toggle;
+
+                smallPavedHint = new TextView(this);
+                smallPavedHint.Text = "Dostępne tylko wtedy, gdy zaznaczone są małe lotniska.";
+                StyleSecondary(smallPavedHint);
+                smallPavedHint.SetPadding(Dp(4), 0, 0, 0);
+                card.AddView(smallPavedHint);
+            }
 
             settingReaders[definition] = () => toggle.Checked ? 1.0 : 0.0;
             settingWriters[definition] = value => toggle.Checked = value >= 0.5;
@@ -302,7 +350,8 @@ namespace AdsbCarMap.Activities
         /// <param name="definition">Setting.</param>
         private void AddChoice(LinearLayout root, SettingDefinition definition)
         {
-            LinearLayout card = CreateCard(root);
+            bool isGrouped = AppSettings.AirportSettings.Contains(definition);
+            LinearLayout card = isGrouped ? GetAirportSettingsCard(root) : CreateCard(root);
             LinearLayout row = new LinearLayout(this);
             row.Orientation = Orientation.Horizontal;
             row.SetGravity(GravityFlags.CenterVertical);
@@ -312,6 +361,13 @@ namespace AdsbCarMap.Activities
             TextView label = new TextView(this);
             label.Text = definition.Label;
             StyleTitle(label);
+
+            if (isGrouped)
+            {
+                StyleSubTitle(label);
+                row.SetPadding(0, Dp(10), 0, 0);
+            }
+
             row.AddView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
             AddUndoButton(row, definition);
             AddInfoButton(row, definition);
@@ -359,6 +415,109 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
+        /// Adds a group of check boxes for a setting stored as a bit mask. Every change is saved at once and can be undone with the undo button.
+        /// </summary>
+        /// <param name="root">Container of the screen.</param>
+        /// <param name="definition">Setting.</param>
+        private void AddMultiChoice(LinearLayout root, SettingDefinition definition)
+        {
+            bool isGrouped = AppSettings.AirportSettings.Contains(definition);
+            LinearLayout card = isGrouped ? GetAirportSettingsCard(root) : CreateCard(root);
+
+            LinearLayout titleRow = new LinearLayout(this);
+            titleRow.Orientation = Orientation.Horizontal;
+            titleRow.SetGravity(GravityFlags.CenterVertical);
+            titleRow.SetMinimumHeight(Dp(28));
+            titleRow.SetPadding(0, Dp(10), 0, 0);
+            card.AddView(titleRow);
+
+            TextView label = new TextView(this);
+            label.Text = definition.Label;
+            StyleTitle(label);
+
+            if (isGrouped)
+            {
+                StyleSubTitle(label);
+            }
+
+            titleRow.AddView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+            AddUndoButton(titleRow, definition);
+            AddInfoButton(titleRow, definition);
+
+            List<CheckBox> boxes = new List<CheckBox>();
+            LinearLayout? boxRow = null;
+            bool updating = false;
+            IReadOnlyList<string> choices = definition.Choices!;
+
+            for (int index = 0; index < choices.Count; index++)
+            {
+                if (index % 3 == 0)
+                {
+                    boxRow = new LinearLayout(this);
+                    boxRow.Orientation = Orientation.Horizontal;
+                    card.AddView(boxRow);
+                }
+
+                CheckBox box = new CheckBox(this);
+                box.Text = choices[index];
+                box.TextSize = 13f;
+                box.SetTextColor(PrimaryTextColor);
+                boxRow!.AddView(box, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+                boxes.Add(box);
+            }
+
+            Func<int> readMask = () =>
+            {
+                int mask = 0;
+
+                for (int index = 0; index < boxes.Count; index++)
+                {
+                    if (boxes[index].Checked)
+                    {
+                        mask |= 1 << index;
+                    }
+                }
+
+                return mask;
+            };
+
+            settingReaders[definition] = () => readMask();
+            settingWriters[definition] = value =>
+            {
+                int mask = (int)Math.Round(value);
+
+                updating = true;
+
+                for (int index = 0; index < boxes.Count; index++)
+                {
+                    boxes[index].Checked = (mask & (1 << index)) != 0;
+                }
+
+                updating = false;
+            };
+
+            foreach (CheckBox box in boxes)
+            {
+                box.CheckedChange += (sender, args) =>
+                {
+                    if (updating)
+                    {
+                        return;
+                    }
+
+                    double mask = readMask();
+                    double saved = AppSettings.Get(definition);
+
+                    if (Differs(mask, saved))
+                    {
+                        SaveValue(definition, mask);
+                        RecordChange(definition, saved);
+                    }
+                };
+            }
+        }
+
+        /// <summary>
         /// Adds a slider for a setting. The label shows the current value and, for the label size, a sample label drawn in that size.
         /// </summary>
         /// <param name="root">Container of the screen.</param>
@@ -367,8 +526,9 @@ namespace AdsbCarMap.Activities
         {
             bool isIconSetting = definition == AppSettings.IconScaleSetting || definition == AppSettings.AircraftOutlineWidthSetting;
             bool isTrailSetting = AppSettings.TrailSettings.Contains(definition);
-            bool isGrouped = isIconSetting || isTrailSetting;
-            LinearLayout card = isIconSetting ? GetAircraftIconCard(root) : isTrailSetting ? GetTrailCard(root) : CreateCard(root);
+            bool isAirportSetting = AppSettings.AirportSettings.Contains(definition);
+            bool isGrouped = isIconSetting || isTrailSetting || isAirportSetting;
+            LinearLayout card = isIconSetting ? GetAircraftIconCard(root) : isTrailSetting ? GetTrailCard(root) : isAirportSetting ? GetAirportSettingsCard(root) : CreateCard(root);
 
             LinearLayout titleRow = new LinearLayout(this);
             titleRow.Orientation = Orientation.Horizontal;
@@ -665,6 +825,53 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
+        /// Applies the style of the name of a setting inside a card shared by several settings: white, regular and smaller than a card title.
+        /// </summary>
+        /// <param name="view">Text view, switch or other text control.</param>
+        private static void StyleSubTitle(TextView view)
+        {
+            view.TextSize = 13f;
+            view.SetTextColor(PrimaryTextColor);
+            view.SetTypeface(null, TypefaceStyle.Normal);
+        }
+
+        /// <summary>
+        /// Returns the card shared by the airport settings, creating it with its title and the preview of sample airports at the first call. The preview is placed above the controls, so it stays visible while a slider is dragged.
+        /// </summary>
+        /// <param name="root">Container of the screen.</param>
+        /// <returns>The shared card.</returns>
+        private LinearLayout GetAirportSettingsCard(LinearLayout root)
+        {
+            if (airportSettingsCard != null)
+            {
+                return airportSettingsCard;
+            }
+
+            LinearLayout card = CreateCard(root);
+
+            TextView title = new TextView(this);
+            title.Text = "Lotniska";
+            StyleTitle(title);
+            card.AddView(title);
+
+            TextView hint = new TextView(this);
+            hint.Text = "Podgląd pokazuje przykładowe lotniska z bieżącymi ustawieniami: duże, średnie, małe i wojskowe, z pasem startowym.";
+            StyleSecondary(hint);
+            hint.SetPadding(0, Dp(4), 0, 0);
+            card.AddView(hint);
+
+            airportsPreview = new AirportsPreview(this);
+
+            LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
+            previewParams.SetMargins(0, Dp(8), 0, 0);
+            card.AddView(airportsPreview, previewParams);
+
+            airportSettingsCard = card;
+
+            return card;
+        }
+
+        /// <summary>
         /// Applies the style of a secondary text such as a hint or the current value: gray and small.
         /// </summary>
         /// <param name="view">Text view.</param>
@@ -756,6 +963,16 @@ namespace AdsbCarMap.Activities
         {
             AppSettings.Save(new Dictionary<SettingDefinition, double> { { definition, value } });
 
+            if (definition == AppSettings.AirportTypesSetting)
+            {
+                UpdateDependentControls();
+            }
+
+            if (AppSettings.AirportSettings.Contains(definition) || definition == AppSettings.IconScaleSetting)
+            {
+                airportsPreview?.Invalidate();
+            }
+
             if (definition == AppSettings.AltitudeUnitSetting)
             {
                 altitudeScale?.Invalidate();
@@ -764,6 +981,27 @@ namespace AdsbCarMap.Activities
                 {
                     refreshLabelPreview(AppSettings.Get(AppSettings.LabelTextSizeSetting));
                 }
+            }
+        }
+
+        /// <summary>
+        /// Enables or disables the controls that depend on other settings: the paved runway filter works only while the small airports are switched on. Its info button stays active, because it explains why the switch is disabled.
+        /// </summary>
+        private void UpdateDependentControls()
+        {
+            if (smallPavedToggle == null)
+            {
+                return;
+            }
+
+            bool available = AppSettings.IsAirportCategoryEnabled(AirportCategory.Small);
+
+            smallPavedToggle.Enabled = available;
+            smallPavedToggle.Alpha = available ? 1.0f : 0.45f;
+
+            if (smallPavedHint != null)
+            {
+                smallPavedHint.Visibility = available ? ViewStates.Gone : ViewStates.Visible;
             }
         }
 
@@ -957,6 +1195,11 @@ namespace AdsbCarMap.Activities
             if (definition == AppSettings.ShowAltitudeLegendSetting)
             {
                 return new AltitudeLegendPreview(this);
+            }
+
+            if (AppSettings.AirportSettings.Contains(definition))
+            {
+                return new AirportsPreview(this);
             }
 
             if (definition == AppSettings.AltitudeUnitSetting)

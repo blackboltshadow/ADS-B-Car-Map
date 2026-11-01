@@ -115,5 +115,6 @@ namespace AdsbCarMap.Map
     /// <param name="MilitaryOnly">Whether only military aircraft are visible.</param>
     /// <param name="PrimaryAircraft">Data of the primary selected aircraft known to the map that published the state, or null. Lets the other map show an aircraft that is outside its own data.</param>
     /// <param name="PrimaryAircraftTimestampUtc">Moment the data of <paramref name="PrimaryAircraft"/> was downloaded, in UTC.</param>
-    public sealed record SelectionSnapshot(IReadOnlySet<string> Hexes, string? PrimaryHex, bool Isolated, bool MilitaryOnly, Aircraft? PrimaryAircraft, DateTime PrimaryAircraftTimestampUtc);
+    /// <param name="AirportIcao">ICAO code of the selected airport, or null when no airport is selected. An airport and aircraft are never selected at the same time.</param>
+    public sealed record SelectionSnapshot(IReadOnlySet<string> Hexes, string? PrimaryHex, bool Isolated, bool MilitaryOnly, Aircraft? PrimaryAircraft, DateTime PrimaryAircraftTimestampUtc, string? AirportIcao = null);
 }

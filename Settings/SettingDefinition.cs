@@ -29,6 +29,11 @@ namespace AdsbCarMap.Settings
         /// One threshold of the altitude color scale. All such settings are edited together in a single scale editor.
         /// </summary>
         Scale,
+
+        /// <summary>
+        /// Group of check boxes; the stored value is a bit mask, bit 0 is the first option.
+        /// </summary>
+        MultiChoice,
     }
 
     /// <summary>
@@ -75,6 +80,20 @@ namespace AdsbCarMap.Settings
         public static SettingDefinition CreateSwitch(string key, string label, bool defaultValue, string? help = null)
         {
             return new SettingDefinition(key, label, defaultValue ? 1.0 : 0.0, 0.0, 1.0, true, SettingKind.Switch, null, 0.0, help);
+        }
+
+        /// <summary>
+        /// Creates a setting edited with a group of check boxes and stored as a bit mask.
+        /// </summary>
+        /// <param name="key">Key in SharedPreferences.</param>
+        /// <param name="label">Name shown on the settings screen.</param>
+        /// <param name="defaultMask">Bit mask of the options that are checked by default.</param>
+        /// <param name="help">Description shown in the info popup, or null.</param>
+        /// <param name="choices">Names of the options; the first one is bit 0.</param>
+        /// <returns>Setting definition.</returns>
+        public static SettingDefinition CreateMultiChoice(string key, string label, int defaultMask, string? help, params string[] choices)
+        {
+            return new SettingDefinition(key, label, defaultMask, 0.0, (1 << choices.Length) - 1, true, SettingKind.MultiChoice, choices, 0.0, help);
         }
 
         /// <summary>

@@ -123,6 +123,11 @@ namespace AdsbCarMap.Map
         private const float TapRadius = 30.0f;
 
         /// <summary>
+        /// Zoom level the map moves to at least when an airport is picked in the search window, so that the airport and its runways are visible.
+        /// </summary>
+        private const double AirportFocusZoom = 11.0;
+
+        /// <summary>
         /// Time the loading indicator stays visible after the download ends, so that a short download is still noticeable.
         /// </summary>
         private static readonly TimeSpan LoadingIndicatorMinimumVisible = TimeSpan.FromMilliseconds(800);
@@ -381,6 +386,21 @@ namespace AdsbCarMap.Map
         /// ICAO address of the primary selected aircraft the card refers to, or null when nothing is selected.
         /// </summary>
         private string? primaryHex;
+
+        /// <summary>
+        /// Selected airport, or null. An airport and aircraft are never selected at the same time.
+        /// </summary>
+        private Airport? selectedAirport;
+
+        /// <summary>
+        /// Draws the airports and their runways.
+        /// </summary>
+        private readonly AirportLayer airportLayer = new AirportLayer();
+
+        /// <summary>
+        /// Airports drawn in the last frame with the positions of their markers, used to recognize taps.
+        /// </summary>
+        private IReadOnlyList<(Airport Airport, float X, float Y)> airportHits = Array.Empty<(Airport Airport, float X, float Y)>();
 
         /// <summary>
         /// Whether taps on aircraft add them to the selection.
@@ -738,6 +758,7 @@ namespace AdsbCarMap.Map
             cancellation = source;
             locationTracker.Start();
             LiveTraffic.FocusRequested += FocusAircraft;
+            LiveTraffic.AirportFocusRequested += FocusAirport;
             selectionState.Changed += OnSharedSelectionChanged;
             selectionState.FollowChanged += OnSharedFollowChanged;
             ApplySelection(selectionState.Current);
@@ -758,6 +779,13 @@ namespace AdsbCarMap.Map
                 FocusAircraft(pendingFocus);
             }
 
+            string? pendingAirport = LiveTraffic.GetPendingAirportFocus();
+
+            if (pendingAirport != null && pendingFocus == null)
+            {
+                FocusAirport(pendingAirport);
+            }
+
             _ = Task.Run(() => RenderLoopAsync(source.Token));
             _ = Task.Run(() => DataLoopAsync(source.Token));
         }
@@ -772,6 +800,7 @@ namespace AdsbCarMap.Map
             source?.Cancel();
             locationTracker.Stop();
             LiveTraffic.FocusRequested -= FocusAircraft;
+            LiveTraffic.AirportFocusRequested -= FocusAirport;
             selectionState.Changed -= OnSharedSelectionChanged;
             selectionState.FollowChanged -= OnSharedFollowChanged;
             Volatile.Write(ref wantedTiles, new HashSet<TileKey>());
@@ -1067,7 +1096,7 @@ namespace AdsbCarMap.Map
             {
                 Aircraft? primaryAircraft = primaryHex == null ? null : latestAircraft.FirstOrDefault(item => item.Hex == primaryHex);
 
-                snapshot = new SelectionSnapshot(selectedHexes, primaryHex, isolateSelected, militaryOnly, primaryAircraft, latestAircraftTimestampUtc);
+                snapshot = new SelectionSnapshot(selectedHexes, primaryHex, isolateSelected, militaryOnly, primaryAircraft, latestAircraftTimestampUtc, selectedAirport?.Icao);
             }
 
             selectionState.Publish(this, snapshot);
@@ -1126,6 +1155,7 @@ namespace AdsbCarMap.Map
                 primaryHex = snapshot.PrimaryHex;
                 isolateSelected = snapshot.Isolated;
                 militaryOnly = snapshot.MilitaryOnly;
+                selectedAirport = AppServices.Airports.Find(snapshot.AirportIcao);
             }
         }
 
@@ -1167,6 +1197,7 @@ namespace AdsbCarMap.Map
                 followLocation = false;
                 selectedHexes = new HashSet<string> { hex };
                 primaryHex = hex;
+                selectedAirport = null;
 
                 if (isolate)
                 {
@@ -1269,6 +1300,7 @@ namespace AdsbCarMap.Map
                 selectedHexes = new HashSet<string>();
                 primaryHex = null;
                 isolateSelected = false;
+                selectedAirport = null;
             }
 
             NotifySelectionChanged();
@@ -1463,16 +1495,39 @@ namespace AdsbCarMap.Map
 
             Log.Info(LogTag, string.Format(CultureInfo.InvariantCulture, "Dotknięcie {0:0},{1:0}: samolotów do wyboru {2}, promień {3:0} px, wybrany {4}", x, y, hits.Count, maximumDistance, tapped ?? "brak"));
 
+            if (tapped == null)
+            {
+                Airport? tappedAirport = FindTappedAirport(x, y);
+
+                if (tappedAirport != null)
+                {
+                    SelectAirport(tappedAirport);
+
+                    return;
+                }
+            }
+
             lock (stateLock)
             {
+                if (tapped != null)
+                {
+                    selectedAirport = null;
+                }
+
                 if (tapped == null)
                 {
-                    if (multiSelect || selectedHexes.Count == 0)
+                    if (selectedAirport != null)
+                    {
+                        selectedAirport = null;
+                    }
+                    else if (multiSelect || selectedHexes.Count == 0)
                     {
                         return;
                     }
-
-                    selectedHexes = new HashSet<string>();
+                    else
+                    {
+                        selectedHexes = new HashSet<string>();
+                    }
                 }
                 else if (multiSelect)
                 {
@@ -1510,6 +1565,134 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Finds the airport marker closest to a tap.
+        /// </summary>
+        /// <param name="x">Horizontal tap position in pixels.</param>
+        /// <param name="y">Vertical tap position in pixels.</param>
+        /// <returns>The airport, or null when no marker is close enough.</returns>
+        private Airport? FindTappedAirport(float x, float y)
+        {
+            IReadOnlyList<(Airport Airport, float X, float Y)> hits = Volatile.Read(ref airportHits);
+            float maximumDistance = TapRadius * density;
+            float bestDistance = maximumDistance * maximumDistance;
+            Airport? tapped = null;
+
+            foreach ((Airport Airport, float X, float Y) hit in hits)
+            {
+                float distance = (hit.X - x) * (hit.X - x) + (hit.Y - y) * (hit.Y - y);
+
+                if (distance <= bestDistance)
+                {
+                    bestDistance = distance;
+                    tapped = hit.Airport;
+                }
+            }
+
+            return tapped;
+        }
+
+        /// <summary>
+        /// Selects an airport and clears the aircraft selection.
+        /// </summary>
+        /// <param name="airport">Airport to select.</param>
+        private void SelectAirport(Airport airport)
+        {
+            lock (stateLock)
+            {
+                selectedAirport = airport;
+                selectedHexes = new HashSet<string>();
+                primaryHex = null;
+                isolateSelected = false;
+            }
+
+            NotifySelectionChanged();
+        }
+
+        /// <summary>
+        /// Returns the user position.
+        /// </summary>
+        /// <returns>Whether the position is known, the latitude and the longitude.</returns>
+        public (bool Known, double Latitude, double Longitude) GetUserLocation()
+        {
+            lock (stateLock)
+            {
+                return (hasUserLocation, userLatitude, userLongitude);
+            }
+        }
+
+        /// <summary>
+        /// Returns the selected airport.
+        /// </summary>
+        /// <returns>The airport, or null when no airport is selected.</returns>
+        public Airport? GetSelectedAirport()
+        {
+            lock (stateLock)
+            {
+                return selectedAirport;
+            }
+        }
+
+        /// <summary>
+        /// Centers the map on the selected airport and stops following an aircraft or the user.
+        /// </summary>
+        public void CenterOnSelectedAirport()
+        {
+            lock (stateLock)
+            {
+                if (selectedAirport == null)
+                {
+                    return;
+                }
+
+                CenterOnAirportLocked(selectedAirport);
+            }
+
+            PublishFollow();
+            SelectionChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Selects an airport, centers the map on it and zooms in far enough for the airport to be visible. Called when the user picks an airport in the search window.
+        /// </summary>
+        /// <param name="icao">ICAO code of the airport.</param>
+        private void FocusAirport(string icao)
+        {
+            Airport? airport = AppServices.Airports.Find(icao);
+
+            if (airport == null)
+            {
+                return;
+            }
+
+            lock (stateLock)
+            {
+                selectedAirport = airport;
+                selectedHexes = new HashSet<string>();
+                primaryHex = null;
+                isolateSelected = false;
+                CenterOnAirportLocked(airport);
+            }
+
+            NotifySelectionChanged();
+            PublishFollow();
+        }
+
+        /// <summary>
+        /// Moves the map to an airport. Call with the state lock held.
+        /// </summary>
+        /// <param name="airport">Airport.</param>
+        private void CenterOnAirportLocked(Airport airport)
+        {
+            flingVelocityX = 0.0;
+            flingVelocityY = 0.0;
+            followedHex = null;
+            followLocation = false;
+            centerLatitude = airport.Latitude;
+            centerLongitude = airport.Longitude;
+            zoomTarget = Math.Clamp(Math.Max(zoomTarget, AirportFocusZoom), AppSettings.MinZoom, AppSettings.MaxZoom);
+        }
+
+        /// <summary>
         /// Stores the user position and, in the following mode, moves the map center to it.
         /// </summary>
         /// <param name="latitude">Latitude of the user.</param>
@@ -1519,6 +1702,7 @@ namespace AdsbCarMap.Map
             lock (stateLock)
             {
                 userLatitude = latitude;
+                LiveTraffic.SetUserLocation(latitude, longitude);
                 userLongitude = longitude;
                 hasUserLocation = true;
 
@@ -1823,6 +2007,7 @@ namespace AdsbCarMap.Map
             IReadOnlySet<string> selection;
             bool isolated;
             bool onlyMilitary;
+            Airport? drawnAirport;
 
             DateTime frameStartUtc = DateTime.UtcNow;
             double deltaSeconds = Math.Min(MaxFrameSeconds, (frameStartUtc - lastFrameUtc).TotalSeconds);
@@ -1847,6 +2032,7 @@ namespace AdsbCarMap.Map
                 selection = selectedHexes;
                 isolated = isolateSelected;
                 onlyMilitary = militaryOnly;
+                drawnAirport = selectedAirport;
             }
 
             double elapsedSeconds = (DateTime.UtcNow - snapshotTimestampUtc).TotalSeconds;
@@ -1962,6 +2148,8 @@ namespace AdsbCarMap.Map
             }
 
             LogTileStatistics(tiles.Count, missingTiles, zoomLevel);
+
+            Volatile.Write(ref airportHits, airportLayer.Draw(canvas, AppServices.Airports, drawnAirport, latitude, longitude, zoomLevel, width, height, screenDensity));
 
             labelPaint.TextSize = AppSettings.LabelTextSize * screenDensity;
             followedPaint.StrokeWidth = 2.0f * screenDensity;
@@ -2294,10 +2482,26 @@ namespace AdsbCarMap.Map
         private IReadOnlyList<PopupLine>? GetPopupLines(DateTime nowUtc)
         {
             string? hex;
+            Airport? airport;
 
             lock (stateLock)
             {
                 hex = primaryHex;
+                airport = selectedAirport;
+            }
+
+            if (hex == null && airport != null)
+            {
+                string key = "airport:" + airport.Icao;
+
+                if (popupLines == null || popupHex != key || nowUtc - popupBuiltUtc >= PopupRefreshInterval)
+                {
+                    popupLines = BuildAirportPopupLines(airport);
+                    popupHex = key;
+                    popupBuiltUtc = nowUtc;
+                }
+
+                return popupLines;
             }
 
             if (hex == null)
@@ -2330,6 +2534,36 @@ namespace AdsbCarMap.Map
             popupBuiltUtc = nowUtc;
 
             return popupLines;
+        }
+
+        /// <summary>
+        /// Builds the popup lines from the data of the selected airport.
+        /// </summary>
+        /// <param name="airport">Selected airport.</param>
+        /// <returns>Popup lines.</returns>
+        private List<PopupLine> BuildAirportPopupLines(Airport airport)
+        {
+            List<PopupLine> lines = new List<PopupLine>();
+            bool known;
+            double latitude;
+            double longitude;
+
+            lock (stateLock)
+            {
+                known = hasUserLocation;
+                latitude = userLatitude;
+                longitude = userLongitude;
+            }
+
+            lines.Add(new PopupLine(AirportCardText.BuildTitle(airport), PopupLineStyle.Bold, 0.0f));
+            lines.Add(new PopupLine(AirportCardText.BuildDescriptor(airport) + (AppServices.Favorites.Contains(airport.Icao) ? " · ★ ulubione" : string.Empty), PopupLineStyle.Accent, 0.0f));
+
+            foreach (string text in AirportCardText.BuildLines(airport, AppServices.Airports.GetRunways(airport), known, latitude, longitude))
+            {
+                lines.Add(new PopupLine(text, PopupLineStyle.Normal, 0.0f));
+            }
+
+            return lines;
         }
 
         /// <summary>

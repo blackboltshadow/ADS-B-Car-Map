@@ -13,11 +13,15 @@ Pushes the created tag to origin.
 
 .PARAMETER Force
 Allows tagging when the working tree has changes other than BuildNumber.txt.
+
+.PARAMETER SkipAirportData
+Does not download the newest airport and runway data before the build (for example without network access).
 #>
 param(
     [switch]$NoTag,
     [switch]$Push,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$SkipAirportData
 )
 
 $gitPath = (Get-Command git -ErrorAction SilentlyContinue).Source
@@ -33,6 +37,12 @@ if (-not (Test-Path $projectPath)) {
 
 if (-not (Test-Path $keystorePath)) {
     throw "Keystore not found: $keystorePath"
+}
+
+$airportDataDirectory = Join-Path (Split-Path $projectPath) "Assets\Airports"
+
+if (-not $SkipAirportData -and (Test-Path (Join-Path $airportDataDirectory "airports.meta"))) {
+    & (Join-Path $PSScriptRoot "Update-AirportData.ps1") -OutputDirectory $airportDataDirectory
 }
 
 if (-not $NoTag) {
