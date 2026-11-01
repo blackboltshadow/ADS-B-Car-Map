@@ -96,6 +96,7 @@ namespace AdsbCarMap.Activities
             float density = Resources?.DisplayMetrics?.Density ?? 1.0f;
             float iconScale = AppSettings.IconScale;
             float centerY = Dp(HeightDp) * 0.55f;
+            bool onlyFavorites = AppSettings.ShowOnlyFavoriteAirports;
 
             bounds.Set(0f, 0f, Width, Height);
             canvas.DrawRoundRect(bounds, Dp(8), Dp(8), backgroundPaint);
@@ -105,7 +106,7 @@ namespace AdsbCarMap.Activities
 
             foreach ((string Name, AirportCategory Category, AirportType Type, float Position) sample in Samples)
             {
-                bool enabled = AppSettings.IsAirportCategoryEnabled(sample.Category);
+                bool enabled = !onlyFavorites && AppSettings.IsAirportCategoryEnabled(sample.Category);
                 float x = Width * sample.Position;
                 float radius = AirportLayer.GetRadiusDp(sample.Type) * density * Math.Max(0.8f, iconScale);
 
@@ -123,13 +124,13 @@ namespace AdsbCarMap.Activities
 
             notePaint.TextSize = Dp(10);
             canvas.DrawText(
-                string.Format(
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    "Widoczne od zoomu: duże {0:0.#} · średnie {1:0.#} · małe {2:0.#} · helipady {3:0.#}",
-                    AirportLayer.GetFromZoom(AirportType.Large),
-                    AirportLayer.GetFromZoom(AirportType.Medium),
-                    AirportLayer.GetFromZoom(AirportType.Small),
-                    AirportLayer.GetFromZoom(AirportType.Heliport)),
+                onlyFavorites
+                    ? "Na mapie są tylko ulubione lotniska"
+                    : string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        "Lotniska widoczne od zoomu {0:0.#}{1}",
+                        AirportLayer.GetFromZoom(),
+                        AppSettings.AirportToZoom < AppSettings.MaxZoom ? " do zoomu " + AppSettings.AirportToZoom.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) : " bez górnego limitu"),
                 Width / 2f,
                 Height - Dp(9),
                 notePaint);

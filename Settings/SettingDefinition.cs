@@ -34,6 +34,11 @@ namespace AdsbCarMap.Settings
         /// Group of check boxes; the stored value is a bit mask, bit 0 is the first option.
         /// </summary>
         MultiChoice,
+
+        /// <summary>
+        /// One end of a range of zoom levels. The two settings of a range are edited together in a single range control.
+        /// </summary>
+        ZoomRange,
     }
 
     /// <summary>

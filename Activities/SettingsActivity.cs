@@ -73,6 +73,21 @@ namespace AdsbCarMap.Activities
         private TextView? smallPavedHint;
 
         /// <summary>
+        /// Views of the airport section that have no meaning while only the favorite airports are shown: the categories, the paved runway filter and the zoom range.
+        /// </summary>
+        private readonly List<View> favoritesOnlyInactiveViews = new List<View>();
+
+        /// <summary>
+        /// Control that sets the range of zoom levels in which the airports are visible, created with the first of its two settings.
+        /// </summary>
+        private ZoomRangeView? zoomRangeView;
+
+        /// <summary>
+        /// Number of settings already connected to <see cref="zoomRangeView"/>.
+        /// </summary>
+        private int zoomRangeBounds;
+
+        /// <summary>
         /// Card shared by all trail settings, created with the first of them.
         /// </summary>
         private LinearLayout? trailCard;
@@ -169,6 +184,9 @@ namespace AdsbCarMap.Activities
                         break;
                     case SettingKind.MultiChoice:
                         AddMultiChoice(root, definition);
+                        break;
+                    case SettingKind.ZoomRange:
+                        AddZoomRangeBound(root, definition);
                         break;
                     case SettingKind.Scale:
                         AddScaleThreshold(root, definition);
@@ -297,8 +315,9 @@ namespace AdsbCarMap.Activities
         /// <param name="definition">Setting.</param>
         private void AddSwitch(LinearLayout root, SettingDefinition definition)
         {
-            bool isGrouped = AppSettings.AirportSettings.Contains(definition);
-            LinearLayout card = isGrouped ? GetAirportSettingsCard(root) : CreateCard(root);
+            bool isAirportMaster = definition == AppSettings.ShowAirportsSetting;
+            bool isGrouped = AppSettings.AirportSettings.Contains(definition) && !isAirportMaster;
+            LinearLayout card = isGrouped || isAirportMaster ? GetAirportSettingsCard(root) : CreateCard(root);
             LinearLayout row = new LinearLayout(this);
             row.Orientation = Orientation.Horizontal;
             row.SetGravity(GravityFlags.CenterVertical);
@@ -317,6 +336,21 @@ namespace AdsbCarMap.Activities
 
             row.AddView(toggle, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
             AddInfoButton(row, definition);
+
+            if (definition == AppSettings.ShowOnlyFavoriteAirportsSetting)
+            {
+                TextView previewHint = new TextView(this);
+                previewHint.Text = "Podgląd pokazuje rodzaje lotnisk z bieżącymi ustawieniami. Po wyłączeniu lotnisk reszta tej sekcji jest nieaktywna.";
+                StyleSecondary(previewHint);
+                previewHint.SetPadding(0, Dp(4), 0, 0);
+                card.AddView(previewHint);
+
+                airportsPreview = new AirportsPreview(this);
+
+                LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
+                previewParams.SetMargins(0, Dp(8), 0, 0);
+                card.AddView(airportsPreview, previewParams);
+            }
 
             if (definition == AppSettings.SmallAirportsPavedSetting)
             {
@@ -415,6 +449,64 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
+        /// Connects one end of the airport zoom range to the shared range control, creating the control with its title and info button at the first end.
+        /// </summary>
+        /// <param name="root">Container of the screen.</param>
+        /// <param name="definition">Setting that holds one end of the range.</param>
+        private void AddZoomRangeBound(LinearLayout root, SettingDefinition definition)
+        {
+            if (zoomRangeView == null)
+            {
+                LinearLayout card = GetAirportSettingsCard(root);
+
+                LinearLayout titleRow = new LinearLayout(this);
+                titleRow.Orientation = Orientation.Horizontal;
+                titleRow.SetGravity(GravityFlags.CenterVertical);
+                titleRow.SetMinimumHeight(Dp(28));
+                titleRow.SetPadding(0, Dp(10), 0, 0);
+                card.AddView(titleRow);
+                favoritesOnlyInactiveViews.Add(titleRow);
+
+                TextView label = new TextView(this);
+                label.Text = "Zakres zoomu, w którym widać lotniska";
+                StyleTitle(label);
+                StyleSubTitle(label);
+                titleRow.AddView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+                AddInfoButton(titleRow, AppSettings.AirportFromZoomSetting);
+
+                zoomRangeView = new ZoomRangeView(this);
+                zoomRangeView.RangeChanged += SaveZoomRange;
+                card.AddView(zoomRangeView);
+                favoritesOnlyInactiveViews.Add(zoomRangeView);
+            }
+
+            ZoomRangeView view = zoomRangeView;
+            int index = zoomRangeBounds++;
+
+            settingReaders[definition] = () => view.GetValue(index);
+            settingWriters[definition] = value => view.SetValue(index, (int)Math.Round(value));
+        }
+
+        /// <summary>
+        /// Saves the zoom range after the user moved a handle.
+        /// </summary>
+        private void SaveZoomRange()
+        {
+            if (zoomRangeView == null)
+            {
+                return;
+            }
+
+            AppSettings.Save(new Dictionary<SettingDefinition, double>
+            {
+                { AppSettings.AirportFromZoomSetting, zoomRangeView.GetValue(0) },
+                { AppSettings.AirportToZoomSetting, zoomRangeView.GetValue(1) },
+            });
+
+            airportsPreview?.Invalidate();
+        }
+
+        /// <summary>
         /// Adds a group of check boxes for a setting stored as a bit mask. Every change is saved at once and can be undone with the undo button.
         /// </summary>
         /// <param name="root">Container of the screen.</param>
@@ -430,6 +522,7 @@ namespace AdsbCarMap.Activities
             titleRow.SetMinimumHeight(Dp(28));
             titleRow.SetPadding(0, Dp(10), 0, 0);
             card.AddView(titleRow);
+            favoritesOnlyInactiveViews.Add(titleRow);
 
             TextView label = new TextView(this);
             label.Text = definition.Label;
@@ -456,6 +549,7 @@ namespace AdsbCarMap.Activities
                     boxRow = new LinearLayout(this);
                     boxRow.Orientation = Orientation.Horizontal;
                     card.AddView(boxRow);
+                    favoritesOnlyInactiveViews.Add(boxRow);
                 }
 
                 CheckBox box = new CheckBox(this);
@@ -836,7 +930,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Returns the card shared by the airport settings, creating it with its title and the preview of sample airports at the first call. The preview is placed above the controls, so it stays visible while a slider is dragged.
+        /// Returns the card shared by the airport settings, creating it at the first call. The first control added to it is the main switch, followed by the preview of the airport categories.
         /// </summary>
         /// <param name="root">Container of the screen.</param>
         /// <returns>The shared card.</returns>
@@ -848,23 +942,6 @@ namespace AdsbCarMap.Activities
             }
 
             LinearLayout card = CreateCard(root);
-
-            TextView title = new TextView(this);
-            title.Text = "Lotniska";
-            StyleTitle(title);
-            card.AddView(title);
-
-            TextView hint = new TextView(this);
-            hint.Text = "Podgląd pokazuje przykładowe lotniska z bieżącymi ustawieniami: duże, średnie, małe i wojskowe, z pasem startowym.";
-            StyleSecondary(hint);
-            hint.SetPadding(0, Dp(4), 0, 0);
-            card.AddView(hint);
-
-            airportsPreview = new AirportsPreview(this);
-
-            LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
-            previewParams.SetMargins(0, Dp(8), 0, 0);
-            card.AddView(airportsPreview, previewParams);
 
             airportSettingsCard = card;
 
@@ -963,7 +1040,7 @@ namespace AdsbCarMap.Activities
         {
             AppSettings.Save(new Dictionary<SettingDefinition, double> { { definition, value } });
 
-            if (definition == AppSettings.AirportTypesSetting)
+            if (definition == AppSettings.AirportTypesSetting || definition == AppSettings.ShowAirportsSetting || definition == AppSettings.ShowOnlyFavoriteAirportsSetting)
             {
                 UpdateDependentControls();
             }
@@ -985,24 +1062,88 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Enables or disables the controls that depend on other settings: the paved runway filter works only while the small airports are switched on. Its info button stays active, because it explains why the switch is disabled.
+        /// Enables or disables the controls that depend on other settings. When the airports are switched off, everything in their section except the main switch and the info buttons is grayed out; when only the favorite airports are shown, the categories, the paved runway filter and the zoom range are grayed out too. The paved runway filter additionally works only while the small airports are switched on. Info buttons stay active, because they explain the settings.
         /// </summary>
         private void UpdateDependentControls()
         {
+            bool airportsOn = AppSettings.ShowAirports;
+
+            if (airportSettingsCard != null)
+            {
+                for (int index = 1; index < airportSettingsCard.ChildCount; index++)
+                {
+                    View? child = airportSettingsCard.GetChildAt(index);
+
+                    if (child != null)
+                    {
+                        ApplyGroupState(child, airportsOn);
+                    }
+                }
+            }
+
+            bool onlyFavorites = AppSettings.ShowOnlyFavoriteAirports;
+
+            if (airportsOn && onlyFavorites)
+            {
+                foreach (View inactive in favoritesOnlyInactiveViews)
+                {
+                    ApplyGroupState(inactive, false);
+                }
+            }
+
             if (smallPavedToggle == null)
             {
                 return;
             }
 
-            bool available = AppSettings.IsAirportCategoryEnabled(AirportCategory.Small);
+            bool smallOn = AppSettings.IsAirportCategoryEnabled(AirportCategory.Small);
+            bool available = airportsOn && !onlyFavorites && smallOn;
 
             smallPavedToggle.Enabled = available;
             smallPavedToggle.Alpha = available ? 1.0f : 0.45f;
 
             if (smallPavedHint != null)
             {
-                smallPavedHint.Visibility = available ? ViewStates.Gone : ViewStates.Visible;
+                smallPavedHint.Visibility = airportsOn && !onlyFavorites && !smallOn ? ViewStates.Visible : ViewStates.Gone;
             }
+        }
+
+        /// <summary>
+        /// Enables or dims a view and everything inside it, leaving the info buttons untouched.
+        /// </summary>
+        /// <param name="view">View to change.</param>
+        /// <param name="on">Whether the controls are active.</param>
+        /// <returns>True when the view is or contains an info button.</returns>
+        private static bool ApplyGroupState(View view, bool on)
+        {
+            if (view.ContentDescription != null && view.ContentDescription.StartsWith("Opis ustawienia", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            bool containsInfoButton = false;
+
+            if (view is ViewGroup group)
+            {
+                for (int index = 0; index < group.ChildCount; index++)
+                {
+                    View? child = group.GetChildAt(index);
+
+                    if (child != null && ApplyGroupState(child, on))
+                    {
+                        containsInfoButton = true;
+                    }
+                }
+            }
+
+            view.Enabled = on;
+
+            if (!containsInfoButton)
+            {
+                view.Alpha = on ? 1.0f : 0.4f;
+            }
+
+            return containsInfoButton;
         }
 
         /// <summary>

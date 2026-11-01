@@ -89,9 +89,14 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition ShowAirportsSetting = SettingDefinition.CreateSwitch("show_airports", "Lotniska na mapie", true, "Pokazuje na mapie lotniska z bazy OurAirports razem z pasami startowymi przy dużym przybliżeniu. Dotknięcie lotniska pokazuje jego dane: nazwę, kody IATA i ICAO, miasto, kraj, wysokość nad poziomem morza i odległość od Ciebie. Lotniska można też wyszukać w oknie wyszukiwania, na telefonie i w samochodzie. Lotniska wojskowe mają inny kolor.");
 
         /// <summary>
+        /// Switch that limits the airports on the map to the favorite ones.
+        /// </summary>
+        public static readonly SettingDefinition ShowOnlyFavoriteAirportsSetting = SettingDefinition.CreateSwitch("airport_only_favorites", "Tylko ulubione lotniska", false, "Pokazuje na mapie wyłącznie ulubione lotniska (ekran „Ulubione lotniska” w menu), bez żadnych innych. Ulubione są wtedy widoczne przy każdym poziomie przybliżenia, a rodzaje lotnisk, filtr małych lotnisk i zakres zoomu są nieaktywne, bo nie mają znaczenia. Kody lotnisk i ich wielkość działają dalej.");
+
+        /// <summary>
         /// Which categories of airports are shown, as a bit mask of AirportCategory.
         /// </summary>
-        public static readonly SettingDefinition AirportTypesSetting = SettingDefinition.CreateMultiChoice("airport_types", "Rodzaje lotnisk na mapie", (int)(AirportCategory.Large | AirportCategory.Medium | AirportCategory.Military), "Zaznacz, jakie lotniska mają być widoczne. Duże, średnie i małe to lotniska cywilne, wojskowe (czerwone) to lotniska wojskowe każdej wielkości, a helipady to lądowiska dla śmigłowców, których są dziesiątki tysięcy. Mniejsze lotniska pojawiają się przy większym przybliżeniu: domyślnie duże od poziomu 4, średnie od 6, małe od 8, helipady od 10 (suwak „Lotniska od zoomu” przesuwa te progi). Gdy małych lotnisk albo helipadów w widoku jest dużo, pokazuje się najbliższe środka ekranu, a etykiety mniej ważnych są pomijane, żeby się nie nakładały. Helipady są też szukane w wyszukiwarce tylko wtedy, gdy są zaznaczone.", "Duże", "Średnie", "Małe", "Wojskowe", "Helipady");
+        public static readonly SettingDefinition AirportTypesSetting = SettingDefinition.CreateMultiChoice("airport_types", "Rodzaje lotnisk na mapie", (int)(AirportCategory.Large | AirportCategory.Medium | AirportCategory.Military), "Zaznacz, jakie lotniska mają być widoczne. Duże, średnie i małe to lotniska cywilne, wojskowe (czerwone) to lotniska wojskowe każdej wielkości, a helipady to lądowiska dla śmigłowców, których są dziesiątki tysięcy. Zakres zoomu, w którym lotniska są widoczne, jest wspólny dla wszystkich rodzajów i ustawia się go osobną kontrolką niżej. Gdy małych lotnisk albo helipadów w widoku jest dużo, pokazuje się najbliższe środka ekranu, a etykiety mniej ważnych są pomijane, żeby się nie nakładały. Helipady są też szukane w wyszukiwarce tylko wtedy, gdy są zaznaczone.", "Duże", "Średnie", "Małe", "Wojskowe", "Helipady");
 
         /// <summary>
         /// Switch that limits the small airports on the map to those with a paved runway of at least 800 m. Available only while the small airports are switched on.
@@ -109,9 +114,14 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition AirportLabelSizeSetting = SettingDefinition.CreateSlider("airport_label_dp", "Wielkość kodów lotnisk", 11.0, 6.0, 30.0, 0.5, " dp", "Wielkość liter kodów IATA lub ICAO obok znaczników lotnisk, w dp (jednostka niezależna od gęstości ekranu). Większe litery są czytelniejsze w samochodzie, ale zajmują więcej miejsca, więc więcej etykiet zostanie pominiętych, żeby się nie nakładały. Rozmiar znaczników lotnisk zmienia ustawienie „Rozmiar ikon samolotów”.");
 
         /// <summary>
-        /// Zoom level from which the large airports appear; the smaller classes appear a fixed number of levels later.
+        /// Zoom level from which the airports appear, the lower end of the visibility range of all airport categories.
         /// </summary>
-        public static readonly SettingDefinition AirportFromZoomSetting = SettingDefinition.CreateSlider("airport_from_zoom", "Lotniska od zoomu", 4.0, 2.0, 12.0, 1.0, "", "Poziom przybliżenia, od którego na mapie pojawiają się lotniska. Od tej wartości widać duże lotniska, 2 poziomy bliżej średnie, 4 poziomy bliżej małe, a 6 poziomów bliżej helipady. Domyślnie 4, czyli duże od 4, średnie od 6, małe od 8 i helipady od 10. Zwiększ wartość, jeśli lotniska zalewają mapę, zmniejsz, jeśli chcesz je widzieć z dalszej odległości. Progi nie są wyższe niż największe dozwolone przybliżenie mapy, więc każdy rodzaj da się zobaczyć. Ulubione lotniska są widoczne od zoomu 5 niezależnie od tej wartości.");
+        public static readonly SettingDefinition AirportFromZoomSetting = new SettingDefinition("airport_from_zoom", "Lotniska od zoomu", 5.0, 1.0, 18.0, true, SettingKind.ZoomRange, null, 0.0, "Zakres poziomów przybliżenia mapy, w którym widać lotniska. Lewy uchwyt to zoom, od którego lotniska się pojawiają, prawy to zoom, powyżej którego znikają (prawy koniec skali oznacza brak górnego limitu). Zakres dotyczy wszystkich zaznaczonych rodzajów lotnisk jednakowo: o tym, które rodzaje są widoczne, decydują pola „Rodzaje lotnisk na mapie”. Domyślnie od zoomu 5, bez górnego limitu. Przesuń lewy uchwyt w prawo, jeśli lotniska zalewają mapę, a prawy w lewo, jeśli na dużym przybliżeniu mają zniknąć. Przy dużej liczbie małych lotnisk i helipadów w widoku pokazuje się 60 małych i 40 helipadów najbliższych środka ekranu. Ulubione lotniska są widoczne od zoomu 5 niezależnie od tego zakresu.");
+
+        /// <summary>
+        /// Zoom level above which the airports disappear; 18 means no upper limit.
+        /// </summary>
+        public static readonly SettingDefinition AirportToZoomSetting = new SettingDefinition("airport_to_zoom", "Lotniska do zoomu", 18.0, 1.0, 18.0, true, SettingKind.ZoomRange);
 
         /// <summary>
         /// Size of the aircraft icons as a multiple of the default size, on the phone and in Android Auto.
@@ -183,11 +193,13 @@ namespace AdsbCarMap.Settings
             AltitudeBlueSetting,
             AltitudePurpleSetting,
             ShowAirportsSetting,
+            ShowOnlyFavoriteAirportsSetting,
+            AirportLabelSizeSetting,
+            ShowAirportLabelsSetting,
             AirportTypesSetting,
             SmallAirportsPavedSetting,
-            ShowAirportLabelsSetting,
-            AirportLabelSizeSetting,
             AirportFromZoomSetting,
+            AirportToZoomSetting,
             IconScaleSetting,
             AircraftOutlineWidthSetting,
             TrailDurationSetting,
@@ -212,11 +224,13 @@ namespace AdsbCarMap.Settings
         public static readonly IReadOnlyList<SettingDefinition> AirportSettings = new List<SettingDefinition>
         {
             ShowAirportsSetting,
+            ShowOnlyFavoriteAirportsSetting,
+            AirportLabelSizeSetting,
+            ShowAirportLabelsSetting,
             AirportTypesSetting,
             SmallAirportsPavedSetting,
-            ShowAirportLabelsSetting,
-            AirportLabelSizeSetting,
             AirportFromZoomSetting,
+            AirportToZoomSetting,
         };
 
         /// <summary>
@@ -324,6 +338,11 @@ namespace AdsbCarMap.Settings
         public static bool ShowAirports => Get(ShowAirportsSetting) >= 0.5;
 
         /// <summary>
+        /// Whether only the favorite airports are drawn.
+        /// </summary>
+        public static bool ShowOnlyFavoriteAirports => Get(ShowOnlyFavoriteAirportsSetting) >= 0.5;
+
+        /// <summary>
         /// Whether the small airports are limited to those with a paved runway of at least 800 m.
         /// </summary>
         public static bool SmallAirportsPavedOnly => Get(SmallAirportsPavedSetting) >= 0.5;
@@ -389,9 +408,14 @@ namespace AdsbCarMap.Settings
         public static float AirportLabelSize => (float)Get(AirportLabelSizeSetting);
 
         /// <summary>
-        /// Zoom level from which the large airports are drawn; the smaller classes are drawn later.
+        /// Zoom level from which the airports are drawn, the lower end of the visibility range.
         /// </summary>
         public static double AirportFromZoom => Get(AirportFromZoomSetting);
+
+        /// <summary>
+        /// Zoom level above which the airports are not drawn, or 18 when there is no upper limit.
+        /// </summary>
+        public static double AirportToZoom => Get(AirportToZoomSetting);
 
         /// <summary>
         /// Size of the aircraft icons as a multiple of the default size.

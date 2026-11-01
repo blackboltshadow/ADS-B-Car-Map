@@ -11,21 +11,6 @@ namespace AdsbCarMap.Map
     public sealed class AirportLayer
     {
         /// <summary>
-        /// Number of zoom levels after the base zoom from which medium airports are drawn.
-        /// </summary>
-        private const double MediumOffset = 2.0;
-
-        /// <summary>
-        /// Number of zoom levels after the base zoom from which small airports are drawn.
-        /// </summary>
-        private const double SmallOffset = 4.0;
-
-        /// <summary>
-        /// Number of zoom levels after the base zoom from which heliports are drawn.
-        /// </summary>
-        private const double HeliportOffset = 6.0;
-
-        /// <summary>
         /// Zoom level from which favorite airports are drawn, whatever their size.
         /// </summary>
         private const double FavoriteFromZoom = 5.0;
@@ -177,7 +162,9 @@ namespace AdsbCarMap.Map
 
             frameZoom = zoom;
 
-            if (zoom >= Math.Min(GetFromZoom(AirportType.Large), FavoriteFromZoom))
+            bool onlyFavorites = AppSettings.ShowOnlyFavoriteAirports;
+
+            if (onlyFavorites || zoom >= Math.Min(GetFromZoom(), FavoriteFromZoom))
             {
                 (double X, double Y) center = WebMercator.LatLonToWorldPixel(centerLatitude, centerLongitude, zoom);
                 double halfWidth = width / 2.0 * (1.0 + ViewMargin);
@@ -185,9 +172,12 @@ namespace AdsbCarMap.Map
                 (double Latitude, double Longitude) topLeft = WebMercator.WorldPixelToLatLon(center.X - halfWidth, center.Y - halfHeight, zoom);
                 (double Latitude, double Longitude) bottomRight = WebMercator.WorldPixelToLatLon(center.X + halfWidth, center.Y + halfHeight, zoom);
 
-                database.Query(bottomRight.Latitude, topLeft.Latitude, topLeft.Longitude, bottomRight.Longitude, isShownFilter, visible);
+                if (!onlyFavorites)
+                {
+                    database.Query(bottomRight.Latitude, topLeft.Latitude, topLeft.Longitude, bottomRight.Longitude, isShownFilter, visible);
+                }
 
-                if (zoom >= FavoriteFromZoom)
+                if (onlyFavorites || zoom >= FavoriteFromZoom)
                 {
                     foreach (string code in AppServices.Favorites.Codes)
                     {
@@ -313,7 +303,7 @@ namespace AdsbCarMap.Map
         /// <returns>True when the airport is drawn.</returns>
         private bool IsShownInFrame(Airport airport)
         {
-            if (frameZoom < GetFromZoom(airport.Type) || !AppSettings.IsAirportCategoryEnabled(airport))
+            if (frameZoom < GetFromZoom() || frameZoom > AppSettings.AirportToZoom + 0.999 || !AppSettings.IsAirportCategoryEnabled(airport))
             {
                 return false;
             }
@@ -322,31 +312,12 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Returns the zoom level from which airports of a size class are drawn: the base zoom from the settings plus a fixed number of levels for smaller airports, never above the highest zoom the map allows, so that every class can be reached.
+        /// Returns the zoom level from which airports are drawn: the lower end of the range from the settings, never above the highest zoom the map allows or the upper end of the range. The range is the same for all airport categories.
         /// </summary>
-        /// <param name="type">Size class.</param>
         /// <returns>Zoom level.</returns>
-        internal static double GetFromZoom(AirportType type)
+        internal static double GetFromZoom()
         {
-            double offset;
-
-            switch (type)
-            {
-                case AirportType.Large:
-                    offset = 0.0;
-                    break;
-                case AirportType.Medium:
-                    offset = MediumOffset;
-                    break;
-                case AirportType.Small:
-                    offset = SmallOffset;
-                    break;
-                default:
-                    offset = HeliportOffset;
-                    break;
-            }
-
-            return Math.Min(AppSettings.AirportFromZoom + offset, AppSettings.MaxZoom);
+            return Math.Min(Math.Min(AppSettings.AirportFromZoom, AppSettings.MaxZoom), AppSettings.AirportToZoom);
         }
 
         /// <summary>
