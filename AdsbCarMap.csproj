@@ -75,6 +75,8 @@
   <PropertyGroup>
     <BuildNumberFile>$(MSBuildProjectDirectory)\BuildNumber.txt</BuildNumberFile>
     <ApplicationVersion Condition="Exists('$(BuildNumberFile)')">$([MSBuild]::Add($([System.IO.File]::ReadAllText('$(BuildNumberFile)').Trim()), 1))</ApplicationVersion>
+    <VersionFile>$(MSBuildProjectDirectory)\Version.txt</VersionFile>
+    <ApplicationDisplayVersion Condition="Exists('$(VersionFile)')">$([System.IO.File]::ReadAllText('$(VersionFile)').Trim())</ApplicationDisplayVersion>
   </PropertyGroup>
 
   <Import Project="$(USERPROFILE)\adsbcarmap-contact.props" Condition="Exists('$(USERPROFILE)\adsbcarmap-contact.props')" />
@@ -111,9 +113,13 @@
       <BuildInfoLine Include="    internal static class BuildInfo" />
       <BuildInfoLine Include="    {" />
       <BuildInfoLine Include="        /// &lt;summary&gt;" />
-      <BuildInfoLine Include="        /// Application version with the build number incremented on every build." />
+      <BuildInfoLine Include="        /// Application version from Version.txt, changed only when a release is prepared." />
       <BuildInfoLine Include="        /// &lt;/summary&gt;" />
-      <BuildInfoLine Include="        public const string Version = &quot;$(ApplicationDisplayVersion).$(BuildNumber)&quot;%3B" />
+      <BuildInfoLine Include="        public const string Version = &quot;$(ApplicationDisplayVersion)&quot;%3B" />
+      <BuildInfoLine Include="        /// &lt;summary&gt;" />
+      <BuildInfoLine Include="        /// Build number incremented on every build, also the versionCode of the package." />
+      <BuildInfoLine Include="        /// &lt;/summary&gt;" />
+      <BuildInfoLine Include="        public const string Build = &quot;$(BuildNumber)&quot;%3B" />
       <BuildInfoLine Include="        /// &lt;summary&gt;" />
       <BuildInfoLine Include="        /// Contact sent to the data servers in the User-Agent header, loaded from the user file adsbcarmap-contact.props. Empty when the file does not exist." />
       <BuildInfoLine Include="        /// &lt;/summary&gt;" />

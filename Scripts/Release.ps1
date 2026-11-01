@@ -3,7 +3,7 @@
 Builds the signed Release AAB and tags the built commit in git.
 
 .DESCRIPTION
-The tag is named v<DisplayVersion>.<BuildNumber> (for example v0.2.137) and is an annotated tag that records the version, the build number (versionCode), the commit, the AAB file name, its size and SHA-256. The same values are appended to release-history.csv. The tag is not pushed unless -Push is given.
+The tag is named v<version from Version.txt> (for example v0.3.0). Change the version first with Bump-Version.ps1 and commit Version.txt. The tag is an annotated tag that records the version, the build number (versionCode), the commit, the AAB file name, its size and SHA-256. The same values are appended to release-history.csv. The tag is not pushed unless -Push is given.
 
 .PARAMETER NoTag
 Builds the AAB only, without checking the working tree and without creating a tag.
@@ -42,7 +42,16 @@ if (-not $NoTag) {
         Write-Host ($dirty -join "`n")
         throw "Working tree has uncommitted changes (other than BuildNumber.txt and release-history.csv). Commit them first or use -Force."
     }
+
+    $version = ([IO.File]::ReadAllText((Join-Path (Split-Path $projectPath) "Version.txt"))).Trim()
+    $tag = "v$version"
+    & $gitPath -C (Split-Path $projectPath) rev-parse -q --verify "refs/tags/$tag" | Out-Null
+
+    if ($LASTEXITCODE -eq 0) {
+        throw "Tag $tag already exists. Run Scripts\Bump-Version.ps1 (-Minor or -Patch), commit Version.txt and run Release.ps1 again."
+    }
 }
+
 $passwordPointer = [IntPtr]::Zero
 $securePassword = $null
 $previousStorePass = $env:ADSBCARMAP_STOREPASS
@@ -78,9 +87,6 @@ try {
     if (-not $NoTag) {
         $root = Split-Path $projectPath
         $buildNumber = ([IO.File]::ReadAllText((Join-Path $root "BuildNumber.txt"))).Trim()
-        $displayVersion = ([xml](Get-Content -Raw $projectPath)).Project.PropertyGroup.ApplicationDisplayVersion | Where-Object { $_ } | Select-Object -First 1
-        $version = "$displayVersion.$buildNumber"
-        $tag = "v$version"
         $commit = (& $gitPath -C $root rev-parse HEAD).Trim()
         $signedAab = $aabFiles | Where-Object { $_.Name -like "*-Signed.aab" } | Select-Object -First 1
 

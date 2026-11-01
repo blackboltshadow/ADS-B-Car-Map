@@ -47,9 +47,8 @@ if (-not $Version) {
         $Version = $tagsOnTarget[0].TrimStart("v")
     }
     else {
-        $displayVersion = ([xml](Get-Content -Raw (Join-Path $root "AdsbCarMap.csproj"))).Project.PropertyGroup.ApplicationDisplayVersion | Where-Object { $_ } | Select-Object -First 1
-        $buildNumber = ([IO.File]::ReadAllText((Join-Path $root "BuildNumber.txt"))).Trim()
-        $Version = "$displayVersion.$buildNumber (unreleased)"
+        $currentVersion = ([IO.File]::ReadAllText((Join-Path $root "Version.txt"))).Trim()
+        $Version = "$currentVersion (unreleased)"
     }
 }
 

@@ -2047,7 +2047,7 @@ namespace AdsbCarMap.Map
             canvas.DrawText(TileProvider.OpenStreetMapAttribution, width - 8f * screenDensity, height - 8f * screenDensity, attributionPaint);
 
             versionPaint.TextSize = 11.0f * screenDensity;
-            string versionText = "v" + BuildInfo.Version;
+            string versionText = "v" + BuildInfo.Version + " (" + BuildInfo.Build + ")";
             float statusDiameter = 18f * screenDensity;
             float statusLeft = 8f * screenDensity;
             float baseline = height - 8f * screenDensity;

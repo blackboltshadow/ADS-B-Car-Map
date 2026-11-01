@@ -195,14 +195,15 @@ dotnet build -c Debug
 dotnet build -c Debug -t:Install "-p:AdbTarget=-s <numer-seryjny-urządzenia>"
 ```
 
-Numer seryjny urządzenia pokaże `adb devices`. Każdy build zwiększa numer kompilacji w `BuildNumber.txt`, który jest też `versionCode` aplikacji. Wersja wyświetlana to `0.2.<numer kompilacji>` (widoczna w lewym dolnym rogu mapy).
+Numer seryjny urządzenia pokaże `adb devices`. Każdy build zwiększa numer kompilacji w `BuildNumber.txt`, który jest też `versionCode` aplikacji. Wersja aplikacji (`versionName`) jest w pliku `Version.txt` w postaci `0.<druga>.<trzecia>` (np. `0.3.0`) i zmienia się tylko przy przygotowaniu wydania skryptem `Scripts\Bump-Version.ps1`. W lewym dolnym rogu mapy i na ekranie ustawień widać wersję z numerem kompilacji, np. `v0.3.0 (164)`. `versionCode` nigdy nie jest zerowany, bo Google Play wymaga, żeby rósł.
 
 **Skrypty pomocnicze (`Scripts/`)**
 
 | Skrypt | Działanie |
 |---|---|
 | `Setup-Environment.ps1` | Przygotowuje nowy komputer: kopiuje pliki podpisu i kontaktu z wybranego katalogu (np. pendrive'a) do `%USERPROFILE%`, opcjonalnie ustawia `JAVA_HOME` i zmienne z hasłami oraz dopisuje katalog `platform-tools` (ADB) do PATH użytkownika. |
-| `Release.ps1` | Buduje podpisany plik `aab` w konfiguracji Release. Gdy istnieje `adsbcarmap-signing.props` lub zmienna `ADSBCARMAP_STOREPASS`, nie pyta o hasło, a w przeciwnym razie prosi o nie i ustawia zmienne tylko na czas działania. Po udanym buildzie tworzy adnotowany tag `v<wersja>` (np. `v0.2.137`) na bieżącym commicie, z wersją, `versionCode`, commitem, nazwą, rozmiarem i SHA-256 paczki, oraz dopisuje te wartości do `release-history.csv`. Przed buildem wymaga czystego drzewa (poza `BuildNumber.txt` i `release-history.csv`). Przełączniki: `-NoTag` (sam build), `-Push` (wysyła tag na GitHuba), `-Force` (pomija sprawdzenie drzewa). |
+| `Release.ps1` | Buduje podpisany plik `aab` w konfiguracji Release. Gdy istnieje `adsbcarmap-signing.props` lub zmienna `ADSBCARMAP_STOREPASS`, nie pyta o hasło, a w przeciwnym razie prosi o nie i ustawia zmienne tylko na czas działania. Po udanym buildzie tworzy adnotowany tag `v<wersja z Version.txt>` (np. `v0.3.0`), a jeśli taki tag już istnieje, przerywa z podpowiedzią, żeby najpierw podbić wersję na bieżącym commicie, z wersją, `versionCode`, commitem, nazwą, rozmiarem i SHA-256 paczki, oraz dopisuje te wartości do `release-history.csv`. Wersja musi być zatwierdzona w `Version.txt` przed buildem. Przed buildem wymaga czystego drzewa (poza `BuildNumber.txt` i `release-history.csv`). Przełączniki: `-NoTag` (sam build), `-Push` (wysyła tag na GitHuba), `-Force` (pomija sprawdzenie drzewa). |
+| `Bump-Version.ps1` | Zmienia wersję w `Version.txt` przed wydaniem. Wymaga dokładnie jednego przełącznika, bo to Ty decydujesz: `-Minor` (nowe wydanie, druga cyfra rośnie, trzecia wraca do 0, np. 0.3.0 → 0.4.0) albo `-Patch` (poprawka, tylko trzecia cyfra, np. 0.3.0 → 0.3.1). Po skrypcie zatwierdź `Version.txt` i uruchom `Release.ps1`. |
 | `Release-Notes.ps1` | Tworzy notatki wydania: podsumowanie commitów od poprzedniego tagu wydania, pogrupowane na Add, Fix, Change, Remove i Other. Wypisuje je i zapisuje w `release-notes\<wersja>.md` (katalog ignorowany przez git). Parametry: `-From`, `-To`, `-Version`, `-NoFile`. |
 | `DHU_Start.ps1` | Przekierowuje port `5277` i uruchamia Desktop Head Unit (emulator samochodu). |
 | `DHU_Logs.ps1` | Czyści logcat i zapisuje go do `logs/android-auto.log` (katalog ignorowany przez git). |
@@ -251,6 +252,8 @@ Services/     współdzielone usługi: klienci HTTP, pozycja GPS, usługa pierws
 Settings/     definicje i zapis ustawień
 Resources/    ikony i zasoby graficzne
 Scripts/      skrypty PowerShell: konfiguracja komputera, build Release, Android Auto DHU
+RELEASE_NOTES.md  historia wersji: co zostało wydane w kolejnych wydaniach
+release-history.csv  wersja, commit i SHA-256 każdej zbudowanej paczki
 ```
 
 Mapa na telefonie i w Android Auto używa tego samego `MapController`, więc zmiany w rysowaniu dotyczą obu.

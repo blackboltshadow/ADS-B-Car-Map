@@ -130,7 +130,7 @@ namespace AdsbCarMap.Activities
             scrollView.AddView(root);
 
             TextView version = new TextView(this);
-            version.Text = "ADS-B Car Map v" + BuildInfo.Version;
+            version.Text = "ADS-B Car Map v" + BuildInfo.Version + " (" + BuildInfo.Build + ")";
             version.TextSize = 12f;
             root.AddView(version);
 

@@ -11,7 +11,7 @@ Zasady kodu:
 Projekt:
 Aplikacja Android (mapa OSM + samoloty ADS-B z adsb.lol, API zgodne z airplanes.live) działająca na telefonie i jako aplikacja nawigacyjna Android Auto (NavigationTemplate + SurfaceCallback, własne rysowanie na Canvas). Użytek własny, sideload. Repozytorium: https://github.com/blackboltshadow/ADS-B-Car-Map (licencja MIT).
 
-Identyfikatory: ApplicationId i package w manifeście = com.blackboltshadow.adsbcarmap (wersja 0.2, numer kompilacji w BuildNumber.txt, jest też versionCode).
+Identyfikatory: ApplicationId i package w manifeście = com.blackboltshadow.adsbcarmap (wersja w Version.txt w postaci 0.druga.trzecia, np. 0.3.0, zmieniana tylko przy wydaniu przez Scripts/Bump-Version.ps1; numer kompilacji w BuildNumber.txt, jest też versionCode i nigdy nie jest zerowany).
 Podpis: Debug i Release podpisywane tym samym kluczem $(USERPROFILE)\adsbcarmap-release.jks, alias adsbcarmap (hasła w pliku $(USERPROFILE)\adsbcarmap-signing.props, poza projektem; rezerwowo zmienne środowiskowe ADSBCARMAP_STOREPASS i ADSBCARMAP_KEYPASS), format aab (celowo). Kontakt do User-Agent w $(USERPROFILE)\adsbcarmap-contact.props (poza repo, trafia do wygenerowanego BuildInfo.Contact).
 
 Struktura: Activities/ (MainActivity z mapą, SearchActivity, SettingsActivity, AircraftCardView, RouteProgressView), Auto/ (Android Auto: AdsbCarService, MapScreen, SearchScreen), Data/ (modele, klienci API, klasyfikator rodzajów, RouteCache, GeoMath), Map/ (MapController wspólny dla telefonu i Android Auto, PhoneMapView, kafelki, WebMercator, AircraftShapes), Services/ (AppServices, LiveTraffic, LocationTracker, LocationForegroundService), Settings/ (AppSettings, SettingDefinition).
