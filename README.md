@@ -192,7 +192,8 @@ Numer seryjny urządzenia pokaże `adb devices`. Każdy build zwiększa numer ko
 | Skrypt | Działanie |
 |---|---|
 | `Setup-Environment.ps1` | Przygotowuje nowy komputer: kopiuje pliki podpisu i kontaktu z wybranego katalogu (np. pendrive'a) do `%USERPROFILE%`, opcjonalnie ustawia `JAVA_HOME` i zmienne z hasłami oraz dopisuje katalog `platform-tools` (ADB) do PATH użytkownika. |
-| `Release.ps1` | Buduje podpisany plik `aab` w konfiguracji Release. Gdy istnieje `adsbcarmap-signing.props` lub zmienna `ADSBCARMAP_STOREPASS`, nie pyta o hasło, a w przeciwnym razie prosi o nie i ustawia zmienne tylko na czas działania. |
+| `Release.ps1` | Buduje podpisany plik `aab` w konfiguracji Release. Gdy istnieje `adsbcarmap-signing.props` lub zmienna `ADSBCARMAP_STOREPASS`, nie pyta o hasło, a w przeciwnym razie prosi o nie i ustawia zmienne tylko na czas działania. Po udanym buildzie tworzy adnotowany tag `v<wersja>` (np. `v0.2.137`) na bieżącym commicie, z wersją, `versionCode`, commitem, nazwą, rozmiarem i SHA-256 paczki, oraz dopisuje te wartości do `release-history.csv`. Przed buildem wymaga czystego drzewa (poza `BuildNumber.txt` i `release-history.csv`). Przełączniki: `-NoTag` (sam build), `-Push` (wysyła tag na GitHuba), `-Force` (pomija sprawdzenie drzewa). |
+| `Release-Notes.ps1` | Tworzy notatki wydania: podsumowanie commitów od poprzedniego tagu wydania, pogrupowane na Add, Fix, Change, Remove i Other. Wypisuje je i zapisuje w `release-notes\<wersja>.md` (katalog ignorowany przez git). Parametry: `-From`, `-To`, `-Version`, `-NoFile`. |
 | `DHU_Start.ps1` | Przekierowuje port `5277` i uruchamia Desktop Head Unit (emulator samochodu). |
 | `DHU_Logs.ps1` | Czyści logcat i zapisuje go do `logs/android-auto.log` (katalog ignorowany przez git). |
 

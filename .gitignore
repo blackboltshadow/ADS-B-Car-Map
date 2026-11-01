@@ -13,3 +13,5 @@ obj/
 *.binlog
 
 logs/
+
+release-notes/
