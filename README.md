@@ -97,7 +97,7 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 
 ## Konfiguracja aplikacji
 
-Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązują na telefonie oraz w Android Auto. Wartości spoza dozwolonego zakresu są ucinane, puste pola zostają bez zmiany.
+Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązują na telefonie oraz w Android Auto. Przy ustawieniach „Etykiety samolotów”, „Legenda wysokości” i „Jednostka wysokości” jest okrągły przycisk „i”, który otwiera okienko z opisem, co dokładnie robi to ustawienie, wraz z przykładem (etykieta w bieżącej wielkości, pasek legendy z bieżącymi progami, ta sama wysokość w trzech jednostkach). Liczby wpisuje się w polach tekstowych, ustawienia włącz/wyłącz zmienia się przełącznikami, a wybór jednostki listą rozwijaną. Wartości spoza dozwolonego zakresu są ucinane, puste pola zostają bez zmiany.
 
 | Ustawienie | Domyślnie | Zakres | Znaczenie |
 |---|---|---|---|
@@ -116,10 +116,11 @@ Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązuj�
 | Krycie obwódki | 140 | 0–255 | |
 | Przyciemnienie mapy | 90 | 0–220 | krycie czarnej warstwy nad kafelkami (0 wyłącza), im więcej, tym ciemniejsza mapa |
 | Obwódka samolotów [dp] | 1,2 | 0–6 | ciemna obwódka wokół ikon (0 wyłącza) |
-| Etykiety samolotów | 0 | 0–1 | 0 ukrywa etykiety, 1 pokazuje (to samo robi przycisk na mapie) |
-| Legenda wysokości | 1 | 0–1 | 0 ukrywa pasek legendy kolorów wysokości, 1 pokazuje |
-| Wielkość etykiet [dp] | 13 | 6–40 | |
-| Progi kolorów wysokości [m] | 300 / 1200 / 3000 / 6000 / 12000 | 0–20000 | granice pomarańczowego, żółtego, zielonego, niebieskiego i fioletowego |
+| Etykiety samolotów | wyłączone | przełącznik | pokazuje lub ukrywa etykiety (to samo robi przycisk na mapie) |
+| Legenda wysokości | włączona | przełącznik | pokazuje lub ukrywa pasek legendy kolorów wysokości |
+| Jednostka wysokości | metry | lista wyboru | metry (m, km), stopy (ft) albo poziom lotu (FL). Dotyczy etykiet na mapie, wyników wyszukiwania, karty i popupu samolotu oraz legendy, na telefonie i w Android Auto. Karta pokazuje dodatkowo równoważną wartość w nawiasie. Jednostka dotyczy też edytora skali kolorów. |
+| Wielkość liter etykiet [dp] | 13 | 6–40 | suwak co 0,5 dp z podglądem przykładowej etykiety w wybranej wielkości |
+| Skala kolorów wysokości | 300 / 1200 / 3000 / 6000 / 12000 m | 50–20000 m | jeden edytor zamiast pięciu pól: pasek z gradientem i pięcioma znacznikami (pomarańczowy, żółty, zielony, niebieski, fioletowy). Znacznik przeciąga się palcem (nie przejdzie przez sąsiada, wartości przyciągają się do 50 m albo 100 ft), a dotknięcie otwiera okienko do wpisania dokładnej wartości w wybranej jednostce. Szary punkt po lewej to ziemia (0), a pierwszy próg nie może być niższy niż 50 m, żeby strefa pomarańczowa nie zniknęła. Skala paska jest pierwiastkowa, żeby niskie progi się nie zlewały. Pod paskiem jest podgląd śladu wznoszącego się samolotu w tych samych kolorach co na mapie. Kolory są stałe. Sekcja jest wydzielona w ramce, a przycisk „Przywróć domyślne kolory” ustawia domyślne progi (do zastosowania przyciskiem „Zapisz”). Wartości są zapisywane w metrach. |
 
 **Wskazówki**
 - Wolniejszy wyświetlacz w samochodzie? Zwiększ „Odstęp klatek mapy” (np. do 50–66 ms).

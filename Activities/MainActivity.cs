@@ -83,6 +83,11 @@ namespace AdsbCarMap.Activities
         private PhoneMapView? mapView;
 
         /// <summary>
+        /// Layout that contains the map view as its first child.
+        /// </summary>
+        private FrameLayout? contentRoot;
+
+        /// <summary>
         /// Main thread handler used to refresh the card periodically.
         /// </summary>
         private readonly Handler handler = new Handler(Looper.MainLooper!);
@@ -163,6 +168,8 @@ namespace AdsbCarMap.Activities
         {
             base.OnResume();
 
+            controller.SurfaceBroken -= OnSurfaceBroken;
+            controller.SurfaceBroken += OnSurfaceBroken;
             UpdateModeButtons();
             cardRefreshRunnable = new Java.Lang.Runnable(CardRefreshTick);
             handler.Post(cardRefreshRunnable);
@@ -173,6 +180,8 @@ namespace AdsbCarMap.Activities
         /// </summary>
         protected override void OnPause()
         {
+            controller.SurfaceBroken -= OnSurfaceBroken;
+
             if (cardRefreshRunnable != null)
             {
                 handler.RemoveCallbacks(cardRefreshRunnable);
@@ -180,6 +189,25 @@ namespace AdsbCarMap.Activities
             }
 
             base.OnPause();
+        }
+
+        /// <summary>
+        /// Replaces the map view with a new one when its surface got stuck in the "already locked" state, for example after the screen was covered by the settings while a frame was being drawn. A new view has a new surface, so drawing works again.
+        /// </summary>
+        private void OnSurfaceBroken()
+        {
+            RunOnUiThread(() =>
+            {
+                if (contentRoot == null || mapView == null)
+                {
+                    return;
+                }
+
+                Log.Warn(LogTag, "Powierzchnia mapy zablokowana, tworzę widok mapy od nowa.");
+                contentRoot.RemoveView(mapView);
+                mapView = new PhoneMapView(this, controller);
+                contentRoot.AddView(mapView, 0);
+            });
         }
 
         /// <summary>
@@ -285,6 +313,7 @@ namespace AdsbCarMap.Activities
         {
             FrameLayout root = new FrameLayout(this);
             root.SetFitsSystemWindows(true);
+            contentRoot = root;
             mapView = new PhoneMapView(this, controller);
             root.AddView(mapView);
 

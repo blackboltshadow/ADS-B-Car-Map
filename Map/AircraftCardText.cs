@@ -1,5 +1,6 @@
 using System.Globalization;
 using AdsbCarMap.Data;
+using AdsbCarMap.Settings;
 
 namespace AdsbCarMap.Map
 {
@@ -12,11 +13,6 @@ namespace AdsbCarMap.Map
         /// Culture used to format the numbers: decimal comma and a space as the thousands separator.
         /// </summary>
         private static readonly CultureInfo DisplayCulture = new CultureInfo("pl-PL");
-
-        /// <summary>
-        /// Feet to meters conversion factor.
-        /// </summary>
-        private const double MetersPerFoot = 0.3048;
 
         /// <summary>
         /// Knots to kilometers per hour conversion factor.
@@ -166,7 +162,7 @@ namespace AdsbCarMap.Map
             }
             else if (aircraft.AltitudeFeet.HasValue)
             {
-                lines.Add(string.Format(DisplayCulture, "Wysokość: {0:N0} ft ({1:N0} m)", aircraft.AltitudeFeet.Value, aircraft.AltitudeFeet.Value * MetersPerFoot));
+                lines.Add("Wysokość: " + AltitudeFormatter.FormatWithEquivalent(aircraft.AltitudeFeet.Value));
             }
             else
             {

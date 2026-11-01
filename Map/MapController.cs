@@ -103,23 +103,6 @@ namespace AdsbCarMap.Map
         private const double MetersPerFoot = 0.3048;
 
         /// <summary>
-        /// Color of an aircraft on the ground.
-        /// </summary>
-        private static readonly Color GroundColor = Color.Rgb(150, 150, 150);
-
-        /// <summary>
-        /// Colors of an airborne aircraft matching the altitude thresholds from <see cref="AppSettings.AltitudeStopsMeters"/>: orange, yellow, green, blue, purple.
-        /// </summary>
-        private static readonly Color[] AltitudeStopColors = new Color[]
-        {
-            Color.Rgb(255, 140, 0),
-            Color.Rgb(255, 220, 0),
-            Color.Rgb(60, 200, 60),
-            Color.Rgb(40, 130, 255),
-            Color.Rgb(170, 70, 230),
-        };
-
-        /// <summary>
         /// Smallest sum of the RGB channel differences between the ends of a trail segment for which the segment is drawn with a gradient instead of a solid color.
         /// </summary>
         private const int TrailGradientMinimumDifference = 6;
@@ -736,6 +719,11 @@ namespace AdsbCarMap.Map
             spinnerPaint.StrokeCap = Paint.Cap.Round;
             spinnerPaint.SetShadowLayer(3f, 0f, 0f, Color.Black);
         }
+
+        /// <summary>
+        /// Raised on the drawing thread when the surface got stuck in the "already locked" state, which happens when it is destroyed while a frame is being drawn. Such a surface cannot be drawn on again, so the owner must create a new one. Drawing on the broken surface is stopped before the event is raised.
+        /// </summary>
+        public event System.Action? SurfaceBroken;
 
         /// <summary>
         /// Stores the surface and starts the data download and drawing loops as well as the position updates.
@@ -1825,6 +1813,12 @@ namespace AdsbCarMap.Map
                 catch (Java.Lang.Exception exception)
                 {
                     Log.Warn(LogTag, "Rysowanie klatki nie powiodło się: " + exception.Message);
+
+                    if ((exception.Message ?? string.Empty).Contains("already locked", StringComparison.OrdinalIgnoreCase))
+                    {
+                        surface = null;
+                        SurfaceBroken?.Invoke();
+                    }
                 }
             }
         }
@@ -2105,7 +2099,7 @@ namespace AdsbCarMap.Map
         private void DrawAltitudeLegend(Canvas canvas, int width, int height, float screenDensity)
         {
             double[] stops = frameAltitudeStops;
-            int stepCount = AltitudeStopColors.Length;
+            int stepCount = AltitudePalette.StopColors.Length;
             float barWidth = Math.Min(width - 32f * screenDensity, Math.Clamp(width * 0.4f, 240f * screenDensity, 400f * screenDensity));
             float barHeight = 7f * screenDensity;
             float left = (width - barWidth) / 2f;
@@ -2116,12 +2110,12 @@ namespace AdsbCarMap.Map
             int[] colors = new int[stepCount + 1];
             float[] positions = new float[stepCount + 1];
 
-            colors[0] = AltitudeStopColors[0].ToArgb();
+            colors[0] = AltitudePalette.StopColors[0].ToArgb();
             positions[0] = 0f;
 
             for (int index = 0; index < stepCount; index++)
             {
-                colors[index + 1] = AltitudeStopColors[index].ToArgb();
+                colors[index + 1] = AltitudePalette.StopColors[index].ToArgb();
                 positions[index + 1] = (index + 1f) / stepCount;
             }
 
@@ -2141,25 +2135,10 @@ namespace AdsbCarMap.Map
             for (int index = 0; index <= stepCount; index++)
             {
                 double meters = index == 0 ? 0.0 : stops[Math.Min(index - 1, stops.Length - 1)];
-                string text = FormatAltitudeLabel(meters, index == stepCount);
+                string text = AltitudeFormatter.FormatLegend(meters, index == stepCount);
 
                 canvas.DrawText(text, left + barWidth * index / stepCount, top - 3f * screenDensity, legendTextPaint);
             }
-        }
-
-        /// <summary>
-        /// Formats an altitude threshold for the legend: meters below one kilometer, kilometers otherwise, with a plus sign for the highest one.
-        /// </summary>
-        /// <param name="meters">Altitude in meters.</param>
-        /// <param name="isLast">Whether this is the highest threshold, meaning "and above".</param>
-        /// <returns>Label text.</returns>
-        private static string FormatAltitudeLabel(double meters, bool isLast)
-        {
-            string text = meters < 1000.0
-                ? Math.Round(meters).ToString("0", CultureInfo.CurrentCulture) + " m"
-                : (meters / 1000.0).ToString("0.#", CultureInfo.CurrentCulture) + " km";
-
-            return isLast ? text + "+" : text;
         }
 
         /// <summary>
@@ -2592,7 +2571,7 @@ namespace AdsbCarMap.Map
 
             string name = AircraftSearch.GetName(item);
             string label = item.AltitudeFeet.HasValue
-                ? string.Format(CultureInfo.InvariantCulture, "{0} FL{1:000}", name, Math.Round(item.AltitudeFeet.Value / 100.0))
+                ? name + " " + AltitudeFormatter.Format(item.AltitudeFeet.Value)
                 : name;
 
             float labelX = x + 14f * screenDensity;
@@ -2712,45 +2691,15 @@ namespace AdsbCarMap.Map
         {
             if (onGround)
             {
-                return GroundColor;
+                return AltitudePalette.GroundColor;
             }
 
             if (!altitudeFeet.HasValue)
             {
-                return AltitudeStopColors[0];
+                return AltitudePalette.StopColors[0];
             }
 
-            double meters = altitudeFeet.Value * MetersPerFoot;
-            double[] stops = frameAltitudeStops;
-
-            if (meters <= stops[0])
-            {
-                return AltitudeStopColors[0];
-            }
-
-            for (int index = 1; index < stops.Length; index++)
-            {
-                if (meters <= stops[index])
-                {
-                    double span = stops[index] - stops[index - 1];
-
-                    if (span <= 0.0)
-                    {
-                        return AltitudeStopColors[index];
-                    }
-
-                    double fraction = (meters - stops[index - 1]) / span;
-                    Color from = AltitudeStopColors[index - 1];
-                    Color to = AltitudeStopColors[index];
-
-                    return Color.Rgb(
-                        (int)Math.Round(from.R + (to.R - from.R) * fraction),
-                        (int)Math.Round(from.G + (to.G - from.G) * fraction),
-                        (int)Math.Round(from.B + (to.B - from.B) * fraction));
-                }
-            }
-
-            return AltitudeStopColors[AltitudeStopColors.Length - 1];
+            return AltitudePalette.GetColor(altitudeFeet.Value * MetersPerFoot, frameAltitudeStops);
         }
 
         /// <summary>
