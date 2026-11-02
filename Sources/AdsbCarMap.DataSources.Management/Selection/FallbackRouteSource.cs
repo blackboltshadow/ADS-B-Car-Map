@@ -26,6 +26,11 @@ namespace AdsbCarMap.DataSources.Management.Selection
         private readonly Func<bool> fallbackEnabled;
 
         /// <summary>
+        /// Name of the source that gave the last route.
+        /// </summary>
+        private volatile string? lastUsedSourceName;
+
+        /// <summary>
         /// Receives the failures of the sources: the kind, a description that is the same for the same event, and the exception if there was one. Null when nobody listens.
         /// </summary>
         private readonly Action<SourceEventKind, string, Exception?>? report;
@@ -49,6 +54,11 @@ namespace AdsbCarMap.DataSources.Management.Selection
         /// Name of the first source in the order of preference.
         /// </summary>
         public string Name => GetAllInOrder()[0].Name;
+
+        /// <summary>
+        /// Name of the source that gave the last route, or null before the first one.
+        /// </summary>
+        public string? LastUsedSourceName => lastUsedSourceName;
 
         /// <summary>
         /// Returns all sources in the order of preference.
@@ -92,6 +102,8 @@ namespace AdsbCarMap.DataSources.Management.Selection
 
                     if (route != null)
                     {
+                        lastUsedSourceName = source.Name;
+
                         return route;
                     }
                 }

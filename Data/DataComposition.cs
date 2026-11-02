@@ -116,6 +116,29 @@ namespace AdsbCarMap.Data
         public int FlightInfoCount => RouteMemory.Count + AircraftMemory.Count;
 
         /// <summary>
+        /// Reads the state of every aircraft and route source without sending any request.
+        /// </summary>
+        /// <returns>The aircraft sources, then the route sources, each in the order of preference.</returns>
+        public IReadOnlyList<SourceState> GetSourceStates()
+        {
+            List<SourceState> states = new List<SourceState>();
+            string? lastAircraft = AircraftSources.LastUsedSourceName;
+            string? lastRoute = RouteSources.LastUsedSourceName;
+
+            foreach (IRateLimitedAircraftSource source in AircraftSources.GetAllInOrder())
+            {
+                states.Add(new SourceState("Samoloty", source.Name, source.GetRateLimitStatus(), string.Equals(source.Name, lastAircraft, StringComparison.Ordinal)));
+            }
+
+            foreach (IRateLimitedRouteSource source in RouteSources.GetAllInOrder())
+            {
+                states.Add(new SourceState("Trasy", source.Name, source.GetRateLimitStatus(), string.Equals(source.Name, lastRoute, StringComparison.Ordinal)));
+            }
+
+            return states;
+        }
+
+        /// <summary>
         /// Forgets all stored information about flights and aircraft, also in the files.
         /// </summary>
         public void ClearFlightInfo()

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Models;
 
@@ -93,6 +94,12 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
             catch (RateLimitedException exception)
             {
                 throw new RateLimitedException(limiter.RegisterRateLimit(exception.RetryAfter));
+            }
+            catch (Exception exception) when (exception is HttpRequestException || exception is JsonException)
+            {
+                limiter.RegisterFailure(exception);
+
+                throw;
             }
         }
     }

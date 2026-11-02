@@ -117,6 +117,28 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// The states list every aircraft and route source in the preferred order, and a refusal of a source shows up as its last failure.
+        /// </summary>
+        [Fact]
+        public async Task GetSourceStates_ListsSourcesAndRefusal()
+        {
+            RecordingHandler handler = new RecordingHandler(HttpStatusCode.Forbidden, "{}");
+            DataComposition composition = Create(handler, new List<string> { "airplanes.live", "adsb.lol" }, new List<string> { "hexdb.io" }, false);
+
+            await Assert.ThrowsAsync<HttpRequestException>(() => composition.AircraftSources.GetAircraftAsync(52.0, 21.0, 50.0, CancellationToken.None));
+
+            IReadOnlyList<SourceState> states = composition.GetSourceStates();
+
+            Assert.Equal(5, states.Count);
+            Assert.Equal("airplanes.live", states[0].Name);
+            Assert.Equal(403, states[0].Status.LastFailure?.StatusCode);
+            Assert.Null(states[1].Status.LastFailure);
+            Assert.Equal("hexdb.io", states[2].Name);
+            Assert.Equal("Trasy", states[2].Group);
+            Assert.DoesNotContain(states, state => state.IsLastUsed);
+        }
+
+        /// <summary>
         /// Missing parts are reported at once with the name of the parameter.
         /// </summary>
         [Fact]

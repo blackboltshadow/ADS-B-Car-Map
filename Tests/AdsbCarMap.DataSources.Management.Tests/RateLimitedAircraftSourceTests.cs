@@ -127,6 +127,69 @@ namespace AdsbCarMap.DataSources.Management.Tests
         }
 
         /// <summary>
+        /// A refusal (403) is remembered with its status code and cleared by the next successful answer.
+        /// </summary>
+        [Fact]
+        public async Task Refusal_IsRemembered_AndClearedBySuccess()
+        {
+            RefusingSource inner = new RefusingSource();
+            RateLimitedAircraftSource source = new RateLimitedAircraftSource(inner);
+
+            await Assert.ThrowsAsync<HttpRequestException>(() => source.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));
+
+            SourceFailure? failure = source.GetRateLimitStatus().LastFailure;
+
+            Assert.NotNull(failure);
+            Assert.Equal(403, failure.StatusCode);
+            Assert.True(source.GetRateLimitStatus().CanQuery);
+
+            inner.Refuse = false;
+            await source.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None);
+
+            Assert.Null(source.GetRateLimitStatus().LastFailure);
+        }
+
+        /// <summary>
+        /// A limit response is remembered as a failure with status 429.
+        /// </summary>
+        [Fact]
+        public async Task LimitResponse_IsRememberedAs429()
+        {
+            RateLimitedAircraftSource source = new RateLimitedAircraftSource(new ReportingSource { LimitedFor = TimeSpan.Zero });
+
+            await Assert.ThrowsAsync<RateLimitedException>(() => source.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));
+
+            Assert.Equal(429, source.GetRateLimitStatus().LastFailure?.StatusCode);
+        }
+
+        /// <summary>
+        /// Source that answers with a refusal (403) until told otherwise.
+        /// </summary>
+        private sealed class RefusingSource : IAircraftSource
+        {
+            /// <inheritdoc />
+            public string Name => "refusing";
+
+            /// <summary>
+            /// Whether the source refuses the requests.
+            /// </summary>
+            public bool Refuse { get; set; } = true;
+
+            /// <inheritdoc />
+            public Task<IReadOnlyList<Aircraft>> GetAircraftAsync(double latitude, double longitude, double radiusNauticalMiles, CancellationToken cancellationToken)
+            {
+                if (Refuse)
+                {
+                    throw new HttpRequestException("Forbidden", null, System.Net.HttpStatusCode.Forbidden);
+                }
+
+                IReadOnlyList<Aircraft> result = new List<Aircraft>();
+
+                return Task.FromResult(result);
+            }
+        }
+
+        /// <summary>
         /// Source that always fails with a network error.
         /// </summary>
         private sealed class FailingSource : IAircraftSource

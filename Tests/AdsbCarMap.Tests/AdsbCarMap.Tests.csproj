@@ -61,6 +61,11 @@
     <Compile Include="..\..\Data\AirportCompletingRouteSource.cs" Link="Linked\AirportCompletingRouteSource.cs" />
     <Compile Include="..\..\Data\DataComposition.cs" Link="Linked\DataComposition.cs" />
     <Compile Include="..\..\Data\DataCompositionSettings.cs" Link="Linked\DataCompositionSettings.cs" />
+    <Compile Include="..\..\Data\RequestLog.cs" Link="Linked\RequestLog.cs" />
+    <Compile Include="..\..\Data\RequestLogEntry.cs" Link="Linked\RequestLogEntry.cs" />
+    <Compile Include="..\..\Data\RequestLoggingHandler.cs" Link="Linked\RequestLoggingHandler.cs" />
+    <Compile Include="..\..\Data\SourceState.cs" Link="Linked\SourceState.cs" />
+    <Compile Include="..\..\Data\SourceStateText.cs" Link="Linked\SourceStateText.cs" />
     <Compile Include="..\..\Data\AircraftSearch.cs" Link="Linked\AircraftSearch.cs" />
     <Compile Include="..\..\Data\SearchResult.cs" Link="Linked\SearchResult.cs" />
     <Compile Include="..\..\Data\RouteLookupState.cs" Link="Linked\RouteLookupState.cs" />

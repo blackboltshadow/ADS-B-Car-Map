@@ -21,6 +21,11 @@ namespace AdsbCarMap.Services
             : "AdsbCarMap/" + BuildInfo.Version + " (kontakt: " + BuildInfo.Contact + ")";
 
         /// <summary>
+        /// Requests sent to external servers by every HTTP client of the application, shown on the request log screen. Declared before the HTTP clients, which use it.
+        /// </summary>
+        public static RequestLog Requests { get; } = new RequestLog();
+
+        /// <summary>
         /// HTTP client used to download the map tiles.
         /// </summary>
         private static readonly HttpClient TileHttpClient = CreateHttpClient(null);
@@ -101,6 +106,15 @@ namespace AdsbCarMap.Services
         public static int FlightInfoCount => Composition.Value.FlightInfoCount;
 
         /// <summary>
+        /// Reads the state of the aircraft and route sources without sending any request.
+        /// </summary>
+        /// <returns>The states of the sources.</returns>
+        public static IReadOnlyList<SourceState> GetSourceStates()
+        {
+            return Composition.Value.GetSourceStates();
+        }
+
+        /// <summary>
         /// Forgets all stored information about flights and aircraft, also in the files.
         /// </summary>
         public static void ClearFlightInfo()
@@ -174,7 +188,7 @@ namespace AdsbCarMap.Services
         /// <returns>Configured HTTP client.</returns>
         private static HttpClient CreateHttpClient(string? baseAddress)
         {
-            HttpClient client = new HttpClient();
+            HttpClient client = new HttpClient(new RequestLoggingHandler(Requests, new HttpClientHandler()));
 
             if (baseAddress != null)
             {

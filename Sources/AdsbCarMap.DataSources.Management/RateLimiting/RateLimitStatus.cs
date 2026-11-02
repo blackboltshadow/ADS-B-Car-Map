@@ -6,7 +6,8 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
     /// <param name="BlockedUntilUtc">Moment until which the source must not be queried, in UTC, or DateTime.MinValue when it is not blocked.</param>
     /// <param name="RemainingBlock">Time left until the source can be queried again, zero when it can be queried now.</param>
     /// <param name="ConsecutiveRateLimits">Number of consecutive limit responses without a successful request between them.</param>
-    public sealed record RateLimitStatus(DateTime BlockedUntilUtc, TimeSpan RemainingBlock, int ConsecutiveRateLimits)
+    /// <param name="LastFailure">Failure of the last request when no successful request followed it, otherwise null.</param>
+    public sealed record RateLimitStatus(DateTime BlockedUntilUtc, TimeSpan RemainingBlock, int ConsecutiveRateLimits, SourceFailure? LastFailure = null)
     {
         /// <summary>
         /// State of a source that is not limited.

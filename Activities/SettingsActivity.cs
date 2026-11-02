@@ -1,4 +1,5 @@
 using System.Globalization;
+using AdsbCarMap.Data;
 using AdsbCarMap.Services;
 using AdsbCarMap.Settings;
 using Android.App;
@@ -154,6 +155,16 @@ namespace AdsbCarMap.Activities
         private TextView? flightCacheUsageText;
 
         /// <summary>
+        /// Text with the state of the data sources, inside the source status card.
+        /// </summary>
+        private TextView? sourceStatusText;
+
+        /// <summary>
+        /// Refreshes the source status text and schedules the next refresh while the screen is shown.
+        /// </summary>
+        private Java.Lang.Runnable? sourceStatusRefresh;
+
+        /// <summary>
         /// Preview of the sample aircraft trails inside <see cref="trailCard"/>.
         /// </summary>
         private TrailsPreview? trailsPreview;
@@ -193,13 +204,19 @@ namespace AdsbCarMap.Activities
             base.OnResume();
             UpdateDeveloperDataButton();
             UpdateDevLogButton();
+            RefreshSourceStatus();
         }
 
         /// <summary>
-        /// Commits a number that is still being typed, because a setting is saved when its field loses focus.
+        /// Commits a number that is still being typed, because a setting is saved when its field loses focus, and stops refreshing the source status.
         /// </summary>
         protected override void OnPause()
         {
+            if (sourceStatusRefresh != null)
+            {
+                sourceStatusText?.RemoveCallbacks(sourceStatusRefresh);
+            }
+
             CurrentFocus?.ClearFocus();
             base.OnPause();
         }
@@ -246,6 +263,7 @@ namespace AdsbCarMap.Activities
             LinearLayout advanced = CreateAggregate(root, "Zaawansowane", "advanced", 20f);
             GetTitledCard("dataSource", "Źródło danych", advanced);
             GetTitledCard("routeSources", "Źródła tras", advanced);
+            GetSourceStatusCard(advanced);
             GetTitledCard("privacy", "Prywatność", advanced);
             GetTitledCard("refresh", "Odświeżanie", advanced);
             GetTitledCard("tiles", "Pobieranie kafelków", advanced);
@@ -1553,6 +1571,48 @@ namespace AdsbCarMap.Activities
             UpdateDevLogButton();
 
             return card;
+        }
+
+        /// <summary>
+        /// Returns the card with the state of the aircraft and route sources, creating it at the first call.
+        /// </summary>
+        /// <param name="root">Container in which the card is created.</param>
+        /// <returns>The card.</returns>
+        private LinearLayout GetSourceStatusCard(LinearLayout root)
+        {
+            LinearLayout card = GetTitledCard("sourceStatus", "Stan źródeł", root);
+
+            if (sourceStatusText == null)
+            {
+                sourceStatusText = new TextView(this);
+                StyleSecondary(sourceStatusText);
+                sourceStatusText.SetPadding(0, Dp(4), 0, 0);
+                card.AddView(sourceStatusText);
+
+                Button requestLog = new Button(this);
+                requestLog.Text = "Pokaż log zapytań";
+                requestLog.Click += (sender, args) => StartActivity(new Android.Content.Intent(this, typeof(RequestLogActivity)));
+                card.AddView(requestLog);
+
+                sourceStatusRefresh = new Java.Lang.Runnable(RefreshSourceStatus);
+            }
+
+            return card;
+        }
+
+        /// <summary>
+        /// Shows the current state of the data sources and schedules the next refresh, so that the remaining pause counts down.
+        /// </summary>
+        private void RefreshSourceStatus()
+        {
+            if (sourceStatusText == null || sourceStatusRefresh == null)
+            {
+                return;
+            }
+
+            sourceStatusText.Text = SourceStateText.Format(AppServices.GetSourceStates(), DateTime.UtcNow);
+            sourceStatusText.RemoveCallbacks(sourceStatusRefresh);
+            sourceStatusText.PostDelayed(sourceStatusRefresh, 1000);
         }
 
         /// <summary>

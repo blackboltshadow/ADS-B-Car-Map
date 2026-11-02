@@ -57,6 +57,11 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
         private int consecutiveRateLimits;
 
         /// <summary>
+        /// Failure of the last request when no successful request followed it, otherwise null.
+        /// </summary>
+        private SourceFailure? lastFailure;
+
+        /// <summary>
         /// Creates a limiter with the default pauses and the system clock.
         /// </summary>
         public BackoffRateLimiter()
@@ -114,13 +119,29 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
                 }
 
                 blockedUntilUtc = utcNow() + wait;
+                lastFailure = new SourceFailure(utcNow(), 429, "Przekroczono limit zapytań (429)");
 
                 return wait;
             }
         }
 
         /// <summary>
-        /// Clears the pause of the requests after a successful response.
+        /// Remembers a failure that was not a limit response, so that it can be shown. It does not pause the requests.
+        /// </summary>
+        /// <param name="exception">The failure: an HTTP error (with its status code, if any) or an invalid answer.</param>
+        public void RegisterFailure(Exception exception)
+        {
+            int? statusCode = exception is HttpRequestException http && http.StatusCode.HasValue ? (int)http.StatusCode.Value : null;
+            string description = statusCode.HasValue ? "Błąd HTTP " + statusCode.Value : exception is HttpRequestException ? "Błąd sieci" : "Nieprawidłowa odpowiedź";
+
+            lock (stateLock)
+            {
+                lastFailure = new SourceFailure(utcNow(), statusCode, description);
+            }
+        }
+
+        /// <summary>
+        /// Clears the pause of the requests and the remembered failure after a successful response.
         /// </summary>
         public void Reset()
         {
@@ -128,6 +149,7 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
             {
                 consecutiveRateLimits = 0;
                 blockedUntilUtc = DateTime.MinValue;
+                lastFailure = null;
             }
         }
 
@@ -141,7 +163,7 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
             {
                 TimeSpan remaining = blockedUntilUtc - utcNow();
 
-                return new RateLimitStatus(blockedUntilUtc, remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero, consecutiveRateLimits);
+                return new RateLimitStatus(blockedUntilUtc, remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero, consecutiveRateLimits, lastFailure);
             }
         }
     }
