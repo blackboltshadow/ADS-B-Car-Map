@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
+using AdsbCarMap.DataSources.Adsbdb;
 using AdsbCarMap.DataSources.AdsbLol;
+using AdsbCarMap.DataSources.Hexdb;
 using AdsbCarMap.DataSources.AirplanesLive;
 using AdsbCarMap.DataSources.Management.Selection;
 using Android.Content;
@@ -64,12 +66,27 @@ namespace AdsbCarMap.Settings
         /// <summary>
         /// Whether the next sources are asked when the previous one gives no data.
         /// </summary>
-        public static readonly SettingDefinition DataSourceFallbackSetting = SettingDefinition.CreateSwitch("data_source_fallback", "Zapasowe źródło przy braku danych", true, "Gdy główne źródło nie zwraca danych (limit zapytań 429, brak połączenia z serwisem albo błąd serwera), aplikacja pyta kolejne źródło z listy zamiast pokazywać pustą mapę. Pusta lista samolotów z działającego serwisu nie jest brakiem danych, bo w rzadko uczęszczanych rejonach to normalne. Wyłącz, jeśli chcesz używać wyłącznie głównego źródła.");
+        public static readonly SettingDefinition DataSourceFallbackSetting = SettingDefinition.CreateSwitch("data_source_fallback", "Zapasowe źródło przy braku danych", true, "Gdy główne źródło nie zwraca danych (limit zapytań 429, brak połączenia z serwisem albo błąd serwera), aplikacja pyta kolejne źródło z listy zamiast pokazywać pustą mapę. To samo dotyczy tras lotów: gdy źródło nie zna lotu albo nie odpowiada, aplikacja pyta kolejne. Pusta lista samolotów z działającego serwisu nie jest brakiem danych, bo w rzadko uczęszczanych rejonach to normalne. Wyłącz, jeśli chcesz używać wyłącznie głównego źródła.");
 
         /// <summary>
         /// Whether the type, the registration and the category of the selected aircraft are completed from the other sources when the main source lacks them.
         /// </summary>
         public static readonly SettingDefinition DataSourceDetailsSetting = SettingDefinition.CreateSwitch("data_source_details", "Uzupełniaj dane zaznaczonego samolotu", true, "Gdy główne źródło nie podaje typu, rejestracji lub kategorii zaznaczonego samolotu, aplikacja dopyta o ten jeden samolot pozostałe źródła (po kodzie ICAO, jedno krótkie zapytanie na samolot, nie częściej niż raz na 10 minut). Dzięki temu karta samolotu, ikona i filtry mają komplet danych. Dotyczy tylko samolotu, który zaznaczysz, a nie całej mapy.");
+
+        /// <summary>
+        /// Names of the flight route sources in the order in which the application registers them.
+        /// </summary>
+        private static readonly IReadOnlyList<string> RouteSourceNames = new List<string> { AdsbdbClient.SourceName, AdsbLolClient.SourceName, HexdbClient.SourceName };
+
+        /// <summary>
+        /// All orders of the flight route sources that the user can choose from; the stored value is the index in this list. The settings screen shows them as a list that is dragged, not as a drop-down.
+        /// </summary>
+        public static readonly IReadOnlyList<IReadOnlyList<string>> RouteSourceOrders = SourceOrder.GetOrders(RouteSourceNames);
+
+        /// <summary>
+        /// Order in which the flight route sources are asked: the first one is the main source, the next ones are asked when the previous one does not give the route.
+        /// </summary>
+        public static readonly SettingDefinition RouteSourceSetting = SettingDefinition.CreateChoice("route_source", "Kolejność źródeł tras", 0, "Kolejność, w jakiej aplikacja pyta serwisy o trasę lotu po znaku wywoławczym. Pierwszy serwis jest głównym źródłem, kolejne są pytane, gdy poprzedni nie zna lotu albo nie odpowiada (przy włączonym zapasowym źródle). adsbdb.com podaje też nazwę linii lotniczej, adsb.lol podaje trasę z nazwami i współrzędnymi lotnisk, a hexdb.io tylko parę lotnisk (resztę aplikacja uzupełnia z własnej bazy lotnisk), przy czym jego dane bywają starsze. Trasy są przypisane do znaku wywoławczego, więc nie zawsze odpowiadają bieżącemu przelotowi. Zmiana działa od następnego pobrania trasy.", RouteSourceOrders.Select(SourceOrder.Describe).ToArray());
 
         /// <summary>
         /// Size limit of the tile cache on the disk in megabytes.
@@ -264,6 +281,7 @@ namespace AdsbCarMap.Settings
             DataSourceSetting,
             DataSourceFallbackSetting,
             DataSourceDetailsSetting,
+            RouteSourceSetting,
             MapDimSetting,
         };
 
@@ -541,6 +559,29 @@ namespace AdsbCarMap.Settings
         public static int GetDataSourceOrderIndex(IReadOnlyList<string> order)
         {
             return Math.Max(0, SourceOrder.IndexOf(DataSourceOrders, order));
+        }
+
+        /// <summary>
+        /// Settings that describe the sources of the flight routes. They share one section on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> RouteSourceSettings = new List<SettingDefinition>
+        {
+            RouteSourceSetting,
+        };
+
+        /// <summary>
+        /// Names of the flight route sources in the order in which they are asked.
+        /// </summary>
+        public static IReadOnlyList<string> RouteSourceOrder => RouteSourceOrders[Math.Clamp((int)Get(RouteSourceSetting), 0, RouteSourceOrders.Count - 1)];
+
+        /// <summary>
+        /// Returns the stored value of the order of the flight route sources for the given list of names.
+        /// </summary>
+        /// <param name="order">Names in the order of preference.</param>
+        /// <returns>Index of the order, or 0 (the default order) when the list is not a known order.</returns>
+        public static int GetRouteSourceOrderIndex(IReadOnlyList<string> order)
+        {
+            return Math.Max(0, SourceOrder.IndexOf(RouteSourceOrders, order));
         }
 
         /// <summary>

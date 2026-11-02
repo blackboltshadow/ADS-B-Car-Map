@@ -8,17 +8,17 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
     public static class AircraftMerger
     {
         /// <summary>
-        /// Checks whether the type code, the registration or the emitter category of the aircraft is missing. The category "A0" means that the aircraft does not say, so it counts as missing.
+        /// Checks whether the type code, the registration or the full type name of the aircraft is missing, which is worth asking the other sources about. The emitter category is filled when a source happens to give it, but its absence alone does not cause a request, because most sources do not know it.
         /// </summary>
         /// <param name="aircraft">The aircraft to check.</param>
         /// <returns>True when at least one of the three is missing.</returns>
         public static bool HasGaps(Aircraft aircraft)
         {
-            return string.IsNullOrEmpty(aircraft.TypeCode) || string.IsNullOrEmpty(aircraft.Registration) || IsCategoryMissing(aircraft.Category);
+            return string.IsNullOrEmpty(aircraft.TypeCode) || string.IsNullOrEmpty(aircraft.Registration) || string.IsNullOrEmpty(aircraft.TypeName);
         }
 
         /// <summary>
-        /// Returns the aircraft with the missing type code, registration and category taken from the details. Data that the aircraft already has is never replaced.
+        /// Returns the aircraft with the missing descriptive data taken from the details. Data that the aircraft already has is never replaced. The category "A0" means that the aircraft does not say, so it counts as missing.
         /// </summary>
         /// <param name="aircraft">The aircraft from the main source.</param>
         /// <param name="details">Details from another source.</param>
@@ -28,8 +28,11 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
             string? typeCode = string.IsNullOrEmpty(aircraft.TypeCode) ? details.TypeCode : aircraft.TypeCode;
             string? registration = string.IsNullOrEmpty(aircraft.Registration) ? details.Registration : aircraft.Registration;
             string? category = IsCategoryMissing(aircraft.Category) && !IsCategoryMissing(details.Category) ? details.Category : aircraft.Category;
+            string? typeName = string.IsNullOrEmpty(aircraft.TypeName) ? details.TypeName : aircraft.TypeName;
+            string? manufacturer = string.IsNullOrEmpty(aircraft.Manufacturer) ? details.Manufacturer : aircraft.Manufacturer;
+            string? owner = string.IsNullOrEmpty(aircraft.Owner) ? details.Owner : aircraft.Owner;
 
-            if (typeCode == aircraft.TypeCode && registration == aircraft.Registration && category == aircraft.Category)
+            if (typeCode == aircraft.TypeCode && registration == aircraft.Registration && category == aircraft.Category && typeName == aircraft.TypeName && manufacturer == aircraft.Manufacturer && owner == aircraft.Owner)
             {
                 return aircraft;
             }
@@ -49,7 +52,30 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
                 category,
                 aircraft.IsMilitary,
                 aircraft.VerticalRateFeetPerMinute,
-                aircraft.Squawk);
+                aircraft.Squawk,
+                typeName,
+                manufacturer,
+                owner);
+        }
+
+        /// <summary>
+        /// Merges the details of two sources into one record, keeping what the first one already has.
+        /// </summary>
+        /// <param name="first">Details found first.</param>
+        /// <param name="second">Details found later, used only for the missing fields.</param>
+        /// <returns>The same record when the second adds nothing, otherwise a new record.</returns>
+        public static AircraftDetails Combine(AircraftDetails first, AircraftDetails second)
+        {
+            AircraftDetails combined = new AircraftDetails(
+                first.Hex,
+                string.IsNullOrEmpty(first.TypeCode) ? second.TypeCode : first.TypeCode,
+                string.IsNullOrEmpty(first.Registration) ? second.Registration : first.Registration,
+                IsCategoryMissing(first.Category) && !IsCategoryMissing(second.Category) ? second.Category : first.Category,
+                string.IsNullOrEmpty(first.TypeName) ? second.TypeName : first.TypeName,
+                string.IsNullOrEmpty(first.Manufacturer) ? second.Manufacturer : first.Manufacturer,
+                string.IsNullOrEmpty(first.Owner) ? second.Owner : first.Owner);
+
+            return combined == first ? first : combined;
         }
 
         /// <summary>

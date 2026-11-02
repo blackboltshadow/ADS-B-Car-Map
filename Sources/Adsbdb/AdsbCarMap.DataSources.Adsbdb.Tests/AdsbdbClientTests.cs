@@ -8,7 +8,7 @@ namespace AdsbCarMap.DataSources.Adsbdb.Tests
     /// <summary>
     /// Tests of the adsbdb route client and the flight route model.
     /// </summary>
-    public class AdsbdbRouteClientTests
+    public class AdsbdbClientTests
     {
         /// <summary>
         /// Handler returning a fixed status and body and remembering the requested path.
@@ -59,7 +59,7 @@ namespace AdsbCarMap.DataSources.Adsbdb.Tests
         /// <returns>The route or null.</returns>
         private static async Task<FlightRoute?> GetAsync(HttpStatusCode status, string body, string callsign = "LOT1")
         {
-            AdsbdbRouteClient client = new AdsbdbRouteClient(new HttpClient(new StubHandler(status, body)) { BaseAddress = new Uri("https://example.test/") });
+            AdsbdbClient client = new AdsbdbClient(new HttpClient(new StubHandler(status, body)) { BaseAddress = new Uri("https://example.test/") });
 
             return await client.GetRouteAsync(callsign, CancellationToken.None);
         }
@@ -151,7 +151,7 @@ namespace AdsbCarMap.DataSources.Adsbdb.Tests
         public async Task GetRouteAsync_EscapesCallsign()
         {
             StubHandler handler = new StubHandler(HttpStatusCode.NotFound, "{}");
-            AdsbdbRouteClient client = new AdsbdbRouteClient(new HttpClient(handler) { BaseAddress = new Uri("https://example.test/") });
+            AdsbdbClient client = new AdsbdbClient(new HttpClient(handler) { BaseAddress = new Uri("https://example.test/") });
 
             await client.GetRouteAsync("A B/C", CancellationToken.None);
 
@@ -169,6 +169,69 @@ namespace AdsbCarMap.DataSources.Adsbdb.Tests
 
             Assert.False(partial.HasCoordinates);
             Assert.True(full.HasCoordinates);
+        }
+
+        /// <summary>
+        /// Requests the data of an aircraft through a stub handler.
+        /// </summary>
+        /// <param name="status">Status code to return.</param>
+        /// <param name="body">Response body.</param>
+        /// <param name="handler">Handler used, to inspect the request.</param>
+        /// <returns>The details or null.</returns>
+        private static async Task<AircraftDetails?> GetDetailsAsync(HttpStatusCode status, string body, StubHandler? handler = null)
+        {
+            AdsbdbClient client = new AdsbdbClient(new HttpClient(handler ?? new StubHandler(status, body)) { BaseAddress = new Uri("https://example.test/") });
+
+            return await client.GetAircraftDetailsAsync("48c9f3", CancellationToken.None);
+        }
+
+        /// <summary>
+        /// The data of an aircraft gives the full type name, the type code, the manufacturer, the registration and the owner.
+        /// </summary>
+        [Fact]
+        public async Task GetAircraftDetailsAsync_FullResponse_ParsesDetails()
+        {
+            StubHandler handler = new StubHandler(HttpStatusCode.OK, "{\"response\":{\"aircraft\":{\"type\":\"King Air B350\",\"icao_type\":\"B350\",\"manufacturer\":\"Beechcraft Corp\",\"mode_s\":\"48C9F3\",\"registration\":\"SP-TPU\",\"registered_owner\":\"Polish Air Navigation Services Agency\"}}}");
+
+            AircraftDetails? details = await GetDetailsAsync(HttpStatusCode.OK, string.Empty, handler);
+
+            Assert.NotNull(details);
+            Assert.Equal("King Air B350", details.TypeName);
+            Assert.Equal("B350", details.TypeCode);
+            Assert.Equal("Beechcraft Corp", details.Manufacturer);
+            Assert.Equal("SP-TPU", details.Registration);
+            Assert.Equal("Polish Air Navigation Services Agency", details.Owner);
+            Assert.Null(details.Category);
+            Assert.Equal("/v0/aircraft/48c9f3", handler.LastPath);
+        }
+
+        /// <summary>
+        /// Blank fields become null, an unknown aircraft gives null and an unusable body gives null.
+        /// </summary>
+        [Fact]
+        public async Task GetAircraftDetailsAsync_BlankUnknownAndUnusable()
+        {
+            AircraftDetails? blank = await GetDetailsAsync(HttpStatusCode.OK, "{\"response\":{\"aircraft\":{\"type\":\"  \",\"icao_type\":\"\",\"registration\":\"N1\"}}}");
+
+            Assert.NotNull(blank);
+            Assert.Null(blank.TypeName);
+            Assert.Null(blank.TypeCode);
+            Assert.Equal("N1", blank.Registration);
+            Assert.Null(await GetDetailsAsync(HttpStatusCode.NotFound, "{\"response\":\"unknown aircraft\"}"));
+            Assert.Null(await GetDetailsAsync(HttpStatusCode.OK, "{\"response\":\"unknown aircraft\"}"));
+        }
+
+        /// <summary>
+        /// A 429 answer is reported as RateLimitedException for the route and for the aircraft data.
+        /// </summary>
+        [Fact]
+        public async Task TooManyRequests_ThrowsRateLimited()
+        {
+            AdsbdbClient client = new AdsbdbClient(new HttpClient(new StubHandler(HttpStatusCode.TooManyRequests, string.Empty)) { BaseAddress = new Uri("https://example.test/") });
+
+            await Assert.ThrowsAsync<RateLimitedException>(() => client.GetRouteAsync("LOT1", CancellationToken.None));
+            await Assert.ThrowsAsync<RateLimitedException>(() => client.GetAircraftDetailsAsync("48c9f3", CancellationToken.None));
+            Assert.Equal("adsbdb.com", client.Name);
         }
     }
 }

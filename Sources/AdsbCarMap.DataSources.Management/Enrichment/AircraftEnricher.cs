@@ -18,7 +18,7 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
         private readonly object gate = new object();
 
         /// <summary>
-        /// Sources in the order of preference.
+        /// Sources that return the position and the data of an aircraft, in the order of preference.
         /// </summary>
         private readonly FallbackAircraftSource sources;
 
@@ -38,21 +38,30 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
         private readonly HashSet<string> inProgress = new HashSet<string>();
 
         /// <summary>
+        /// Sources that only return the data of an aircraft by its ICAO address, asked before the position sources.
+        /// </summary>
+        private readonly IReadOnlyList<IRateLimitedSource> detailSources;
+
+        /// <summary>
         /// Creates the enricher.
         /// </summary>
-        /// <param name="sources">Sources in the order of preference.</param>
+        /// <param name="sources">Sources that return the position and the data of an aircraft, in the order of preference.</param>
+        /// <param name="detailSources">Sources that only return the data of an aircraft by its ICAO address, in the order of preference; they are asked before the position sources.</param>
         /// <param name="enabled">Returns whether the enrichment is switched on.</param>
         /// <param name="cache">Memory of the data found earlier, shared with the other parts of the application.</param>
-        public AircraftEnricher(FallbackAircraftSource sources, Func<bool> enabled, TimedCache<AircraftDetails> cache)
+        public AircraftEnricher(FallbackAircraftSource sources, IReadOnlyList<IRateLimitedSource> detailSources, Func<bool> enabled, TimedCache<AircraftDetails> cache)
         {
             ArgumentNullException.ThrowIfNull(sources);
+            ArgumentNullException.ThrowIfNull(detailSources);
             ArgumentNullException.ThrowIfNull(cache);
             this.sources = sources;
+            this.detailSources = detailSources;
             this.enabled = enabled;
             this.cache = cache;
         }
+
         /// <summary>
-        /// Checks whether the aircraft has gaps that the other sources could fill.
+        /// Checks whether the aircraft has gaps that the other sources could fill (type code, registration or full type name).
         /// </summary>
         /// <param name="aircraft">The aircraft to check.</param>
         /// <returns>True when the enrichment is on, the aircraft has gaps and it was not asked about recently.</returns>
@@ -101,7 +110,7 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
             {
                 string? mainSource = sources.LastUsedSourceName;
 
-                foreach (IRateLimitedAircraftSource source in sources.GetAllInOrder())
+                foreach (IRateLimitedSource source in detailSources.Concat(sources.GetAllInOrder()))
                 {
                     if (!AircraftMerger.HasGaps(merged))
                     {
@@ -129,7 +138,7 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
             }
             finally
             {
-                AircraftDetails? found = ReferenceEquals(merged, aircraft) ? null : new AircraftDetails(merged.Hex, merged.TypeCode, merged.Registration, merged.Category);
+                AircraftDetails? found = ReferenceEquals(merged, aircraft) ? null : new AircraftDetails(merged.Hex, merged.TypeCode, merged.Registration, merged.Category, merged.TypeName, merged.Manufacturer, merged.Owner);
 
                 lock (gate)
                 {

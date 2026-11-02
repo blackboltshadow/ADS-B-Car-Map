@@ -3,6 +3,7 @@ using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.DataSources.Adsbdb;
 using AdsbCarMap.DataSources.AdsbLol;
 using AdsbCarMap.DataSources.AirplanesLive;
+using AdsbCarMap.DataSources.Hexdb;
 using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Management.Enrichment;
 using AdsbCarMap.DataSources.Management.RateLimiting;
@@ -43,7 +44,7 @@ namespace AdsbCarMap.Services
         /// <summary>
         /// HTTP client used for the flight route requests.
         /// </summary>
-        private static readonly HttpClient RouteHttpClient = CreateHttpClient(AdsbdbRouteClient.DefaultBaseAddress);
+        private static readonly HttpClient RouteHttpClient = CreateHttpClient(AdsbdbClient.DefaultBaseAddress);
 
         /// <summary>
         /// Time after which the answer that a source does not know a flight is asked about again, at most.
@@ -84,16 +85,6 @@ namespace AdsbCarMap.Services
         public static IAircraftSource Adsb => AircraftSources;
 
         /// <summary>
-        /// Completes the type, the registration and the category of the selected aircraft from the other sources when the main source lacks them.
-        /// </summary>
-        public static AircraftEnricher Enricher { get; } = new AircraftEnricher(AircraftSources, () => AppSettings.DataSourceDetails, AircraftMemory);
-
-        /// <summary>
-        /// Cache of the flight routes downloaded from adsbdb.com.
-        /// </summary>
-        public static RouteCache Routes { get; } = new RouteCache(new AdsbdbRouteClient(RouteHttpClient), RouteMemory);
-
-        /// <summary>
         /// Keeps the memory of the flight information in line with the visible aircraft: marks the visible flights as seen and closes those that have landed.
         /// </summary>
         public static FlightCacheKeeper FlightKeeper { get; } = new FlightCacheKeeper(RouteMemory, AircraftMemory);
@@ -117,6 +108,39 @@ namespace AdsbCarMap.Services
         /// Airports and runways bundled with the application, loaded in the background at the first use.
         /// </summary>
         public static AirportDatabase Airports { get; } = CreateAirports();
+
+        /// <summary>
+        /// HTTP client used for the hexdb.io requests.
+        /// </summary>
+        private static readonly HttpClient HexdbHttpClient = CreateHttpClient(HexdbClient.DefaultBaseAddress);
+
+        /// <summary>
+        /// adsbdb.com: routes with the airline name and the data of an aircraft with the full type name.
+        /// </summary>
+        private static readonly RateLimitedRouteSource AdsbdbSource = new RateLimitedRouteSource(new AdsbdbClient(RouteHttpClient));
+
+        /// <summary>
+        /// hexdb.io: routes as pairs of airport codes, completed from the airports of the application, and the data of an aircraft.
+        /// </summary>
+        private static readonly RateLimitedRouteSource HexdbSource = new RateLimitedRouteSource(new AirportCompletingRouteSource(new HexdbClient(HexdbHttpClient), Airports));
+
+        /// <summary>
+        /// Flight route sources queried in the order chosen in the settings; the next source is asked when the previous one does not know the flight or gives no answer (if enabled in the settings).
+        /// </summary>
+        private static readonly FallbackRouteSource RouteSources = new FallbackRouteSource(
+            new List<IRateLimitedRouteSource> { AdsbdbSource, new RateLimitedRouteSource(new AdsbLolRouteClient(AdsbHttpClient)), HexdbSource },
+            () => AppSettings.RouteSourceOrder,
+            () => AppSettings.DataSourceFallback);
+
+        /// <summary>
+        /// Completes the type, the full type name and the registration of the selected aircraft from the sources that return the data of an aircraft by its ICAO address: first adsbdb.com and hexdb.io, then the position sources.
+        /// </summary>
+        public static AircraftEnricher Enricher { get; } = new AircraftEnricher(AircraftSources, new List<IRateLimitedSource> { AdsbdbSource, HexdbSource }, () => AppSettings.DataSourceDetails, AircraftMemory);
+
+        /// <summary>
+        /// Cache of the flight routes downloaded from the route sources.
+        /// </summary>
+        public static RouteCache Routes { get; } = new RouteCache(RouteSources, RouteMemory);
 
         /// <summary>
         /// Table of the aircraft types bundled with the application, loaded when the services are created and used by the filters.

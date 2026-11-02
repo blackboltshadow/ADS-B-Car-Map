@@ -15,6 +15,10 @@
     <Project Path="Sources/Adsbdb/AdsbCarMap.DataSources.Adsbdb/AdsbCarMap.DataSources.Adsbdb.csproj" />
     <Project Path="Sources/Adsbdb/AdsbCarMap.DataSources.Adsbdb.Tests/AdsbCarMap.DataSources.Adsbdb.Tests.csproj" />
   </Folder>
+  <Folder Name="/Sources/Hexdb/">
+    <Project Path="Sources/Hexdb/AdsbCarMap.DataSources.Hexdb/AdsbCarMap.DataSources.Hexdb.csproj" />
+    <Project Path="Sources/Hexdb/AdsbCarMap.DataSources.Hexdb.Tests/AdsbCarMap.DataSources.Hexdb.Tests.csproj" />
+  </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/AdsbCarMap.Tests/AdsbCarMap.Tests.csproj" />
     <Project Path="Tests/AdsbCarMap.DataSources.Management.Tests/AdsbCarMap.DataSources.Management.Tests.csproj" />

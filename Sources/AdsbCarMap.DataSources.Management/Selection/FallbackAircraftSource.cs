@@ -135,28 +135,7 @@ namespace AdsbCarMap.DataSources.Management.Selection
         /// <returns>The ordered sources.</returns>
         public IReadOnlyList<IRateLimitedAircraftSource> GetAllInOrder()
         {
-            List<IRateLimitedAircraftSource> result = new List<IRateLimitedAircraftSource>();
-
-            foreach (string name in order())
-            {
-                foreach (IRateLimitedAircraftSource source in registry.Sources)
-                {
-                    if (string.Equals(source.Name, name, StringComparison.OrdinalIgnoreCase) && !result.Contains(source))
-                    {
-                        result.Add(source);
-                    }
-                }
-            }
-
-            foreach (IRateLimitedAircraftSource source in registry.Sources)
-            {
-                if (!result.Contains(source))
-                {
-                    result.Add(source);
-                }
-            }
-
-            return result;
+            return SourceOrder.Arrange(registry.Sources, order());
         }
 
         /// <summary>

@@ -15,14 +15,15 @@ namespace AdsbCarMap.DataSources.Management.Tests
         /// <param name="typeCode">Type code or null.</param>
         /// <param name="registration">Registration or null.</param>
         /// <param name="category">Category or null.</param>
+        /// <param name="typeName">Full type name or null.</param>
         /// <returns>The aircraft.</returns>
-        private static Aircraft Create(string? typeCode, string? registration, string? category)
+        private static Aircraft Create(string? typeCode, string? registration, string? category, string? typeName = "Full name")
         {
-            return new Aircraft("abc123", "LOT1", 52.0, 21.0, 35000, false, 450.0, 90.0, 1.5, typeCode, registration, category, true, -500, "1000");
+            return new Aircraft("abc123", "LOT1", 52.0, 21.0, 35000, false, 450.0, 90.0, 1.5, typeCode, registration, category, true, -500, "1000", typeName);
         }
 
         /// <summary>
-        /// A complete aircraft has no gaps, and "A0" or an empty category counts as missing.
+        /// A complete aircraft has no gaps. The type code, the registration and the full type name decide; the category alone does not, because most sources do not know it.
         /// </summary>
         [Fact]
         public void HasGaps_DetectsEachMissingField()
@@ -30,8 +31,45 @@ namespace AdsbCarMap.DataSources.Management.Tests
             Assert.False(AircraftMerger.HasGaps(Create("B738", "SP-LWA", "A3")));
             Assert.True(AircraftMerger.HasGaps(Create(null, "SP-LWA", "A3")));
             Assert.True(AircraftMerger.HasGaps(Create("B738", "", "A3")));
-            Assert.True(AircraftMerger.HasGaps(Create("B738", "SP-LWA", "A0")));
-            Assert.True(AircraftMerger.HasGaps(Create("B738", "SP-LWA", null)));
+            Assert.True(AircraftMerger.HasGaps(Create("B738", "SP-LWA", "A3", null)));
+            Assert.False(AircraftMerger.HasGaps(Create("B738", "SP-LWA", "A0")));
+            Assert.False(AircraftMerger.HasGaps(Create("B738", "SP-LWA", null)));
+        }
+
+        /// <summary>
+        /// The full type name, the manufacturer and the owner are filled from the details and never replaced.
+        /// </summary>
+        [Fact]
+        public void FillMissing_FillsNameManufacturerAndOwner()
+        {
+            Aircraft original = Create("B350", "SP-TPU", "A2", null);
+
+            Aircraft filled = AircraftMerger.FillMissing(original, new AircraftDetails("abc123", "B350", "SP-TPU", null, "King Air B350", "Beechcraft Corp", "Polish Air Navigation Services Agency"));
+            Aircraft again = AircraftMerger.FillMissing(filled, new AircraftDetails("abc123", null, null, null, "Other name", "Other maker", "Other owner"));
+
+            Assert.Equal("King Air B350", filled.TypeName);
+            Assert.Equal("Beechcraft Corp", filled.Manufacturer);
+            Assert.Equal("Polish Air Navigation Services Agency", filled.Owner);
+            Assert.Same(filled, again);
+        }
+
+        /// <summary>
+        /// Two sets of details are merged keeping what the first one has.
+        /// </summary>
+        [Fact]
+        public void Combine_KeepsFirstAndFillsGaps()
+        {
+            AircraftDetails first = new AircraftDetails("abc123", "B350", null, "A0", "King Air B350");
+            AircraftDetails second = new AircraftDetails("abc123", "XXXX", "SP-TPU", "A2", "Other", "Beechcraft Corp", "Owner");
+
+            AircraftDetails combined = AircraftMerger.Combine(first, second);
+
+            Assert.Equal("B350", combined.TypeCode);
+            Assert.Equal("SP-TPU", combined.Registration);
+            Assert.Equal("A2", combined.Category);
+            Assert.Equal("King Air B350", combined.TypeName);
+            Assert.Equal("Beechcraft Corp", combined.Manufacturer);
+            Assert.Same(first, AircraftMerger.Combine(first, new AircraftDetails("abc123", null, null, null)));
         }
 
         /// <summary>

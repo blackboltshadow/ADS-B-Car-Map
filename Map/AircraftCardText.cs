@@ -31,7 +31,7 @@ namespace AdsbCarMap.Map
         private const int LevelFlightThresholdFeetPerMinute = 100;
 
         /// <summary>
-        /// Builds the airline, type and kind line, e.g. "Ryanair · B738 · Samolot odrzutowy".
+        /// Builds the airline, type and kind line, e.g. "Ryanair · Boeing 737-800 (B738) · Samolot odrzutowy". When the airline is not known, the registered owner is shown instead, if known.
         /// </summary>
         /// <param name="aircraft">Aircraft.</param>
         /// <param name="route">Flight route or null.</param>
@@ -41,15 +41,20 @@ namespace AdsbCarMap.Map
             List<string> descriptors = new List<string>();
             string airline = AircraftSearch.GetAirline(aircraft, route);
             string kindName = AircraftClassifier.GetDisplayName(aircraft.GetKind());
+            string typeText = BuildTypeText(aircraft);
 
             if (!string.IsNullOrEmpty(airline))
             {
                 descriptors.Add(airline);
             }
-
-            if (!string.IsNullOrEmpty(aircraft.TypeCode))
+            else if (!string.IsNullOrWhiteSpace(aircraft.Owner))
             {
-                descriptors.Add(aircraft.TypeCode);
+                descriptors.Add(aircraft.Owner.Trim());
+            }
+
+            if (typeText.Length > 0)
+            {
+                descriptors.Add(typeText);
             }
 
             if (!string.IsNullOrEmpty(kindName))
@@ -58,6 +63,32 @@ namespace AdsbCarMap.Map
             }
 
             return string.Join(" · ", descriptors);
+        }
+
+        /// <summary>
+        /// Builds the name of the aircraft type: the manufacturer and the full type name followed by the type code in brackets, or only the type code when the full name is not known.
+        /// </summary>
+        /// <param name="aircraft">Aircraft.</param>
+        /// <returns>The type text, empty when neither the name nor the code is known.</returns>
+        public static string BuildTypeText(Aircraft aircraft)
+        {
+            string code = aircraft.TypeCode?.Trim() ?? string.Empty;
+            string name = aircraft.TypeName?.Trim() ?? string.Empty;
+
+            if (name.Length == 0)
+            {
+                return code;
+            }
+
+            string manufacturer = aircraft.Manufacturer?.Trim() ?? string.Empty;
+            string maker = manufacturer.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
+
+            if (maker.Length > 0 && !name.StartsWith(maker, StringComparison.OrdinalIgnoreCase))
+            {
+                name = maker + " " + name;
+            }
+
+            return code.Length > 0 && !name.Contains(code, StringComparison.OrdinalIgnoreCase) ? name + " (" + code + ")" : name;
         }
 
         /// <summary>
@@ -79,7 +110,7 @@ namespace AdsbCarMap.Map
                     return "Trasa: samolot nie nadaje znaku wywoławczego";
 
                 case RouteLookupState.NotFound:
-                    return "Trasa: baza adsbdb nie zna tego lotu";
+                    return "Trasa: żadne źródło nie zna tego lotu";
 
                 case RouteLookupState.Failed:
                     return "Trasa: nie udało się pobrać (błąd sieci lub limit zapytań)";

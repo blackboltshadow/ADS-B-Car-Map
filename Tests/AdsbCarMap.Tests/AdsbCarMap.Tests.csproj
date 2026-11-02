@@ -49,6 +49,7 @@
     <Compile Include="..\..\Data\TextFolding.cs" Link="Linked\TextFolding.cs" />
     <Compile Include="..\..\Data\Airport.cs" Link="Linked\Airport.cs" />
     <Compile Include="..\..\Data\AirportDatabase.cs" Link="Linked\AirportDatabase.cs" />
+    <Compile Include="..\..\Data\AirportCompletingRouteSource.cs" Link="Linked\AirportCompletingRouteSource.cs" />
     <Compile Include="..\..\Data\AircraftSearch.cs" Link="Linked\AircraftSearch.cs" />
     <Compile Include="..\..\Data\SearchResult.cs" Link="Linked\SearchResult.cs" />
     <Compile Include="..\..\Data\RouteLookupState.cs" Link="Linked\RouteLookupState.cs" />

@@ -1,3 +1,5 @@
+using AdsbCarMap.DataSources.Interfaces;
+
 namespace AdsbCarMap.DataSources.Management.Selection
 {
     /// <summary>
@@ -71,6 +73,39 @@ namespace AdsbCarMap.DataSources.Management.Selection
             string name = result[from];
             result.RemoveAt(from);
             result.Insert(Math.Clamp(to, 0, result.Count), name);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Arranges sources in the order of preference: first those named by the order (names that match no source are ignored, a name repeated is used once), then the rest in their original order.
+        /// </summary>
+        /// <typeparam name="T">Kind of the sources.</typeparam>
+        /// <param name="sources">Sources in the order of registration.</param>
+        /// <param name="order">Names of the sources in the order of preference.</param>
+        /// <returns>All sources, each once.</returns>
+        public static IReadOnlyList<T> Arrange<T>(IReadOnlyList<T> sources, IReadOnlyList<string> order) where T : IDataSource
+        {
+            List<T> result = new List<T>();
+
+            foreach (string name in order)
+            {
+                foreach (T source in sources)
+                {
+                    if (string.Equals(source.Name, name, StringComparison.OrdinalIgnoreCase) && !result.Contains(source))
+                    {
+                        result.Add(source);
+                    }
+                }
+            }
+
+            foreach (T source in sources)
+            {
+                if (!result.Contains(source))
+                {
+                    result.Add(source);
+                }
+            }
 
             return result;
         }

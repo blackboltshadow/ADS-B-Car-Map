@@ -6,9 +6,9 @@ using System.Text.Json;
 namespace AdsbCarMap.DataSources.Adsbdb
 {
     /// <summary>
-    /// Client of the adsbdb.com API returning the flight route for a callsign.
+    /// Client of the adsbdb.com API returning the flight route for a callsign and the data of an aircraft by its ICAO address. It only fetches and converts the data; pausing the requests after limit responses is up to the manager.
     /// </summary>
-    public sealed class AdsbdbRouteClient : IRouteSource
+    public sealed class AdsbdbClient : IRouteSource, IAircraftLookupSource
     {
         /// <summary>
         /// Default base address of the adsbdb.com API.
@@ -29,7 +29,7 @@ namespace AdsbCarMap.DataSources.Adsbdb
         /// Creates a client using the given HTTP client.
         /// </summary>
         /// <param name="httpClient">HTTP client with the base address of the API.</param>
-        public AdsbdbRouteClient(HttpClient httpClient)
+        public AdsbdbClient(HttpClient httpClient)
         {
             this.httpClient = httpClient;
         }
@@ -46,6 +46,11 @@ namespace AdsbCarMap.DataSources.Adsbdb
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 return null;
+            }
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                throw new RateLimitedException(GetRetryAfter(response));
             }
 
             response.EnsureSuccessStatusCode();
@@ -86,6 +91,67 @@ namespace AdsbCarMap.DataSources.Adsbdb
                 origin.Longitude,
                 destination.Latitude,
                 destination.Longitude);
+        }
+
+        /// <inheritdoc />
+        /// <exception cref="JsonException">Invalid JSON response.</exception>
+        public async Task<AircraftDetails?> GetAircraftDetailsAsync(string hex, CancellationToken cancellationToken)
+        {
+            using HttpResponseMessage response = await httpClient.GetAsync("v0/aircraft/" + Uri.EscapeDataString(hex), cancellationToken);
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                throw new RateLimitedException(GetRetryAfter(response));
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using JsonDocument document = await JsonDocument.ParseAsync(stream, new JsonDocumentOptions(), cancellationToken);
+
+            if (!document.RootElement.TryGetProperty("response", out JsonElement body)
+                || body.ValueKind != JsonValueKind.Object
+                || !body.TryGetProperty("aircraft", out JsonElement aircraft)
+                || aircraft.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            return new AircraftDetails(
+                hex,
+                NullIfEmpty(GetString(aircraft, "icao_type")),
+                NullIfEmpty(GetString(aircraft, "registration")),
+                null,
+                NullIfEmpty(GetString(aircraft, "type")),
+                NullIfEmpty(GetString(aircraft, "manufacturer")),
+                NullIfEmpty(GetString(aircraft, "registered_owner")));
+        }
+
+        /// <summary>
+        /// Reads the pause requested by the server with the Retry-After header.
+        /// </summary>
+        /// <param name="response">The limit response.</param>
+        /// <returns>The requested pause or zero when the header is missing.</returns>
+        private static TimeSpan GetRetryAfter(HttpResponseMessage response)
+        {
+            TimeSpan? requested = response.Headers.RetryAfter?.Delta ?? (response.Headers.RetryAfter?.Date - DateTimeOffset.UtcNow);
+
+            return requested.HasValue && requested.Value > TimeSpan.Zero ? requested.Value : TimeSpan.Zero;
+        }
+
+        /// <summary>
+        /// Converts an empty text to null.
+        /// </summary>
+        /// <param name="text">The text or null.</param>
+        /// <returns>The trimmed text or null when it is empty.</returns>
+        private static string? NullIfEmpty(string? text)
+        {
+            return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
         }
 
         /// <summary>

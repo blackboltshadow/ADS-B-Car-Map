@@ -79,10 +79,11 @@ namespace AdsbCarMap.DataSources.Management.Tests
         /// <param name="typeCode">Type code or null.</param>
         /// <param name="registration">Registration or null.</param>
         /// <param name="category">Category or null.</param>
+        /// <param name="typeName">Full type name or null.</param>
         /// <returns>The aircraft.</returns>
-        private static Aircraft Create(string? typeCode, string? registration, string? category)
+        private static Aircraft Create(string? typeCode, string? registration, string? category, string? typeName = "Full name")
         {
-            return new Aircraft("abc123", "LOT1", 52.0, 21.0, 35000, false, 450.0, 90.0, 1.5, typeCode, registration, category);
+            return new Aircraft("abc123", "LOT1", 52.0, 21.0, 35000, false, 450.0, 90.0, 1.5, typeCode, registration, category, false, null, null, typeName);
         }
 
         /// <summary>
@@ -101,7 +102,7 @@ namespace AdsbCarMap.DataSources.Management.Tests
 
             TimedCache<AircraftDetails> cache = new TimedCache<AircraftDetails>(() => TimeSpan.FromHours(24), TimeSpan.FromMinutes(10), () => now, 100);
 
-            return new AircraftEnricher(sources, () => enabled, cache);
+            return new AircraftEnricher(sources, new List<IRateLimitedSource>(), () => enabled, cache);
         }
 
         /// <summary>
@@ -255,7 +256,76 @@ namespace AdsbCarMap.DataSources.Management.Tests
         {
             FallbackAircraftSource sources = new FallbackAircraftSource(new List<IRateLimitedAircraftSource> { new RateLimitedAircraftSource(new LookupSource("main")) }, () => new List<string>(), () => true);
 
-            Assert.Throws<ArgumentNullException>(() => new AircraftEnricher(sources, () => true, null!));
+            Assert.Throws<ArgumentNullException>(() => new AircraftEnricher(sources, new List<IRateLimitedSource>(), () => true, null!));
+        }
+
+        /// <summary>
+        /// Sources that only return the data of an aircraft by its ICAO address are asked before the position sources and give the full type name.
+        /// </summary>
+        [Fact]
+        public async Task Lookup_DetailSourcesAskedFirst_GiveFullTypeName()
+        {
+            LookupSource main = new LookupSource("main") { Details = new AircraftDetails("abc123", "B350", "SP-TPU", null) };
+            LookupSource other = new LookupSource("other") { Details = new AircraftDetails("abc123", "B350", "SP-TPU", null) };
+            DetailsOnlySource detail = new DetailsOnlySource(new AircraftDetails("abc123", "B350", "SP-TPU", null, "King Air B350", "Beechcraft Corp", "Owner"));
+            FallbackAircraftSource sources = new FallbackAircraftSource(
+                new List<IRateLimitedAircraftSource> { new RateLimitedAircraftSource(main), new RateLimitedAircraftSource(other) },
+                () => new List<string> { main.Name, other.Name },
+                () => true);
+            TimedCache<AircraftDetails> cache = new TimedCache<AircraftDetails>(() => TimeSpan.FromHours(24), TimeSpan.FromMinutes(10), () => now, 100);
+            AircraftEnricher enricher = new AircraftEnricher(sources, new List<IRateLimitedSource> { new RateLimitedRouteSource(detail) }, () => true, cache);
+
+            Aircraft? result = await enricher.LookupAsync(Create("B350", "SP-TPU", "A2", null), CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("King Air B350", result.TypeName);
+            Assert.Equal("Beechcraft Corp", result.Manufacturer);
+            Assert.Equal("Owner", result.Owner);
+            Assert.Equal(1, detail.Lookups);
+            Assert.Equal(0, main.Lookups + other.Lookups);
+            Assert.False(enricher.NeedsLookup(Create("B350", "SP-TPU", "A2", null)));
+        }
+
+        /// <summary>
+        /// Source that returns fixed details by the ICAO address and no routes.
+        /// </summary>
+        private sealed class DetailsOnlySource : IRouteSource, IAircraftLookupSource
+        {
+            /// <summary>
+            /// Details returned by the source.
+            /// </summary>
+            private readonly AircraftDetails details;
+
+            /// <summary>
+            /// Creates the source.
+            /// </summary>
+            /// <param name="details">Details returned by the source.</param>
+            public DetailsOnlySource(AircraftDetails details)
+            {
+                this.details = details;
+            }
+
+            /// <inheritdoc />
+            public string Name => "details";
+
+            /// <summary>
+            /// Number of lookups that reached the source.
+            /// </summary>
+            public int Lookups { get; private set; }
+
+            /// <inheritdoc />
+            public Task<FlightRoute?> GetRouteAsync(string callsign, CancellationToken cancellationToken)
+            {
+                return Task.FromResult<FlightRoute?>(null);
+            }
+
+            /// <inheritdoc />
+            public Task<AircraftDetails?> GetAircraftDetailsAsync(string hex, CancellationToken cancellationToken)
+            {
+                Lookups++;
+
+                return Task.FromResult<AircraftDetails?>(details);
+            }
         }
     }
 }

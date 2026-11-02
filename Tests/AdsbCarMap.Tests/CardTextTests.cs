@@ -106,7 +106,7 @@ namespace AdsbCarMap.Tests
         /// </summary>
         [Theory]
         [InlineData(RouteLookupState.NotApplicable, "Trasa: samolot nie nadaje znaku wywoławczego")]
-        [InlineData(RouteLookupState.NotFound, "Trasa: baza adsbdb nie zna tego lotu")]
+        [InlineData(RouteLookupState.NotFound, "Trasa: żadne źródło nie zna tego lotu")]
         [InlineData(RouteLookupState.Failed, "Trasa: nie udało się pobrać (błąd sieci lub limit zapytań)")]
         [InlineData(RouteLookupState.Pending, "Trasa: pobieranie…")]
         [InlineData(RouteLookupState.Found, "Trasa: pobieranie…")]
@@ -381,6 +381,33 @@ namespace AdsbCarMap.Tests
 
             Assert.Equal("Pasy: 09/27", line);
             Assert.DoesNotContain(AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 0.0, 0.0, AltitudeUnit.Metric), item => item.StartsWith("Pasy", StringComparison.Ordinal));
+        }
+
+        /// <summary>
+        /// The full type name is shown with the manufacturer and the type code, without repeating either of them.
+        /// </summary>
+        [Fact]
+        public void BuildTypeText_CombinesManufacturerNameAndCode()
+        {
+            Aircraft king = new Aircraft("abc123", "SPTPU", 0.0, 1.0, 5000, false, 200.0, 90.0, 1.0, "B350", "SP-TPU", "A2", false, null, null, "King Air B350", "Beechcraft Corp", "Polish Air Navigation Services Agency");
+            Aircraft airbus = new Aircraft("abc124", "LOT1", 0.0, 1.0, 5000, false, 200.0, 90.0, 1.0, "A320", "SP-XYZ", "A3", false, null, null, "Airbus A320-214", "Airbus", null);
+            Aircraft boeing = new Aircraft("abc125", "LOT2", 0.0, 1.0, 5000, false, 200.0, 90.0, 1.0, "B738", "SP-XYZ", "A3", false, null, null, "737-8AS", "Boeing", null);
+
+            Assert.Equal("Beechcraft King Air B350", AircraftCardText.BuildTypeText(king));
+            Assert.Equal("Airbus A320-214", AircraftCardText.BuildTypeText(airbus));
+            Assert.Equal("Boeing 737-8AS (B738)", AircraftCardText.BuildTypeText(boeing));
+            Assert.Equal("B738", AircraftCardText.BuildTypeText(Create()));
+        }
+
+        /// <summary>
+        /// Without an airline the registered owner is shown, and the full type name replaces the bare code.
+        /// </summary>
+        [Fact]
+        public void BuildDescriptors_UsesOwnerWhenNoAirlineAndFullTypeName()
+        {
+            Aircraft king = new Aircraft("abc123", null, 0.0, 1.0, 5000, false, 200.0, 90.0, 1.0, "B350", "SP-TPU", "A2", false, null, null, "King Air B350", "Beechcraft Corp", "Polish Air Navigation Services Agency");
+
+            Assert.Equal("Polish Air Navigation Services Agency · Beechcraft King Air B350 · mały odrzutowiec", AircraftCardText.BuildDescriptors(king, null));
         }
     }
 }

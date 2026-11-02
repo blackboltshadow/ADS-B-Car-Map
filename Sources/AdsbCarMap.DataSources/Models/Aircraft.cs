@@ -23,6 +23,9 @@ namespace AdsbCarMap.DataSources.Models
         /// <param name="isMilitary">Whether the database marks the aircraft as military.</param>
         /// <param name="verticalRateFeetPerMinute">Climb rate (positive) or descent rate (negative) in feet per minute or null when unknown.</param>
         /// <param name="squawk">Transponder code or null when unknown.</param>
+        /// <param name="typeName">Full name of the aircraft type, e.g. "King Air B350", or null when unknown.</param>
+        /// <param name="manufacturer">Manufacturer of the aircraft or null when unknown.</param>
+        /// <param name="owner">Registered owner or operator of the aircraft or null when unknown.</param>
         public Aircraft(
             string hex,
             string? callsign,
@@ -38,8 +41,14 @@ namespace AdsbCarMap.DataSources.Models
             string? category = null,
             bool isMilitary = false,
             int? verticalRateFeetPerMinute = null,
-            string? squawk = null)
+            string? squawk = null,
+            string? typeName = null,
+            string? manufacturer = null,
+            string? owner = null)
         {
+            TypeName = typeName;
+            Manufacturer = manufacturer;
+            Owner = owner;
             Category = category;
             IsMilitary = isMilitary;
             VerticalRateFeetPerMinute = verticalRateFeetPerMinute;
@@ -131,5 +140,20 @@ namespace AdsbCarMap.DataSources.Models
         /// Registration or null when unknown.
         /// </summary>
         public string? Registration { get; }
+
+        /// <summary>
+        /// Full name of the aircraft type, e.g. "King Air B350", or null when unknown. The main source gives only the type code; the name is filled from the other sources.
+        /// </summary>
+        public string? TypeName { get; }
+
+        /// <summary>
+        /// Manufacturer of the aircraft or null when unknown.
+        /// </summary>
+        public string? Manufacturer { get; }
+
+        /// <summary>
+        /// Registered owner or operator of the aircraft or null when unknown.
+        /// </summary>
+        public string? Owner { get; }
     }
 }

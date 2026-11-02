@@ -21,8 +21,6 @@ Stan na 2026-11-02. Notatka zbiera, jakie źródła danych istnieją, które wyb
 | ADS-B Exchange (RapidAPI) | klucz, płatny | 10 tys. zapytań/miesiąc za 10 USD | niekomercyjny | v2 | odrzucone: płatne i mały limit |
 | Własny odbiornik tar1090 | brak | brak | własny sprzęt | readsb JSON | odrzucone: aplikacja nie zakłada własnego sprzętu |
 
-Trasy lotów: tylko adsbdb.com. Alternatyw nie badano.
-
 ### airplanes.live odpowiada 403 (stan na 2026-11-02)
 
 Sprawdzone zapytaniem `GET https://api.airplanes.live/v2/point/52.2/21.0/50`, także z nagłówkiem User-Agent aplikacji: serwis (za Cloudflare) odpowiada **403 Forbidden** z treścią „Please contact us at contact@airplanes.live. Your email MUST include any links, a description of the project, and any information you deem appropriate.” Dla porównania adsb.lol odpowiada 200. Wcześniejsze założenie z tej notatki („klucz: nie podano”, czyli swobodny dostęp) było błędne. Skutki:
@@ -30,6 +28,17 @@ Sprawdzone zapytaniem `GET https://api.airplanes.live/v2/point/52.2/21.0/50`, ta
 - Jako **główne źródło** airplanes.live nie działa, a przy wyłączonym zapasowym źródle mapa pozostaje pusta (w logu: „Pobieranie samolotów nie powiodło się: … 403 (Forbidden)”).
 - Jako **zapasowe źródło** nic nie psuje (adsb.lol jest pytany pierwszy), ale też niczego nie ratuje, bo przy awarii adsb.lol drugie źródło zwróci 403.
 - Do zrobienia po stronie autora aplikacji: napisać na contact@airplanes.live z opisem projektu i linkiem do repozytorium, i zapytać o dopuszczenie ruchu aplikacji (z kontaktem w User-Agencie). Do tego czasu zostawić adsb.lol jako główne źródło (jest domyślne).
+
+## Źródła tras lotów i danych samolotu (sprawdzone 2026-11-02 żywymi zapytaniami)
+
+| Źródło | Trasa po znaku wywoławczym | Dane samolotu po kodzie ICAO | Uwagi |
+|---|---|---|---|
+| **adsbdb.com** | tak: linia (nazwa i kody), lotniska z nazwą, miastem i współrzędnymi | tak: pełna nazwa typu, kod typu, producent, rejestracja, właściciel, zdjęcie | 404 dla nieznanych; domyślnie pierwsze |
+| **adsb.lol** `/api/0/route/{znak}` | tak: lotniska z nazwą, kodami ICAO i IATA, miastem, współrzędnymi; z linii tylko kod (np. LOT) | (przez `/v2/hex` w źródle pozycji) | zapytanie jest przekierowywane (302) do statycznego pliku danych (VRS standing data, aktualizowany co godzinę wg opisu repozytorium adsb.lol); bez klucza; 404 dla nieznanych; tylko GET |
+| **hexdb.io** | tylko para lotnisk ICAO, np. `EPWA-EGLL`; w odpowiedzi znacznik czasu z 2012 roku, więc dane mogą być stare | tak: nazwa typu, producent, rejestracja, właściciel, kod operatora; bez zdjęcia | 404 dla nieznanych; warunków użycia nie sprawdzono; aplikacja uzupełnia trasę kodami IATA, miastami i współrzędnymi z własnej bazy lotnisk |
+| OpenSky, Aviationstack, AirLabs, FlightAware | nie | nie | odrzucone: OpenSky pyta po przedziale czasu i samolocie, nie po znaku wywoławczym (konto OAuth2, 400 do 4000 kredytów dziennie); Aviationstack ma około 100 zapytań miesięcznie i tylko HTTP; AirLabs bez potwierdzonych limitów; FlightAware płatne |
+
+Trasy są przypisane do znaku wywoławczego (dane standardowe), a nie do bieżącego przelotu, więc żadne z tych źródeł nie zastępuje danych na żywo.
 
 ## Architektura i decyzje
 
@@ -39,7 +48,7 @@ Warstwy i zależności (tylko w jedną stronę):
 Core (AdsbCarMap.DataSources)             tylko kontrakt, bez logiki; nie zna nikogo
    ▲                 ▲
 Źródła               Zarządca (Management)
-(AdsbLol, AirplanesLive, Adsbdb)          źródła i zarządca znają tylko Core, nie znają siebie
+(AdsbLol, AirplanesLive, Adsbdb, Hexdb)  źródła i zarządca znają tylko Core, nie znają siebie
    ▲                 ▲
    └──────── Aplikacja (AppServices składa całość) ────────┘
 ```
@@ -59,7 +68,8 @@ Sources\
   AdsbCarMap.DataSources.Management\      RateLimiting\, Selection\
   AdsbLol\       AdsbCarMap.DataSources.AdsbLol        + .Tests
   AirplanesLive\ AdsbCarMap.DataSources.AirplanesLive  + .Tests
-  Adsbdb\        AdsbCarMap.DataSources.Adsbdb         + .Tests   (trasy lotów)
+  Adsbdb\        AdsbCarMap.DataSources.Adsbdb         + .Tests   (trasy lotów i dane samolotu)
+  Hexdb\         AdsbCarMap.DataSources.Hexdb          + .Tests   (trasy lotów i dane samolotu)
 Tests\
   AdsbCarMap.Tests\                       testy aplikacji
   AdsbCarMap.DataSources.Management.Tests\ testy limitera, dekoratora, rejestru i zapasu
@@ -84,7 +94,7 @@ Pozycje samolotów zmieniają się co kilka sekund, więc ich nie zapamiętujemy
 - adsb.fi (ścieżka punktu do sprawdzenia na żywym zapytaniu, limit 1 zapytanie/s).
 - Pokazanie użytkownikowi, które źródło aktualnie odpowiada (`LastUsedSourceName` jest gotowe, brakuje miejsca w UI).
 - Ikona limitu 429 nadal opiera się na `LiveTraffic.ReportRateLimited`, a nie na stanie z `IDataSource`.
-- Zapasowe źródło tras: adsbdb nie obsługuje dziś 429 (`AdsbdbRouteClient` zawsze zgłasza brak limitu).
+- Pokazanie użytkownikowi, które źródło tras odpowiedziało.
 - Zaokrąglanie współrzędnych wysyłanych do API (prywatność).
 - Licencje: przed udostępnieniem aplikacji poza własny użytek ponownie sprawdzić warunki airplanes.live, adsb.lol i adsb.fi; ewentualnie przejść na FlyItalyADSB lub umowę z dostawcą.
 - Nie potwierdzono limitów zapytań airplanes.live ani adsb.lol. Strona porównawcza podaje je jako „nie podano”.

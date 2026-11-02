@@ -62,5 +62,37 @@ namespace AdsbCarMap.DataSources.Management.Tests
             Assert.Equal(order, SourceOrder.Move(order, 5, 0));
             Assert.Equal(order, SourceOrder.Move(order, 1, 1));
         }
+
+        /// <summary>
+        /// A named source comes first, unknown names are ignored, a repeated name counts once and the rest keep their order.
+        /// </summary>
+        [Fact]
+        public void Arrange_PutsNamedSourcesFirst()
+        {
+            IReadOnlyList<FakeSource> sources = new List<FakeSource> { new FakeSource("a"), new FakeSource("b"), new FakeSource("c") };
+
+            IReadOnlyList<FakeSource> arranged = SourceOrder.Arrange(sources, new List<string> { "C", "zzz", "c", "a" });
+
+            Assert.Equal(new List<string> { "c", "a", "b" }, arranged.Select(item => item.Name).ToList());
+            Assert.Equal(new List<string> { "a", "b", "c" }, SourceOrder.Arrange(sources, new List<string>()).Select(item => item.Name).ToList());
+        }
+
+        /// <summary>
+        /// Source that only has a name.
+        /// </summary>
+        private sealed class FakeSource : AdsbCarMap.DataSources.Interfaces.IDataSource
+        {
+            /// <summary>
+            /// Creates the source.
+            /// </summary>
+            /// <param name="name">Name of the source.</param>
+            public FakeSource(string name)
+            {
+                Name = name;
+            }
+
+            /// <inheritdoc />
+            public string Name { get; }
+        }
     }
 }
