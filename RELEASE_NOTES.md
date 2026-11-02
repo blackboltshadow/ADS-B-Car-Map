@@ -2,6 +2,43 @@
 
 Opis tego, co zostało wydane w kolejnych wersjach, od najnowszej. Wersja ma postać `0.<druga>.<trzecia>` i jest w pliku `Version.txt`: przy nowym wydaniu rośnie druga cyfra, a trzecia wraca do 0 (0.3.0), przy poprawce rośnie tylko trzecia (0.3.1); decyduje o tym osoba przygotowująca wydanie. Numer kompilacji (`versionCode`) nigdy nie jest zerowany. Do wersji 0.2.163 trzecia cyfra była numerem kompilacji. Od wersji 0.2.163 każdej wersji odpowiada tag w git (`v<wersja>`) i wiersz w `release-history.csv` (commit, rozmiar i SHA-256 paczki). Podsumowanie commitów dla wersji można wygenerować skryptem `Scripts\Release-Notes.ps1`. Wcześniejsze wersje nie mają tagów.
 
+## 0.4.0 (2026-11-02)
+
+Zmiany od wersji 0.3.1.
+
+**Źródła danych**
+- Dwa źródła pozycji samolotów: adsb.lol i airplanes.live. Kolejność wybiera się w ustawieniach zaawansowanych na liście przeciąganej za uchwyt (pierwszy serwis jest głównym źródłem), a gdy główne źródło nie zwraca danych (limit zapytań 429, błąd sieci lub serwera), aplikacja pyta następne. Uwaga: airplanes.live odrzuca na razie zapytania aplikacji (kod 403) i prosi o kontakt e-mailowy, więc do czasu uzgodnienia głównym źródłem powinno zostać adsb.lol.
+- Trasy lotów z trzech serwisów: adsbdb.com, adsb.lol i hexdb.io, z własną kolejnością na liście przeciąganej. Gdy serwis nie zna lotu albo nie odpowiada, aplikacja pyta następny. Trasę z hexdb.io, która jest samą parą lotnisk, aplikacja uzupełnia kodami IATA, miastami i współrzędnymi z własnej bazy lotnisk, żeby działał pasek postępu.
+- Karta zaznaczonego samolotu pokazuje pełną nazwę typu i producenta (np. „Beechcraft King Air B350”) oraz właściciela, gdy nie ma linii lotniczej. Dane są dopytywane o ten jeden samolot w adsbdb i hexdb.io, gdy główne źródło ich nie podaje (przełącznik „Uzupełniaj dane zaznaczonego samolotu”).
+- Pamięć podręczna informacji o lotach: trasy i dane samolotów są pamiętane od ostatniego zobaczenia samolotu na mapie (suwak 1–30 min, domyślnie 10), zapisują się na dysk i działają po ponownym uruchomieniu, więc aplikacja nie pyta dwa razy o ten sam lot. Lot, który wylądował, jest zapominany po około 2 minutach. Przycisk „Wyczyść teraz” w karcie „Pamięć podręczna lotów”.
+- Limity zapytań (429) obsługuje osobna warstwa zarządzająca źródłami: wykładniczy backoff 5, 10, 20, 40, 60 s albo według `Retry-After`, wspólny dla wszystkich źródeł.
+
+**Android Auto**
+- Z usługą mogą się połączyć tylko znane hosty z listy w `Resources\values\allowed_hosts.xml` (Android Auto z Google Play), zamiast każdego hosta. Osobne listy dla buildów Debug i Release.
+
+**Mapa i filtry**
+- Pamięć podręczna kafelków mapy na dysku z ustawieniami rozmiaru i czasu.
+- Filtry samolotów z kreatorem drzewa warunków (grupy ORAZ/LUB, NIE, przesuwanie, kopiowanie), zapisem JSON, filtrami wbudowanymi i przyciskiem z licznikiem na mapie.
+- Tabela typów samolotów z kodami IATA i rodzinami oraz dziennik brakujących typów w ustawieniach.
+- Wyszukiwarka znajduje wyniki bez polskich znaków („lodz” znajduje „Łódź”).
+
+**Ustawienia**
+- Ustawienia pogrupowane w zwijane sekcje, z potwierdzeniem przywracania domyślnych. W zaawansowanych nowe karty: „Źródło danych”, „Źródła tras” i „Pamięć podręczna lotów”.
+
+**Pod maską**
+- Źródła danych wydzielone do osobnych projektów bez zależności od Androida (kontrakt, zarządca, po jednym projekcie na serwis), każdy z własnymi testami. Złożenie źródeł jest w jednej testowalnej klasie. Liczba testów jednostkowych wzrosła z 253 do 575.
+
+Tekst „Co nowego” w Google Play dla tej wersji:
+
+```
+Źródła danych:
+• Dwa źródła pozycji samolotów i trzy źródła tras, z kolejnością do wyboru i zapasem przy awarii
+• Pełna nazwa typu, producent i właściciel samolotu na karcie
+• Pamięć lotów: aplikacja nie pyta dwa razy o ten sam lot, także po restarcie
+Android Auto: połączenie tylko ze znanymi hostami.
+Mapa: filtry samolotów, pamięć kafelków, wyszukiwanie bez polskich znaków.
+```
+
 ## 0.3.1 (2026-11-01)
 
 Zmiany od wersji 0.2.163. Wersja 0.3.0 nie została wydana, linia 0.3 zaczyna się od 0.3.1.

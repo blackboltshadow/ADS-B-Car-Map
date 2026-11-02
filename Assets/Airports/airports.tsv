@@ -4216,6 +4216,7 @@
 3MO4		S	Penman Airport	Portageville	US	36.450489	-89.62831	287	0	0
 3MO5		S	Nimsick Airport	Carthage	US	37.12810134887695	-94.21610260009766	1095	0	0
 3MO7		S	Kelly Field	Bonne Terre	US	37.958725	-90.627651	698	0	0
+3MO8		H	Fort Leonard Wood Hospital Heliport	Fort Leonard Wood	US	37.769188	-92.112203	1068	0	0
 3MS0		H	Grand Gulf Heliport	Port Gibson	US	32.013999938964844	-91.0521011352539	160	0	0
 3MS1		S	Thomas Field	Holly Springs	US	34.806433	-89.461455	485	0	0
 3MS2		H	Desoto County Sheriff's Office Heliport	Hernando	US	34.807584	-89.981071	370	0	0
@@ -22737,7 +22738,7 @@ FNKU	SVP	M	Kuito Airport	Kuito	AO	-12.404600143433	16.947399139404	5618	0	0
 FNLB	LLT	S	Lobito Airport	Lobito	AO	-12.3712	13.5366	10	0	0
 FNLK	LBZ	S	Lucapa Airport	Lucapa	AO	-8.442339	20.732701	3029	0	0
 FNLM		S	Lumbala Airstrip	Lumbala	AO	-12.638947	22.589028	3510	0	0
-FNLU	LAD	L	Quatro de Fevereiro International Airport	Luanda	AO	-8.85837	13.2312	243	1	0
+FNLU	LAD	L	Quatro de Fevereiro International Airport	Luanda	AO	-8.85837	13.2312	243	0	0
 FNLZ	LZM	S	Luzamba Airport	Luzamba	AO	-9.11596012115	18.049299240099998	2904	0	0
 FNMA	MEG	M	Malanje Airport	Malanje	AO	-9.525090217590332	16.312400817871094	3868	1	0
 FNME	SPP	M	Menongue Airport	Menongue	AO	-14.657600402832031	17.71980094909668	4469	1	0
@@ -46576,7 +46577,7 @@ OSKL	KAC	M	Qamishli International Airport	Qamishli	SY	37.020599	41.191399	1480	1
 OSLK	LTK	M	Latakia International Airport	Latakia	SY	35.4011	35.9487	157	1	0
 OSPR	PMS	M	Palmyra Airport	Tadmur	SY	34.5574	38.316898	1322	0	0
 OT62		S	Umm Al-Shokhot Airport	Al-Shahaniya	QA	25.700539	51.36303	40	0	0
-OTBD	DIA	L	Doha International Airport	Doha	QA	25.259431	51.565528	35	1	0
+OTBD	DIA	M	Doha International Airport	Doha	QA	25.259431	51.565528	35	0	0
 OTBH	XJD	M	Al Udeid Air Base	Ar Rayyan	QA	25.1173000336	51.3149986267	130	0	1
 OTHH	DOH	L	Hamad International Airport	Doha	QA	25.273056	51.608056	13	1	0
 OUM	OUM	S	Oum Hadjer Airport	Oum Hadjer	TD	13.278244	19.710256	1198	0	0
@@ -64817,7 +64818,6 @@ US-7354		H	Nacogdoches Medical Center Center Heliport	Center	US	31.767499	-94.18
 US-7355		H	DeSoto Regional Health System Heliport	Mansfield	US	32.03626	-93.70851	334	0	0
 US-7356		H	Lallie Kemp Regional Medical Center Heliport	Independence	US	30.622433	-90.499592	75	0	0
 US-7359		H	Air Evac 117 Heliport	Snellville	US	33.87922	-84.01883	1037	0	0
-US-7360		H	General Leonard Wood Army Community Hospital Heliport	Fort Leonard Wood	US	37.76642	-92.11272	1097	0	0
 US-7361		H	Pushmataha Hospital Heliport	Antlers	US	34.23092	-95.61518	521	0	0
 US-7364		H	Northeast Georgia Medical Center Braselton Heliport	Braselton	US	34.12115	-83.83694	924	0	0
 US-7365		H	Road Atlanta Heliport	Braselton	US	34.15156	-83.81528	971	0	0
