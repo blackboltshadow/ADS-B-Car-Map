@@ -39,7 +39,7 @@ namespace AdsbCarMap.Auto
         /// <param name="carContext">Car context provided by the session.</param>
         public MapScreen(CarContext carContext) : base(carContext)
         {
-            controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes, AppServices.Selection, AppServices.Enricher);
+            controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes, AppServices.Selection, AppServices.Enricher, AppServices.FlightKeeper);
             controller.SelectionChanged += RefreshTemplate;
             controller.LabelSelectedAircraft = true;
             controller.ShowSelectionPopup = true;

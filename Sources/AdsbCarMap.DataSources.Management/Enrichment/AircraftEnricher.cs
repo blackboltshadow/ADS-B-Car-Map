@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Management.RateLimiting;
 using AdsbCarMap.DataSources.Management.Selection;
 using AdsbCarMap.DataSources.Models;
@@ -12,12 +13,7 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
     public sealed class AircraftEnricher
     {
         /// <summary>
-        /// Default time during which an aircraft is not asked about again after an attempt.
-        /// </summary>
-        public static readonly TimeSpan DefaultRetryInterval = TimeSpan.FromMinutes(10);
-
-        /// <summary>
-        /// Lock protecting the attempts.
+        /// Lock protecting the requests in progress.
         /// </summary>
         private readonly object gate = new object();
 
@@ -32,19 +28,9 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
         private readonly Func<bool> enabled;
 
         /// <summary>
-        /// Time during which an aircraft is not asked about again after an attempt.
+        /// Data found earlier by the ICAO address. A stored null means that no source knew more, so the aircraft is not asked about again for a while.
         /// </summary>
-        private readonly TimeSpan retryInterval;
-
-        /// <summary>
-        /// Source of the current time in UTC, replaceable in tests.
-        /// </summary>
-        private readonly Func<DateTime> utcNow;
-
-        /// <summary>
-        /// Results of the attempts by the ICAO address: the moment of the attempt and the data found, or null when nothing was found.
-        /// </summary>
-        private readonly Dictionary<string, (DateTime AttemptedUtc, AircraftDetails? Details)> attempts = new Dictionary<string, (DateTime AttemptedUtc, AircraftDetails? Details)>();
+        private readonly TimedCache<AircraftDetails> cache;
 
         /// <summary>
         /// ICAO addresses with a request in progress.
@@ -52,30 +38,19 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
         private readonly HashSet<string> inProgress = new HashSet<string>();
 
         /// <summary>
-        /// Creates the enricher with the default retry interval and the system clock.
-        /// </summary>
-        /// <param name="sources">Sources in the order of preference.</param>
-        /// <param name="enabled">Returns whether the enrichment is switched on.</param>
-        public AircraftEnricher(FallbackAircraftSource sources, Func<bool> enabled)
-            : this(sources, enabled, DefaultRetryInterval, () => DateTime.UtcNow)
-        {
-        }
-
-        /// <summary>
         /// Creates the enricher.
         /// </summary>
         /// <param name="sources">Sources in the order of preference.</param>
         /// <param name="enabled">Returns whether the enrichment is switched on.</param>
-        /// <param name="retryInterval">Time during which an aircraft is not asked about again after an attempt.</param>
-        /// <param name="utcNow">Source of the current time in UTC.</param>
-        public AircraftEnricher(FallbackAircraftSource sources, Func<bool> enabled, TimeSpan retryInterval, Func<DateTime> utcNow)
+        /// <param name="cache">Memory of the data found earlier, shared with the other parts of the application.</param>
+        public AircraftEnricher(FallbackAircraftSource sources, Func<bool> enabled, TimedCache<AircraftDetails> cache)
         {
+            ArgumentNullException.ThrowIfNull(sources);
+            ArgumentNullException.ThrowIfNull(cache);
             this.sources = sources;
             this.enabled = enabled;
-            this.retryInterval = retryInterval;
-            this.utcNow = utcNow;
+            this.cache = cache;
         }
-
         /// <summary>
         /// Checks whether the aircraft has gaps that the other sources could fill.
         /// </summary>
@@ -95,7 +70,7 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
                     return false;
                 }
 
-                return !attempts.TryGetValue(aircraft.Hex, out (DateTime AttemptedUtc, AircraftDetails? Details) attempt) || utcNow() - attempt.AttemptedUtc >= retryInterval;
+                return !cache.TryGet(aircraft.Hex, out _);
             }
         }
 
@@ -159,7 +134,7 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
                 lock (gate)
                 {
                     inProgress.Remove(aircraft.Hex);
-                    attempts[aircraft.Hex] = (utcNow(), found);
+                    cache.Set(aircraft.Hex, found);
                 }
             }
 
@@ -167,7 +142,7 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
         }
 
         /// <summary>
-        /// Fills the gaps of the aircraft in the list with the data found earlier, without any request.
+        /// Fills the gaps of the aircraft in the list with the data found earlier and still valid, without any request.
         /// </summary>
         /// <param name="aircraft">Aircraft from the main source.</param>
         /// <returns>The same list when nothing was added, otherwise a copy with the filled aircraft.</returns>
@@ -175,7 +150,7 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
         {
             lock (gate)
             {
-                if (attempts.Count == 0)
+                if (cache.Count == 0)
                 {
                     return aircraft;
                 }
@@ -184,12 +159,12 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
 
                 for (int i = 0; i < aircraft.Count; i++)
                 {
-                    if (!attempts.TryGetValue(aircraft[i].Hex, out (DateTime AttemptedUtc, AircraftDetails? Details) attempt) || attempt.Details == null)
+                    if (!cache.TryGet(aircraft[i].Hex, out AircraftDetails? details) || details == null)
                     {
                         continue;
                     }
 
-                    Aircraft filled = AircraftMerger.FillMissing(aircraft[i], attempt.Details);
+                    Aircraft filled = AircraftMerger.FillMissing(aircraft[i], details);
 
                     if (!ReferenceEquals(filled, aircraft[i]))
                     {

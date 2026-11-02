@@ -1,7 +1,9 @@
 using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.DataSources.Adsbdb;
 using AdsbCarMap.DataSources.AdsbLol;
 using AdsbCarMap.DataSources.AirplanesLive;
+using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Management.Enrichment;
 using AdsbCarMap.DataSources.Management.RateLimiting;
 using AdsbCarMap.DataSources.Management.Selection;
@@ -12,7 +14,7 @@ using AdsbCarMap.Settings;
 namespace AdsbCarMap.Services
 {
     /// <summary>
-    /// Long-lived objects shared by the Android Auto screens and the phone screen.
+    /// Long-lived objects shared by the Android Auto screens and the phone screen. Static members are initialized in the order of their declaration, so every member must be declared after the members that it uses; otherwise it silently receives null.
     /// </summary>
     public static class AppServices
     {
@@ -44,6 +46,31 @@ namespace AdsbCarMap.Services
         private static readonly HttpClient RouteHttpClient = CreateHttpClient(AdsbdbRouteClient.DefaultBaseAddress);
 
         /// <summary>
+        /// Time after which the answer that a source does not know a flight is asked about again, at most.
+        /// </summary>
+        private static readonly TimeSpan RouteNotFoundMaxAge = TimeSpan.FromHours(6);
+
+        /// <summary>
+        /// Time after which the answer that no source knows more about an aircraft is asked about again, at most.
+        /// </summary>
+        private static readonly TimeSpan AircraftNotFoundMaxAge = TimeSpan.FromMinutes(10);
+
+        /// <summary>
+        /// Delay between a change of the flight information and writing it to the file.
+        /// </summary>
+        private static readonly TimeSpan FlightInfoSaveDelay = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// Routes by callsign, kept for the time chosen in the settings counted from the last sighting, and in a file in the cache directory.
+        /// </summary>
+        private static readonly TimedCache<FlightRoute> RouteMemory = CreateFlightInfoCache<FlightRoute>("routes.json", RouteNotFoundMaxAge);
+
+        /// <summary>
+        /// Type, registration and category found by the ICAO address, kept for the time chosen in the settings and in a file in the cache directory.
+        /// </summary>
+        private static readonly TimedCache<AircraftDetails> AircraftMemory = CreateFlightInfoCache<AircraftDetails>("aircraft-details.json", AircraftNotFoundMaxAge);
+
+        /// <summary>
         /// Aircraft sources queried in the order chosen in the settings; the next source is asked when the previous one gives no data (if enabled in the settings).
         /// </summary>
         private static readonly FallbackAircraftSource AircraftSources = new FallbackAircraftSource(
@@ -59,12 +86,17 @@ namespace AdsbCarMap.Services
         /// <summary>
         /// Completes the type, the registration and the category of the selected aircraft from the other sources when the main source lacks them.
         /// </summary>
-        public static AircraftEnricher Enricher { get; } = new AircraftEnricher(AircraftSources, () => AppSettings.DataSourceDetails);
+        public static AircraftEnricher Enricher { get; } = new AircraftEnricher(AircraftSources, () => AppSettings.DataSourceDetails, AircraftMemory);
 
         /// <summary>
         /// Cache of the flight routes downloaded from adsbdb.com.
         /// </summary>
-        public static RouteCache Routes { get; } = new RouteCache(new AdsbdbRouteClient(RouteHttpClient));
+        public static RouteCache Routes { get; } = new RouteCache(new AdsbdbRouteClient(RouteHttpClient), RouteMemory);
+
+        /// <summary>
+        /// Keeps the memory of the flight information in line with the visible aircraft: marks the visible flights as seen and closes those that have landed.
+        /// </summary>
+        public static FlightCacheKeeper FlightKeeper { get; } = new FlightCacheKeeper(RouteMemory, AircraftMemory);
 
         /// <summary>
         /// Map tiles stored on the disk, in the cache directory of the application.
@@ -127,6 +159,46 @@ namespace AdsbCarMap.Services
             database.StartLoading();
 
             return database;
+        }
+
+        /// <summary>
+        /// Number of flights and aircraft whose information is kept in the memory, including the answers that nothing is known.
+        /// </summary>
+        public static int FlightInfoCount => RouteMemory.Count + AircraftMemory.Count;
+
+        /// <summary>
+        /// Forgets all stored information about flights and aircraft, also in the files.
+        /// </summary>
+        public static void ClearFlightInfo()
+        {
+            RouteMemory.Clear();
+            AircraftMemory.Clear();
+            RouteMemory.Flush();
+            AircraftMemory.Flush();
+        }
+
+        /// <summary>
+        /// Creates a memory of flight information kept for the time chosen in the settings and in a file in the cache directory of the application.
+        /// </summary>
+        /// <typeparam name="T">Kind of the stored information.</typeparam>
+        /// <param name="fileName">Name of the file in the directory "flights" of the cache.</param>
+        /// <param name="notFoundMaxAge">Time after which the answer that nothing is known is asked about again, at most.</param>
+        /// <returns>The memory with the stored items already loaded.</returns>
+        private static TimedCache<T> CreateFlightInfoCache<T>(string fileName, TimeSpan notFoundMaxAge) where T : class
+        {
+            TimedCache<T> cache = new TimedCache<T>(() => AppSettings.FlightInfoMaxAge, notFoundMaxAge);
+            string directory = System.IO.Path.Combine(Android.App.Application.Context.CacheDir!.AbsolutePath, "flights");
+
+            try
+            {
+                System.IO.Directory.CreateDirectory(directory);
+                cache.AttachFile(System.IO.Path.Combine(directory, fileName), FlightInfoSaveDelay);
+            }
+            catch (Exception exception) when (exception is System.IO.IOException || exception is UnauthorizedAccessException)
+            {
+            }
+
+            return cache;
         }
 
         /// <summary>

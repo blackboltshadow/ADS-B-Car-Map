@@ -1,5 +1,6 @@
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Management.Enrichment;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -204,6 +205,11 @@ namespace AdsbCarMap.Map
         /// Completes the data of the selected aircraft from the other sources, or null when it is not used.
         /// </summary>
         private readonly AircraftEnricher? enricher;
+
+        /// <summary>
+        /// Keeps the memory of the flight information in line with the visible aircraft, or null when it is not used.
+        /// </summary>
+        private readonly FlightCacheKeeper? keeper;
 
         /// <summary>
         /// Map tile provider.
@@ -679,10 +685,12 @@ namespace AdsbCarMap.Map
         /// <param name="routeCache">Flight route cache.</param>
         /// <param name="selectionState">Selection and filters shared with the other map.</param>
         /// <param name="enricher">Completes the data of the selected aircraft from the other sources, or null when it is not used.</param>
-        public MapController(IAircraftSource adsbClient, TileProvider tileProvider, RouteCache routeCache, SelectionState selectionState, AircraftEnricher? enricher = null)
+        /// <param name="keeper">Marks the visible flights as seen and closes the landed ones in the memory of the flight information, or null when it is not used.</param>
+        public MapController(IAircraftSource adsbClient, TileProvider tileProvider, RouteCache routeCache, SelectionState selectionState, AircraftEnricher? enricher = null, FlightCacheKeeper? keeper = null)
         {
             this.adsbClient = adsbClient;
             this.enricher = enricher;
+            this.keeper = keeper;
             this.tileProvider = tileProvider;
             this.routeCache = routeCache;
             this.selectionState = selectionState;
@@ -1892,6 +1900,8 @@ namespace AdsbCarMap.Map
                         fetched = enricher.Apply(fetched);
                     }
 
+                    keeper?.Observe(fetched);
+
                     DateTime fetchedAtUtc = DateTime.UtcNow;
                     IReadOnlyDictionary<string, TrailPoint[]> previousTrails;
 
@@ -1925,7 +1935,7 @@ namespace AdsbCarMap.Map
                 }
                 catch (Exception exception)
                 {
-                    Log.Warn(LogTag, "Pobieranie samolotów nie powiodło się: " + exception.Message);
+                    Log.Warn(LogTag, "Pobieranie samolotów nie powiodło się: " + exception);
                     Volatile.Write(ref aircraftFailed, 1);
                 }
 

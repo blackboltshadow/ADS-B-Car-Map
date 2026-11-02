@@ -130,6 +130,16 @@ namespace AdsbCarMap.Activities
         private TextView? tileCacheUsageText;
 
         /// <summary>
+        /// Card shared by the settings of the flight information cache, created with the first of them.
+        /// </summary>
+        private LinearLayout? flightCacheCard;
+
+        /// <summary>
+        /// Text with the number of stored flights and aircraft, inside <see cref="flightCacheCard"/>.
+        /// </summary>
+        private TextView? flightCacheUsageText;
+
+        /// <summary>
         /// Preview of the sample aircraft trails inside <see cref="trailCard"/>.
         /// </summary>
         private TrailsPreview? trailsPreview;
@@ -224,6 +234,7 @@ namespace AdsbCarMap.Activities
             GetTitledCard("refresh", "Odświeżanie", advanced);
             GetTitledCard("tiles", "Pobieranie kafelków", advanced);
             GetTileCacheCard(advanced);
+            GetFlightCacheCard(advanced);
 
             LinearLayout developer = CreateAggregate(root, "Dev", "developer", 20f);
 
@@ -284,6 +295,11 @@ namespace AdsbCarMap.Activities
                 tileCacheCard.AddView(CreateResetButton("Przywróć domyślną pamięć podręczną", AppSettings.TileCacheSettings, "Przywrócono domyślne ustawienia pamięci podręcznej"));
             }
 
+            if (flightCacheCard != null)
+            {
+                flightCacheCard.AddView(CreateResetButton("Przywróć domyślny czas przechowywania", AppSettings.FlightCacheSettings, "Przywrócono domyślny czas przechowywania informacji o lotach"));
+            }
+
             if (trailCard != null)
             {
                 trailCard.AddView(CreateResetButton("Przywróć domyślne ślady", AppSettings.TrailSettings, "Przywrócono domyślne ustawienia śladów"));
@@ -294,6 +310,7 @@ namespace AdsbCarMap.Activities
                 (airportSettingsCard, "airports"),
                 (trailCard, "trails"),
                 (tileCacheCard, "tileCache"),
+                (flightCacheCard, "flightCache"),
                 (aircraftIconCard, "aircraftIcons"),
                 (altitudeScaleCard, "altitudeScale"),
             };
@@ -547,6 +564,11 @@ namespace AdsbCarMap.Activities
             if (AppSettings.TrailSettings.Contains(definition))
             {
                 return GetTrailCard(container);
+            }
+
+            if (AppSettings.FlightCacheSettings.Contains(definition))
+            {
+                return GetFlightCacheCard(container);
             }
 
             if (AppSettings.TileCacheSettings.Contains(definition))
@@ -1444,6 +1466,54 @@ namespace AdsbCarMap.Activities
             UpdateTileCacheUsage();
 
             return card;
+        }
+
+        /// <summary>
+        /// Returns the card shared by the settings of the flight information cache, creating it at the first call. It shows how many flights and aircraft are stored and has a button that forgets them.
+        /// </summary>
+        /// <param name="root">Container of the screen.</param>
+        /// <returns>The shared card.</returns>
+        private LinearLayout GetFlightCacheCard(LinearLayout root)
+        {
+            if (flightCacheCard != null)
+            {
+                return flightCacheCard;
+            }
+
+            LinearLayout card = CreateCard(root);
+
+            TextView title = new TextView(this);
+            title.Text = "Pamięć podręczna lotów";
+            StyleTitle(title);
+            card.AddView(title);
+
+            flightCacheUsageText = new TextView(this);
+            StyleSecondary(flightCacheUsageText);
+            flightCacheUsageText.SetPadding(0, Dp(4), 0, 0);
+            card.AddView(flightCacheUsageText);
+
+            Button clear = new Button(this);
+            clear.Text = "Wyczyść teraz";
+            clear.Click += (sender, args) =>
+            {
+                AppServices.ClearFlightInfo();
+                UpdateFlightCacheUsage();
+                Toast.MakeText(this, "Wyczyszczono pamięć podręczną lotów", ToastLength.Short)?.Show();
+            };
+            card.AddView(clear);
+
+            flightCacheCard = card;
+            UpdateFlightCacheUsage();
+
+            return card;
+        }
+
+        /// <summary>
+        /// Shows the number of stored flights and aircraft next to the retention time.
+        /// </summary>
+        private void UpdateFlightCacheUsage()
+        {
+            flightCacheUsageText?.Text = string.Format(CultureInfo.CurrentCulture, "Zapisane informacje: {0} (trasy i dane samolotów, razem z odpowiedziami „nieznany”)", AppServices.FlightInfoCount);
         }
 
         /// <summary>

@@ -59,7 +59,7 @@ namespace AdsbCarMap.Settings
         /// <summary>
         /// Order in which the aircraft sources are asked: the first one is the main source, the next ones are asked when the previous one gives no data.
         /// </summary>
-        public static readonly SettingDefinition DataSourceSetting = SettingDefinition.CreateChoice("data_source", "Kolejność źródeł samolotów", 0, "Kolejność, w jakiej aplikacja pyta serwisy o pozycje samolotów. Pierwszy serwis jest głównym źródłem, a kolejne są pytane tylko wtedy, gdy poprzedni nie zwraca danych (przy włączonym zapasowym źródle). Oba serwisy (adsb.lol i airplanes.live) są darmowe, mają ten sam format danych i służą do użytku osobistego, niekomercyjnego. Zmiana działa od następnego odświeżenia mapy.", DataSourceOrders.Select(SourceOrder.Describe).ToArray());
+        public static readonly SettingDefinition DataSourceSetting = SettingDefinition.CreateChoice("data_source", "Kolejność źródeł samolotów", 0, "Kolejność, w jakiej aplikacja pyta serwisy o pozycje samolotów. Pierwszy serwis jest głównym źródłem, a kolejne są pytane tylko wtedy, gdy poprzedni nie zwraca danych (przy włączonym zapasowym źródle). Oba serwisy (adsb.lol i airplanes.live) mają ten sam format danych i służą do użytku osobistego, niekomercyjnego. Uwaga: airplanes.live odrzuca na razie zapytania tej aplikacji (kod 403) i prosi o kontakt e-mailowy, więc do czasu uzgodnienia głównym źródłem powinno być adsb.lol. Zmiana działa od następnego odświeżenia mapy.", DataSourceOrders.Select(SourceOrder.Describe).ToArray());
 
         /// <summary>
         /// Whether the next sources are asked when the previous one gives no data.
@@ -80,6 +80,11 @@ namespace AdsbCarMap.Settings
         /// Number of days a tile on the disk is considered fresh.
         /// </summary>
         public static readonly SettingDefinition TileCacheDaysSetting = SettingDefinition.CreateSlider("tile_cache_days", "Czas trzymania kafelków", 7.0, 1.0, 90.0, 1.0, " dni", "Przez ile dni kafelek zapisany na dysku jest uznawany za aktualny i używany bez pytania serwera. Po tym czasie aplikacja pobiera go ponownie, aby mapa nadążała za zmianami w OpenStreetMap. Gdy pobranie się nie uda (brak zasięgu, limit zapytań), użyty zostaje starszy kafelek z dysku, dopóki nie zostanie usunięty z powodu limitu rozmiaru.");
+
+        /// <summary>
+        /// How many minutes after the last sighting the information about a single flight or aircraft (route, type, registration) is kept before it is asked about again.
+        /// </summary>
+        public static readonly SettingDefinition FlightInfoCacheMinutesSetting = SettingDefinition.CreateSlider("flight_info_cache_minutes", "Czas pamiętania lotu po ostatnim zobaczeniu", 10.0, 1.0, 30.0, 1.0, " min", "Jak długo aplikacja pamięta informacje o pojedynczym locie lub samolocie (trasę po znaku wywoławczym oraz typ i rejestrację uzupełnione z innych źródeł) od chwili, gdy ostatnio widziała ten samolot na mapie. Dopóki samolot jest widoczny, jego dane są odświeżane i aplikacja nie pyta o nie ponownie, nawet gdy leci wiele godzin. Gdy samolot zniknie (wyląduje, wyłączy transponder albo wyleci poza widoczny obszar), po tym czasie jest zapominany. Samolot, który właśnie wylądował, jest zapominany szybciej, po około 2 minutach. Dłuższy czas oznacza mniej zapytań, gdy wracasz do tych samych lotów, krótszy świeższe dane. Pozycje samolotów na mapie nie są tu zapamiętywane, bo zmieniają się co chwilę. Odpowiedź „serwer nie zna tego lotu” jest pamiętana krócej.");
 
         /// <summary>
         /// Time the trail is remembered, in minutes.
@@ -249,6 +254,7 @@ namespace AdsbCarMap.Settings
             TrailOutlineAlphaSetting,
             TileCacheSizeSetting,
             TileCacheDaysSetting,
+            FlightInfoCacheMinutesSetting,
             FetchIntervalSetting,
             RenderIntervalSetting,
             MinZoomSetting,
@@ -268,6 +274,14 @@ namespace AdsbCarMap.Settings
         {
             TileCacheSizeSetting,
             TileCacheDaysSetting,
+        };
+
+        /// <summary>
+        /// Settings of the cache of the flight information. They share one section on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> FlightCacheSettings = new List<SettingDefinition>
+        {
+            FlightInfoCacheMinutesSetting,
         };
 
         /// <summary>
@@ -353,6 +367,11 @@ namespace AdsbCarMap.Settings
         /// Time a tile on the disk is considered fresh.
         /// </summary>
         public static TimeSpan TileCacheMaxAge => TimeSpan.FromDays(Get(TileCacheDaysSetting));
+
+        /// <summary>
+        /// How long after the last sighting the information about a single flight or aircraft is kept before it is asked about again.
+        /// </summary>
+        public static TimeSpan FlightInfoMaxAge => TimeSpan.FromMinutes(Get(FlightInfoCacheMinutesSetting));
 
         /// <summary>
         /// Time the trail is remembered.

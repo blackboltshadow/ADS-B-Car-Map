@@ -1,5 +1,6 @@
 using System.Net;
 using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Management.Enrichment;
 using AdsbCarMap.DataSources.Management.RateLimiting;
 using AdsbCarMap.DataSources.Management.Selection;
@@ -98,7 +99,9 @@ namespace AdsbCarMap.DataSources.Management.Tests
                 () => new List<string> { main.Name, other.Name },
                 () => true);
 
-            return new AircraftEnricher(sources, () => enabled, TimeSpan.FromMinutes(10), () => now);
+            TimedCache<AircraftDetails> cache = new TimedCache<AircraftDetails>(() => TimeSpan.FromHours(24), TimeSpan.FromMinutes(10), () => now, 100);
+
+            return new AircraftEnricher(sources, () => enabled, cache);
         }
 
         /// <summary>
@@ -221,6 +224,38 @@ namespace AdsbCarMap.DataSources.Management.Tests
             IReadOnlyList<Aircraft> list = new List<Aircraft> { Create(null, null, null) };
 
             Assert.Same(list, enricher.Apply(list));
+        }
+
+        /// <summary>
+        /// Data that was found stays valid longer than the answer that nothing was found, so a known aircraft is not asked about again after the short interval.
+        /// </summary>
+        [Fact]
+        public async Task Lookup_FoundData_StaysValidLongerThanNothingFound()
+        {
+            LookupSource main = new LookupSource("main");
+            LookupSource other = new LookupSource("other") { Details = new AircraftDetails("abc123", "A320", null, null) };
+            AircraftEnricher enricher = Create(main, other);
+            Aircraft aircraft = Create(null, null, null);
+
+            await enricher.LookupAsync(aircraft, CancellationToken.None);
+            now += TimeSpan.FromHours(2);
+
+            Assert.False(enricher.NeedsLookup(aircraft));
+
+            now += TimeSpan.FromHours(23);
+
+            Assert.True(enricher.NeedsLookup(aircraft));
+        }
+
+        /// <summary>
+        /// A missing memory is reported at once, not as a null reference during the first download.
+        /// </summary>
+        [Fact]
+        public void Constructor_NullCache_ThrowsAtOnce()
+        {
+            FallbackAircraftSource sources = new FallbackAircraftSource(new List<IRateLimitedAircraftSource> { new RateLimitedAircraftSource(new LookupSource("main")) }, () => new List<string>(), () => true);
+
+            Assert.Throws<ArgumentNullException>(() => new AircraftEnricher(sources, () => true, null!));
         }
     }
 }

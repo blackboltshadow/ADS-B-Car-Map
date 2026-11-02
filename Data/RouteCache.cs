@@ -1,5 +1,6 @@
-using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Management.Caching;
+using AdsbCarMap.DataSources.Models;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
@@ -8,84 +9,87 @@ using Android.Util;
 namespace AdsbCarMap.Data
 {
     /// <summary>
-    /// Pamięć tras lotów według znaku wywoławczego. Brakujące trasy pobiera w tle, po jednej na raz, aby nie obciążać API.
+    /// Memory of the flight routes by callsign. The routes are kept for the time chosen in the settings, also in a file, so the same flight is not asked about again. Missing routes are downloaded in the background, one at a time, so that the API is not overloaded.
     /// </summary>
     public sealed class RouteCache
     {
         /// <summary>
-        /// Tag używany w logach Androida.
+        /// Tag used in the Android logs.
         /// </summary>
         private const string LogTag = "AdsbCarMap";
 
         /// <summary>
-        /// Odstęp między kolejnymi zapytaniami o trasę w milisekundach.
+        /// Interval between two route requests in milliseconds.
         /// </summary>
         private const int RequestIntervalMilliseconds = 1000;
 
         /// <summary>
-        /// Maksymalna liczba znaków wywoławczych czekających na pobranie trasy.
+        /// Maximum number of callsigns waiting for their route to be downloaded.
         /// </summary>
         private const int MaxQueueLength = 200;
 
         /// <summary>
-        /// Czas, po którym ponawiane jest nieudane zapytanie o trasę.
+        /// Time after which a failed route request is repeated.
         /// </summary>
         private static readonly TimeSpan RetryDelay = TimeSpan.FromMinutes(2);
 
         /// <summary>
-        /// Klient API tras.
+        /// Route API client.
         /// </summary>
         private readonly IRouteSource client;
 
         /// <summary>
-        /// Znane trasy według znaku wywoławczego. Wartość null oznacza, że API nie zna trasy.
+        /// Known routes by callsign. A null value means that the API does not know the route.
         /// </summary>
-        private readonly ConcurrentDictionary<string, FlightRoute?> routes = new ConcurrentDictionary<string, FlightRoute?>();
+        private readonly TimedCache<FlightRoute> routes;
 
         /// <summary>
-        /// Czas, po którym można ponowić nieudane zapytanie, według znaku wywoławczego.
+        /// Time after which a failed request can be repeated, by callsign.
         /// </summary>
         private readonly ConcurrentDictionary<string, DateTime> retryAfterUtc = new ConcurrentDictionary<string, DateTime>();
 
         /// <summary>
-        /// Kolejka znaków wywoławczych do pobrania.
+        /// Queue of callsigns to download.
         /// </summary>
         private readonly ConcurrentQueue<string> queue = new ConcurrentQueue<string>();
 
         /// <summary>
-        /// Znaki wywoławcze aktualnie w kolejce, aby nie dodawać ich wielokrotnie.
+        /// Callsigns currently in the queue, so that they are not added many times.
         /// </summary>
         private readonly ConcurrentDictionary<string, byte> queued = new ConcurrentDictionary<string, byte>();
 
         /// <summary>
-        /// Kolejka znaków wywoławczych do pobrania w pierwszej kolejności, np. samolotu pokazanego na karcie.
+        /// Queue of callsigns to download first, e.g. of the aircraft shown on the card.
         /// </summary>
         private readonly ConcurrentQueue<string> priorityQueue = new ConcurrentQueue<string>();
 
         /// <summary>
-        /// Znaki wywoławcze aktualnie w kolejce priorytetowej, aby nie dodawać ich wielokrotnie.
+        /// Callsigns currently in the priority queue, so that they are not added many times.
         /// </summary>
         private readonly ConcurrentDictionary<string, byte> priorityQueued = new ConcurrentDictionary<string, byte>();
 
         /// <summary>
-        /// Znacznik działającego wątku pobierającego: 1, gdy działa, 0 w przeciwnym razie.
+        /// Marker of the running download worker: 1 when it runs, 0 otherwise.
         /// </summary>
         private int workerRunning;
 
         /// <summary>
-        /// Tworzy pamięć tras korzystającą z podanego klienta.
+        /// Creates the route memory using the given client.
         /// </summary>
-        /// <param name="client">Klient API tras.</param>
-        public RouteCache(IRouteSource client)
+        /// <param name="client">Route API client.</param>
+        /// <param name="routes">Memory in which the routes are kept for the time chosen in the settings.</param>
+        public RouteCache(IRouteSource client, TimedCache<FlightRoute> routes)
         {
+            ArgumentNullException.ThrowIfNull(routes);
             this.client = client;
+            this.routes = routes;
         }
 
         /// <summary>
-        /// Zwraca znaną trasę lub zleca jej pobranie w tle.
+        /// Returns the known route or requests its download in the background.
         /// </summary>
-        /// <param name="callsign">Znak wywoławczy lub null.</param>
-        /// <returns>Trasa lub null, gdy jest nieznana albo jeszcze niepobrana.</returns>
+        /// <param name="callsign">Callsign or null.</param>
+        /// <returns>The route, or null when it is unknown or not downloaded yet.</returns>
         public FlightRoute? Get(string? callsign)
         {
             if (string.IsNullOrWhiteSpace(callsign))
@@ -95,7 +99,7 @@ namespace AdsbCarMap.Data
 
             string key = callsign.Trim().ToUpperInvariant();
 
-            if (routes.TryGetValue(key, out FlightRoute? route))
+            if (routes.TryGet(key, out FlightRoute? route))
             {
                 return route;
             }
@@ -106,10 +110,10 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Zwraca trasę tylko wtedy, gdy jest już znana, bez zlecania pobrania.
+        /// Returns the route only when it is already known, without requesting the download.
         /// </summary>
-        /// <param name="callsign">Znak wywoławczy lub null.</param>
-        /// <returns>Trasa lub null, gdy jest nieznana albo jeszcze niepobrana.</returns>
+        /// <param name="callsign">Callsign or null.</param>
+        /// <returns>The route, or null when it is unknown or not downloaded yet.</returns>
         public FlightRoute? Peek(string? callsign)
         {
             if (string.IsNullOrWhiteSpace(callsign))
@@ -117,13 +121,13 @@ namespace AdsbCarMap.Data
                 return null;
             }
 
-            return routes.TryGetValue(callsign.Trim().ToUpperInvariant(), out FlightRoute? route) ? route : null;
+            return routes.TryGet(callsign.Trim().ToUpperInvariant(), out FlightRoute? route) ? route : null;
         }
 
         /// <summary>
-        /// Dodaje znak wywoławczy do kolejki, jeśli nie czeka już na pobranie ani na ponowienie.
+        /// Adds a callsign to the queue unless it already waits for the download or for a retry.
         /// </summary>
-        /// <param name="key">Znormalizowany znak wywoławczy.</param>
+        /// <param name="key">Normalized callsign.</param>
         private void Request(string key)
         {
             if (retryAfterUtc.TryGetValue(key, out DateTime retryAfter) && retryAfter > DateTime.UtcNow)
@@ -141,7 +145,7 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Uruchamia wątek pobierający, jeśli jeszcze nie działa.
+        /// Starts the download worker if it is not running yet.
         /// </summary>
         private void EnsureWorker()
         {
@@ -152,10 +156,10 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Zwraca stan wyszukiwania trasy: znana, nieznana serwerowi, nieudana lub w toku.
+        /// Returns the state of the route lookup: known, unknown to the server, failed or in progress.
         /// </summary>
-        /// <param name="callsign">Znak wywoławczy lub null.</param>
-        /// <returns>Stan wyszukiwania trasy.</returns>
+        /// <param name="callsign">Callsign or null.</param>
+        /// <returns>State of the route lookup.</returns>
         public RouteLookupState GetState(string? callsign)
         {
             if (string.IsNullOrWhiteSpace(callsign))
@@ -165,7 +169,7 @@ namespace AdsbCarMap.Data
 
             string key = callsign.Trim().ToUpperInvariant();
 
-            if (routes.TryGetValue(key, out FlightRoute? route))
+            if (routes.TryGet(key, out FlightRoute? route))
             {
                 return route != null ? RouteLookupState.Found : RouteLookupState.NotFound;
             }
@@ -179,9 +183,9 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Wymusza ponowne pobranie trasy: zapomina dotychczasowy wynik, także informację o braku trasy lub o błędzie, i pobiera ją w pierwszej kolejności.
+        /// Forces the route to be downloaded again: forgets the previous result, also the information about a missing route or an error, and downloads it first.
         /// </summary>
-        /// <param name="callsign">Znak wywoławczy lub null.</param>
+        /// <param name="callsign">Callsign or null.</param>
         public void Refresh(string? callsign)
         {
             if (string.IsNullOrWhiteSpace(callsign))
@@ -191,16 +195,16 @@ namespace AdsbCarMap.Data
 
             string key = callsign.Trim().ToUpperInvariant();
 
-            routes.TryRemove(key, out FlightRoute? removedRoute);
+            routes.Remove(key);
             retryAfterUtc.TryRemove(key, out DateTime removedRetry);
             queued.TryAdd(key, 0);
             EnqueuePriority(key);
         }
 
         /// <summary>
-        /// Przesuwa na początek kolejki trasę, która czeka na pobranie. Nie robi nic, gdy trasa jest już znana albo pobranie się nie udało.
+        /// Moves a route that waits for the download to the front of the queue. Does nothing when the route is already known or the download failed.
         /// </summary>
-        /// <param name="callsign">Znak wywoławczy lub null.</param>
+        /// <param name="callsign">Callsign or null.</param>
         public void Prioritize(string? callsign)
         {
             if (string.IsNullOrWhiteSpace(callsign) || GetState(callsign) != RouteLookupState.Pending)
@@ -215,9 +219,9 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Dodaje znak wywoławczy do kolejki priorytetowej, jeśli jeszcze w niej nie ma, i uruchamia pobieranie.
+        /// Adds a callsign to the priority queue if it is not there yet and starts the download.
         /// </summary>
-        /// <param name="key">Znormalizowany znak wywoławczy.</param>
+        /// <param name="key">Normalized callsign.</param>
         private void EnqueuePriority(string key)
         {
             if (priorityQueued.TryAdd(key, 0))
@@ -228,10 +232,10 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Pobiera następny znak wywoławczy do przetworzenia, najpierw z kolejki priorytetowej.
+        /// Takes the next callsign to process, first from the priority queue.
         /// </summary>
-        /// <param name="key">Znak wywoławczy do pobrania.</param>
-        /// <returns>True, gdy w którejś kolejce coś było.</returns>
+        /// <param name="key">Callsign to download.</param>
+        /// <returns>True when either queue had something.</returns>
         private bool TryDequeueNext([NotNullWhen(true)] out string? key)
         {
             if (priorityQueue.TryDequeue(out key))
@@ -245,16 +249,16 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Pobiera trasy z kolejki po jednej, z przerwą między zapytaniami, aż kolejka będzie pusta.
+        /// Downloads the routes from the queue one by one, with a pause between the requests, until the queue is empty.
         /// </summary>
-        /// <returns>Zadanie reprezentujące pracę wątku.</returns>
+        /// <returns>Task representing the work of the worker.</returns>
         private async Task WorkerAsync()
         {
             while (true)
             {
                 while (TryDequeueNext(out string? key))
                 {
-                    if (routes.ContainsKey(key))
+                    if (routes.TryGet(key, out _))
                     {
                         queued.TryRemove(key, out byte removedDuplicateMarker);
 
@@ -264,7 +268,7 @@ namespace AdsbCarMap.Data
                     try
                     {
                         FlightRoute? route = await client.GetRouteAsync(key, CancellationToken.None);
-                        routes[key] = route;
+                        routes.Set(key, route);
                         retryAfterUtc.TryRemove(key, out DateTime removedRetry);
                     }
                     catch (Exception exception) when (exception is HttpRequestException || exception is OperationCanceledException || exception is JsonException)
