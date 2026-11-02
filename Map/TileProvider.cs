@@ -4,79 +4,93 @@ using Android.Util;
 namespace AdsbCarMap.Map
 {
     /// <summary>
-    /// Pobiera kafelki mapy z serwera XYZ i przechowuje ich surowe dane w pamięci.
+    /// Fetches map tiles from an XYZ server and keeps their raw data in memory and, optionally, on the disk.
     /// </summary>
     public sealed class TileProvider
     {
         /// <summary>
-        /// Szablon adresu kafelków OpenStreetMap.
+        /// OpenStreetMap tile URL template.
         /// </summary>
         public const string OpenStreetMapTemplate = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
         /// <summary>
-        /// Tekst atrybucji wymagany przez licencję OpenStreetMap.
+        /// Attribution text required by the OpenStreetMap license.
         /// </summary>
         public const string OpenStreetMapAttribution = "© OpenStreetMap contributors";
 
         /// <summary>
-        /// Tag używany w logach Androida.
+        /// Tag used in the Android log.
         /// </summary>
         private const string LogTag = "AdsbCarMap";
 
         /// <summary>
-        /// Maksymalna liczba kafelków przechowywanych w pamięci.
+        /// Maximum number of tiles kept in memory.
         /// </summary>
         private const int MaxCachedTiles = 512;
 
         /// <summary>
-        /// Klient HTTP używany do pobierania kafelków.
+        /// HTTP client used to download the tiles.
         /// </summary>
         private readonly HttpClient httpClient;
 
         /// <summary>
-        /// Szablon adresu z miejscami {z}, {x} i {y}.
+        /// URL template with the {z}, {x} and {y} placeholders.
         /// </summary>
         private readonly string urlTemplate;
 
         /// <summary>
-        /// Blokada chroniąca cache.
+        /// Tile cache on the disk, or null when the tiles are kept only in memory.
+        /// </summary>
+        private readonly TileDiskCache? diskCache;
+
+        /// <summary>
+        /// Returns the time a tile on the disk is considered fresh.
+        /// </summary>
+        private readonly Func<TimeSpan> maxAgeProvider;
+
+        /// <summary>
+        /// Lock protecting the cache.
         /// </summary>
         private readonly object cacheLock = new object();
 
         /// <summary>
-        /// Węzły listy LRU indeksowane identyfikatorem kafelka.
+        /// Nodes of the LRU list indexed by the tile identifier.
         /// </summary>
         private readonly Dictionary<TileKey, LinkedListNode<KeyValuePair<TileKey, byte[]>>> cache = new Dictionary<TileKey, LinkedListNode<KeyValuePair<TileKey, byte[]>>>();
 
         /// <summary>
-        /// Kolejność użycia kafelków, od ostatnio użytego na początku.
+        /// Order in which the tiles were used, the most recently used first.
         /// </summary>
         private readonly LinkedList<KeyValuePair<TileKey, byte[]>> usageOrder = new LinkedList<KeyValuePair<TileKey, byte[]>>();
 
         /// <summary>
-        /// Tworzy dostawcę kafelków.
+        /// Creates a tile provider.
         /// </summary>
-        /// <param name="httpClient">Klient HTTP z nagłówkiem User-Agent.</param>
-        /// <param name="urlTemplate">Szablon adresu z miejscami {z}, {x} i {y}.</param>
-        /// <param name="tileSize">Bok kafelka w pikselach.</param>
-        public TileProvider(HttpClient httpClient, string urlTemplate, int tileSize)
+        /// <param name="httpClient">HTTP client with the User-Agent header.</param>
+        /// <param name="urlTemplate">URL template with the {z}, {x} and {y} placeholders.</param>
+        /// <param name="tileSize">Side of a tile in pixels.</param>
+        /// <param name="diskCache">Tile cache on the disk, or null for memory only.</param>
+        /// <param name="maxAgeProvider">Returns the time a tile on the disk is considered fresh; required when the disk cache is used.</param>
+        public TileProvider(HttpClient httpClient, string urlTemplate, int tileSize, TileDiskCache? diskCache = null, Func<TimeSpan>? maxAgeProvider = null)
         {
             this.httpClient = httpClient;
             this.urlTemplate = urlTemplate;
+            this.diskCache = diskCache;
+            this.maxAgeProvider = maxAgeProvider ?? (() => TimeSpan.Zero);
             TileSize = tileSize;
         }
 
         /// <summary>
-        /// Bok kafelka w pikselach.
+        /// Side of a tile in pixels.
         /// </summary>
         public int TileSize { get; }
 
         /// <summary>
-        /// Zwraca dane kafelka z cache lub z serwera. Nie zgłasza wyjątków sieciowych.
+        /// Returns the tile data from memory, from a fresh file on the disk or from the server. When the download fails, an outdated file from the disk is returned instead. Does not throw network exceptions.
         /// </summary>
-        /// <param name="key">Identyfikator kafelka.</param>
-        /// <param name="cancellationToken">Token anulowania.</param>
-        /// <returns>Zakodowany obraz kafelka lub null, gdy pobranie się nie powiodło.</returns>
+        /// <param name="key">Tile identifier.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Encoded tile image, or null when the tile is available nowhere.</returns>
         public async Task<byte[]?> GetTileAsync(TileKey key, CancellationToken cancellationToken)
         {
             byte[]? cached = TryGetCached(key);
@@ -84,6 +98,26 @@ namespace AdsbCarMap.Map
             if (cached != null)
             {
                 return cached;
+            }
+
+            byte[]? stale = null;
+
+            if (diskCache != null)
+            {
+                DateTime writtenUtc = DateTime.MinValue;
+                byte[]? fromDisk = await Task.Run(() => diskCache.TryRead(key, out writtenUtc), cancellationToken);
+
+                if (fromDisk != null)
+                {
+                    if (DateTime.UtcNow - writtenUtc < maxAgeProvider())
+                    {
+                        AddToCache(key, fromDisk);
+
+                        return fromDisk;
+                    }
+
+                    stale = fromDisk;
+                }
             }
 
             string url = urlTemplate
@@ -98,26 +132,31 @@ namespace AdsbCarMap.Map
                 if (!response.IsSuccessStatusCode)
                 {
                     Log.Warn(LogTag, "Kafelek " + url + " zwrócił kod " + (int)response.StatusCode);
-                    return null;
+                    return stale;
                 }
 
                 byte[] data = await response.Content.ReadAsByteArrayAsync(cancellationToken);
                 AddToCache(key, data);
+
+                if (diskCache != null)
+                {
+                    _ = Task.Run(() => diskCache.Write(key, data));
+                }
 
                 return data;
             }
             catch (Exception exception) when (exception is HttpRequestException || (exception is OperationCanceledException && !cancellationToken.IsCancellationRequested))
             {
                 Log.Warn(LogTag, "Pobieranie kafelka " + url + " nie powiodło się: " + exception.Message);
-                return null;
+                return stale;
             }
         }
 
         /// <summary>
-        /// Zwraca kafelek z cache i oznacza go jako ostatnio użyty.
+        /// Returns a tile from the cache and marks it as most recently used.
         /// </summary>
-        /// <param name="key">Identyfikator kafelka.</param>
-        /// <returns>Dane kafelka lub null, gdy nie ma go w cache.</returns>
+        /// <param name="key">Tile identifier.</param>
+        /// <returns>Tile data, or null when it is not in the cache.</returns>
         private byte[]? TryGetCached(TileKey key)
         {
             lock (cacheLock)
@@ -135,10 +174,10 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Dodaje kafelek do cache i usuwa najdawniej użyte, gdy przekroczono limit.
+        /// Adds a tile to the cache and removes the least recently used ones when the limit is exceeded.
         /// </summary>
-        /// <param name="key">Identyfikator kafelka.</param>
-        /// <param name="data">Dane kafelka.</param>
+        /// <param name="key">Tile identifier.</param>
+        /// <param name="data">Tile data.</param>
         private void AddToCache(TileKey key, byte[] data)
         {
             lock (cacheLock)

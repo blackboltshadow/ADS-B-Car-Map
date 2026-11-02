@@ -25,6 +25,7 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 **Mapa**
 - Kafelki OpenStreetMap rysowane na własnej powierzchni. Płynne, ciągłe przybliżanie (gest dwoma palcami i przyciski `+` / `−`), przesuwanie z bezwładnością.
 - Podczas ładowania brakujące kafelki są zastępowane powiększonym fragmentem kafelka o niższym poziomie, a kafelki sąsiednie są wczytywane z wyprzedzeniem, więc przy przesuwaniu nie widać czarnych dziur.
+- Kafelki są zapisywane także na dysku (pamięć podręczna w katalogu cache aplikacji), więc mapa pojawia się od razu po uruchomieniu i działa bez zasięgu w obszarach, które były już oglądane. Świeży kafelek jest brany z dysku bez pytania serwera, starszy niż ustawiony czas jest pobierany ponownie, a gdy pobranie się nie uda, używany jest starszy kafelek z dysku. Po przekroczeniu limitu rozmiaru usuwane są najstarsze kafelki. Limit, czas trzymania, aktualne zajęcie miejsca i przycisk „Wyczyść teraz” są w ustawieniach, w sekcji „Pamięć podręczna map”.
 - Przycisk „center” wraca do Twojej pozycji GPS (niebieska kropka).
 
 **Lotniska**
@@ -115,6 +116,8 @@ Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązuj�
 | Maksymalny zoom | 13 | 1–18 | największe przybliżenie |
 | Kafelki w pamięci | 128 | 16–1024 | liczba zdekodowanych kafelków w pamięci (zawsze co najmniej tyle, ile widać na ekranie plus zapas) |
 | Ponowienie kafelka [s] | 15 | 1–600 | po jakim czasie ponawiane jest nieudane pobranie kafelka |
+| Limit pamięci podręcznej [MB] | 100 | 10–1000 | maksymalny rozmiar kafelków na dysku, suwak co 10 MB; zmniejszenie limitu od razu usuwa najstarsze kafelki |
+| Czas trzymania kafelków [dni] | 7 | 1–90 | przez ile dni kafelek z dysku jest świeży i używany bez pytania serwera; starszy służy jako zapas, gdy pobranie się nie uda |
 | Długość śladu [min] | 30 | 0–120 | jak długo pamiętany jest ślad lotu (0 wyłącza ślady), suwak co 1 min |
 | Maks. punktów śladu | 700 | 10–5000 | limit punktów jednego śladu, suwak co 10 |
 | Grubość śladu [dp] | 3 | 0,5–20 | suwak co 0,5 dp |
@@ -256,7 +259,7 @@ Zapoznaj się z warunkami użycia tych serwisów, zanim udostępnisz własną ko
 - **Limity API:** zbyt częste zapytania kończą się odpowiedzią 429. Aplikacja wtedy wstrzymuje zapytania z wydłużanym odstępem (5, 10, 20, 40, 60 s, albo według `Retry-After`).
 - **Typ samolotu:** pokazywany jest kod ICAO (np. `A21N`), bez pełnej nazwy. Ikona jest dobierana heurystycznie, więc rzadkie typy mogą dostać ogólną ikonę. Znacznik „wojskowy” w bazie bywa niedokładny.
 - **Dane ADS-B:** nie obejmują wszystkich samolotów (część wojskowych, część nieużywających transpondera lub zakłócona). Opóźnienia i błędy pozycji są możliwe.
-- **Cache kafelków:** tylko w pamięci, po restarcie kafelki są pobierane od nowa.
+- **Cache kafelków:** kafelki na dysku leżą w katalogu cache aplikacji, który Android może opróżnić przy braku miejsca. Starsze kafelki są usuwane według czasu zapisu, a nie ostatniego użycia. Aplikacja nie pobiera kafelków na zapas dla całych obszarów (zakazuje tego polityka OpenStreetMap).
 - **Minimalna wersja Androida:** 7.0 (API 24). Aplikacja była sprawdzana tylko na jednym telefonie z nowym Androidem.
 
 ### Testy jednostkowe
@@ -290,7 +293,6 @@ Mapa na telefonie i w Android Auto używa tego samego `MapController`, więc zmi
 ## Plany
 
 - Sprawdzenie w Desktop Head Unit i na telefonie: lotniska, popupy, ulubione, synchronizacja telefonu z samochodem.
-- Cache kafelków na dysku.
 - Filtry samolotów: zakres wysokości, rodzaj, linia lotnicza, ukrycie samolotów na ziemi.
 - Pełne nazwy typów samolotów (np. A21N jako Airbus A321neo) z tabeli wbudowanej.
 - Alerty „samolot w pobliżu” (wojskowy, wybrany typ, linia) w promieniu wybranym przez użytkownika.

@@ -1,4 +1,5 @@
 using System.Globalization;
+using AdsbCarMap.Services;
 using AdsbCarMap.Settings;
 using Android.App;
 using Android.Graphics;
@@ -91,6 +92,16 @@ namespace AdsbCarMap.Activities
         /// Card shared by all trail settings, created with the first of them.
         /// </summary>
         private LinearLayout? trailCard;
+
+        /// <summary>
+        /// Card shared by the tile cache settings, created with the first of them.
+        /// </summary>
+        private LinearLayout? tileCacheCard;
+
+        /// <summary>
+        /// Text with the current size of the tile cache on the disk, inside <see cref="tileCacheCard"/>.
+        /// </summary>
+        private TextView? tileCacheUsageText;
 
         /// <summary>
         /// Preview of the sample aircraft trails inside <see cref="trailCard"/>.
@@ -205,6 +216,11 @@ namespace AdsbCarMap.Activities
             if (airportSettingsCard != null)
             {
                 airportSettingsCard.AddView(CreateResetButton("Przywróć domyślne lotniska", AppSettings.AirportSettings, "Przywrócono domyślne ustawienia lotnisk"));
+            }
+
+            if (tileCacheCard != null)
+            {
+                tileCacheCard.AddView(CreateResetButton("Przywróć domyślną pamięć podręczną", AppSettings.TileCacheSettings, "Przywrócono domyślne ustawienia pamięci podręcznej"));
             }
 
             if (trailCard != null)
@@ -621,8 +637,9 @@ namespace AdsbCarMap.Activities
             bool isIconSetting = definition == AppSettings.IconScaleSetting || definition == AppSettings.AircraftOutlineWidthSetting;
             bool isTrailSetting = AppSettings.TrailSettings.Contains(definition);
             bool isAirportSetting = AppSettings.AirportSettings.Contains(definition);
-            bool isGrouped = isIconSetting || isTrailSetting || isAirportSetting;
-            LinearLayout card = isIconSetting ? GetAircraftIconCard(root) : isTrailSetting ? GetTrailCard(root) : isAirportSetting ? GetAirportSettingsCard(root) : CreateCard(root);
+            bool isTileCacheSetting = AppSettings.TileCacheSettings.Contains(definition);
+            bool isGrouped = isIconSetting || isTrailSetting || isAirportSetting || isTileCacheSetting;
+            LinearLayout card = isIconSetting ? GetAircraftIconCard(root) : isTrailSetting ? GetTrailCard(root) : isAirportSetting ? GetAirportSettingsCard(root) : isTileCacheSetting ? GetTileCacheCard(root) : CreateCard(root);
 
             LinearLayout titleRow = new LinearLayout(this);
             titleRow.Orientation = Orientation.Horizontal;
@@ -908,6 +925,76 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
+        /// Returns the card shared by the tile cache settings, creating it at the first call with its title, the current size of the cache and the button that clears it.
+        /// </summary>
+        /// <param name="root">Container of the screen.</param>
+        /// <returns>The shared card.</returns>
+        private LinearLayout GetTileCacheCard(LinearLayout root)
+        {
+            if (tileCacheCard != null)
+            {
+                return tileCacheCard;
+            }
+
+            LinearLayout card = CreateCard(root);
+
+            TextView title = new TextView(this);
+            title.Text = "Pamięć podręczna map";
+            StyleTitle(title);
+            card.AddView(title);
+
+            tileCacheUsageText = new TextView(this);
+            StyleSecondary(tileCacheUsageText);
+            tileCacheUsageText.SetPadding(0, Dp(4), 0, 0);
+            card.AddView(tileCacheUsageText);
+
+            Button clear = new Button(this);
+            clear.Text = "Wyczyść teraz";
+            clear.Click += (sender, args) =>
+            {
+                clear.Enabled = false;
+
+                Task.Run(() =>
+                {
+                    AppServices.TileDisk.Clear();
+                    RunOnUiThread(() =>
+                    {
+                        clear.Enabled = true;
+                        UpdateTileCacheUsage();
+                        Toast.MakeText(this, "Wyczyszczono pamięć podręczną map", ToastLength.Short)?.Show();
+                    });
+                });
+            };
+            card.AddView(clear);
+
+            tileCacheCard = card;
+            UpdateTileCacheUsage();
+
+            return card;
+        }
+
+        /// <summary>
+        /// Counts the tiles on the disk in the background and shows their number and size next to the limit.
+        /// </summary>
+        private void UpdateTileCacheUsage()
+        {
+            Task.Run(() =>
+            {
+                (long bytes, int count) = AppServices.TileDisk.GetUsage();
+
+                RunOnUiThread(() =>
+                {
+                    if (tileCacheUsageText == null)
+                    {
+                        return;
+                    }
+
+                    tileCacheUsageText.Text = string.Format(CultureInfo.CurrentCulture, "Zajęte: {0:0.0} MB z {1:0} MB ({2} kafelków)", bytes / 1048576.0, AppSettings.TileCacheMaxBytes / 1048576.0, count);
+                });
+            });
+        }
+
+        /// <summary>
         /// Applies the style of a setting title: white, bold, the same size everywhere.
         /// </summary>
         /// <param name="view">Text view, switch or other text control.</param>
@@ -1039,6 +1126,15 @@ namespace AdsbCarMap.Activities
         private void SaveValue(SettingDefinition definition, double value)
         {
             AppSettings.Save(new Dictionary<SettingDefinition, double> { { definition, value } });
+
+            if (definition == AppSettings.TileCacheSizeSetting)
+            {
+                Task.Run(() =>
+                {
+                    AppServices.TileDisk.Trim();
+                    UpdateTileCacheUsage();
+                });
+            }
 
             if (definition == AppSettings.AirportTypesSetting || definition == AppSettings.ShowAirportsSetting || definition == AppSettings.ShowOnlyFavoriteAirportsSetting)
             {

@@ -36,12 +36,22 @@ namespace AdsbCarMap.Settings
         /// <summary>
         /// Maximum number of decoded tiles kept in memory.
         /// </summary>
-        public static readonly SettingDefinition MaxCachedTilesSetting = new SettingDefinition("max_cached_tiles", "Kafelki w pamięci", 128.0, 16.0, 1024.0, true, Help: "Ile gotowych kafelków mapy (obrazków 256 × 256 px) aplikacja trzyma w pamięci operacyjnej. Więcej kafelków oznacza, że przesuwanie i powrót w to samo miejsce nie wymagają ponownego pobierania, ale zajmuje więcej pamięci. Kafelki nie są jeszcze zapisywane na dysku, więc po ponownym uruchomieniu pobierane są od nowa.");
+        public static readonly SettingDefinition MaxCachedTilesSetting = new SettingDefinition("max_cached_tiles", "Kafelki w pamięci", 128.0, 16.0, 1024.0, true, Help: "Ile gotowych kafelków mapy (obrazków 256 × 256 px) aplikacja trzyma w pamięci operacyjnej. Więcej kafelków oznacza, że przesuwanie i powrót w to samo miejsce nie wymagają ponownego pobierania, ale zajmuje więcej pamięci. To osobna pamięć od pamięci podręcznej na dysku (sekcja „Pamięć podręczna map”).");
 
         /// <summary>
         /// Time in seconds before a failed tile download is retried.
         /// </summary>
         public static readonly SettingDefinition TileRetrySetting = new SettingDefinition("tile_retry_s", "Ponowienie kafelka [s]", 15.0, 1.0, 600.0, true, Help: "Po ilu sekundach aplikacja ponowi pobieranie kafelka mapy, którego nie udało się pobrać (np. przy braku zasięgu). Krótszy czas szybciej uzupełni mapę po powrocie sieci, ale częściej obciąża serwer kafelków OpenStreetMap, który ma politykę uczciwego użytkowania.");
+
+        /// <summary>
+        /// Size limit of the tile cache on the disk in megabytes.
+        /// </summary>
+        public static readonly SettingDefinition TileCacheSizeSetting = SettingDefinition.CreateSlider("tile_cache_mb", "Limit pamięci podręcznej", 100.0, 10.0, 1000.0, 10.0, " MB", "Maksymalny rozmiar kafelków mapy zapisanych na dysku telefonu. Po przekroczeniu limitu aplikacja usuwa najstarsze kafelki. Kafelki z dysku pozwalają pokazać mapę zaraz po uruchomieniu i bez zasięgu, a także zmniejszają ruch do serwera OpenStreetMap. Jeden kafelek zajmuje zwykle kilkanaście kilobajtów. Zmniejszenie limitu od razu usuwa nadmiar.");
+
+        /// <summary>
+        /// Number of days a tile on the disk is considered fresh.
+        /// </summary>
+        public static readonly SettingDefinition TileCacheDaysSetting = SettingDefinition.CreateSlider("tile_cache_days", "Czas trzymania kafelków", 7.0, 1.0, 90.0, 1.0, " dni", "Przez ile dni kafelek zapisany na dysku jest uznawany za aktualny i używany bez pytania serwera. Po tym czasie aplikacja pobiera go ponownie, aby mapa nadążała za zmianami w OpenStreetMap. Gdy pobranie się nie uda (brak zasięgu, limit zapytań), użyty zostaje starszy kafelek z dysku, dopóki nie zostanie usunięty z powodu limitu rozmiaru.");
 
         /// <summary>
         /// Time the trail is remembered, in minutes.
@@ -209,6 +219,8 @@ namespace AdsbCarMap.Settings
             TrailMaxAlphaSetting,
             TrailOutlineWidthSetting,
             TrailOutlineAlphaSetting,
+            TileCacheSizeSetting,
+            TileCacheDaysSetting,
             FetchIntervalSetting,
             RenderIntervalSetting,
             MinZoomSetting,
@@ -216,6 +228,15 @@ namespace AdsbCarMap.Settings
             MaxCachedTilesSetting,
             TileRetrySetting,
             MapDimSetting,
+        };
+
+        /// <summary>
+        /// Settings of the tile cache on the disk. They share one section on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> TileCacheSettings = new List<SettingDefinition>
+        {
+            TileCacheSizeSetting,
+            TileCacheDaysSetting,
         };
 
         /// <summary>
@@ -291,6 +312,16 @@ namespace AdsbCarMap.Settings
         /// Time before a failed tile download is retried.
         /// </summary>
         public static TimeSpan TileRetry => TimeSpan.FromSeconds(Get(TileRetrySetting));
+
+        /// <summary>
+        /// Size limit of the tile cache on the disk in bytes.
+        /// </summary>
+        public static long TileCacheMaxBytes => (long)Get(TileCacheSizeSetting) * 1024L * 1024L;
+
+        /// <summary>
+        /// Time a tile on the disk is considered fresh.
+        /// </summary>
+        public static TimeSpan TileCacheMaxAge => TimeSpan.FromDays(Get(TileCacheDaysSetting));
 
         /// <summary>
         /// Time the trail is remembered.

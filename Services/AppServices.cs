@@ -1,5 +1,6 @@
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
+using AdsbCarMap.Settings;
 
 namespace AdsbCarMap.Services
 {
@@ -41,9 +42,14 @@ namespace AdsbCarMap.Services
         public static RouteCache Routes { get; } = new RouteCache(new RouteClient(RouteHttpClient));
 
         /// <summary>
-        /// OpenStreetMap tile provider with an in-memory cache.
+        /// Map tiles stored on the disk, in the cache directory of the application.
         /// </summary>
-        public static TileProvider Tiles { get; } = new TileProvider(TileHttpClient, TileProvider.OpenStreetMapTemplate, 256);
+        public static TileDiskCache TileDisk { get; } = new TileDiskCache(System.IO.Path.Combine(Android.App.Application.Context.CacheDir!.AbsolutePath, "tiles"), () => AppSettings.TileCacheMaxBytes);
+
+        /// <summary>
+        /// OpenStreetMap tile provider with a cache in memory and on the disk.
+        /// </summary>
+        public static TileProvider Tiles { get; } = new TileProvider(TileHttpClient, TileProvider.OpenStreetMapTemplate, 256, TileDisk, () => AppSettings.TileCacheMaxAge);
 
         /// <summary>
         /// Aircraft selection and filters shared by the phone map and the Android Auto map.

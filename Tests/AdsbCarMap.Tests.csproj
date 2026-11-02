@@ -18,6 +18,7 @@
     <Compile Include="..\Data\RateLimitedException.cs" Link="Linked\RateLimitedException.cs" />
     <Compile Include="..\Map\WebMercator.cs" Link="Linked\WebMercator.cs" />
     <Compile Include="..\Map\TileKey.cs" Link="Linked\TileKey.cs" />
+    <Compile Include="..\Map\TileDiskCache.cs" Link="Linked\TileDiskCache.cs" />
     <Compile Include="..\Map\VisibleTile.cs" Link="Linked\VisibleTile.cs" />
     <Compile Include="..\Data\TextFolding.cs" Link="Linked\TextFolding.cs" />
     <Compile Include="..\Data\Airport.cs" Link="Linked\Airport.cs" />
