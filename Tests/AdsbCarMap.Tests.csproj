@@ -15,6 +15,10 @@
     <Compile Include="..\Data\AircraftKind.cs" Link="Linked\AircraftKind.cs" />
     <Compile Include="..\Data\AircraftClassifier.cs" Link="Linked\AircraftClassifier.cs" />
     <Compile Include="..\Data\AircraftManufacturers.cs" Link="Linked\AircraftManufacturers.cs" />
+    <Compile Include="..\Data\AircraftTypeEntry.cs" Link="Linked\AircraftTypeEntry.cs" />
+    <Compile Include="..\Data\AircraftTypeTable.cs" Link="Linked\AircraftTypeTable.cs" />
+    <Compile Include="..\Data\MissingTypeEntry.cs" Link="Linked\MissingTypeEntry.cs" />
+    <Compile Include="..\Data\MissingTypeLog.cs" Link="Linked\MissingTypeLog.cs" />
     <Compile Include="..\Data\FilterResult.cs" Link="Linked\FilterResult.cs" />
     <Compile Include="..\Data\FilterField.cs" Link="Linked\FilterField.cs" />
     <Compile Include="..\Data\FilterNode.cs" Link="Linked\FilterNode.cs" />
@@ -57,6 +61,10 @@
     <Compile Include="..\Settings\SettingDefinition.cs" Link="Linked\SettingDefinition.cs" />
     <Compile Include="..\Settings\SettingsHistory.cs" Link="Linked\SettingsHistory.cs" />
     <Compile Include="..\Settings\AirportCategory.cs" Link="Linked\AirportCategory.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Assets\AircraftTypes\aircraft-types.tsv" Link="Assets\aircraft-types.tsv" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

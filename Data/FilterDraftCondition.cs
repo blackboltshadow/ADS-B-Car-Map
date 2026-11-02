@@ -21,6 +21,11 @@ namespace AdsbCarMap.Data
         public AircraftKind Kind { get; set; } = AircraftKind.Airliner;
 
         /// <summary>
+        /// Whether a type condition covers the whole family of the type instead of the exact type only.
+        /// </summary>
+        public bool Family { get; set; }
+
+        /// <summary>
         /// Lower bound of the altitude in meters or null when there is none.
         /// </summary>
         public double? Minimum { get; set; }
@@ -36,7 +41,7 @@ namespace AdsbCarMap.Data
         /// <returns>The condition, wrapped in a negation when the node is negated.</returns>
         public override FilterNode ToNode()
         {
-            return ApplyNegation(FilterCondition.Create(Field, Text.Trim(), Kind, Minimum, Maximum));
+            return ApplyNegation(FilterCondition.Create(Field, Text.Trim(), Kind, Minimum, Maximum, Family));
         }
 
         /// <summary>
@@ -51,6 +56,7 @@ namespace AdsbCarMap.Data
             copy.Negated = Negated;
             copy.Text = Text;
             copy.Kind = Kind;
+            copy.Family = Family;
             copy.Minimum = Minimum;
             copy.Maximum = Maximum;
 

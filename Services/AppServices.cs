@@ -62,6 +62,16 @@ namespace AdsbCarMap.Services
         public static AirportDatabase Airports { get; } = CreateAirports();
 
         /// <summary>
+        /// Table of the aircraft types bundled with the application, loaded when the services are created and used by the filters.
+        /// </summary>
+        public static AircraftTypeTable AircraftTypes { get; } = LoadAircraftTypes();
+
+        /// <summary>
+        /// Log of the aircraft types seen in the traffic that the type table does not describe.
+        /// </summary>
+        public static MissingTypeStore MissingTypes { get; } = new MissingTypeStore();
+
+        /// <summary>
         /// Favorite airports, shared by the phone and Android Auto.
         /// </summary>
         public static FavoriteAirports Favorites { get; } = new FavoriteAirports();
@@ -70,6 +80,17 @@ namespace AdsbCarMap.Services
         /// Predefined and user-made aircraft filters with the set of switched on ones, shared by the phone and Android Auto.
         /// </summary>
         public static AircraftFilterStore Filters { get; } = new AircraftFilterStore();
+
+        /// <summary>
+        /// Reads the bundled aircraft type table and makes it the one used by the filters.
+        /// </summary>
+        /// <returns>The table in use; empty when the bundled file could not be read.</returns>
+        private static AircraftTypeTable LoadAircraftTypes()
+        {
+            AircraftTypeTable.LoadBundled();
+
+            return AircraftTypeTable.Current;
+        }
 
         /// <summary>
         /// Creates the airport database and starts loading it in the background.

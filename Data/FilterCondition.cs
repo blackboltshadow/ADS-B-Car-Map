@@ -11,6 +11,11 @@ namespace AdsbCarMap.Data
         private const double MetersPerFoot = 0.3048;
 
         /// <summary>
+        /// Accepted type codes computed for the type table in use. Replaced as a whole, so it can be read from several threads.
+        /// </summary>
+        private volatile AcceptedTypes? acceptedTypes;
+
+        /// <summary>
         /// Creates a condition. Use the factory methods instead.
         /// </summary>
         /// <param name="field">Tested property.</param>
@@ -18,8 +23,10 @@ namespace AdsbCarMap.Data
         /// <param name="kind">Aircraft kind operand.</param>
         /// <param name="minimum">Lower bound of the altitude in meters or null.</param>
         /// <param name="maximum">Upper bound of the altitude in meters or null.</param>
-        private FilterCondition(FilterField field, string? text, AircraftKind kind, double? minimum, double? maximum)
+        /// <param name="family">Whether a type condition covers the whole family of the type.</param>
+        private FilterCondition(FilterField field, string? text, AircraftKind kind, double? minimum, double? maximum, bool family = false)
         {
+            Family = family;
             Field = field;
             Text = text;
             Kind = kind;
@@ -48,6 +55,11 @@ namespace AdsbCarMap.Data
         public override bool NeedsRoute => Field == FilterField.Origin || Field == FilterField.Destination;
 
         /// <summary>
+        /// Whether a type condition covers the whole family of the type instead of the exact type only.
+        /// </summary>
+        public bool Family { get; }
+
+        /// <summary>
         /// Lower bound of the altitude in meters or null when there is none.
         /// </summary>
         public double? Minimum { get; }
@@ -65,8 +77,9 @@ namespace AdsbCarMap.Data
         /// <param name="kind">Aircraft kind operand.</param>
         /// <param name="minimum">Lower bound of the altitude in meters or null.</param>
         /// <param name="maximum">Upper bound of the altitude in meters or null.</param>
+        /// <param name="family">Whether a type condition covers the whole family; ignored for other fields.</param>
         /// <returns>The condition.</returns>
-        public static FilterCondition Create(FilterField field, string? text, AircraftKind kind, double? minimum, double? maximum)
+        public static FilterCondition Create(FilterField field, string? text, AircraftKind kind, double? minimum, double? maximum, bool family = false)
         {
             switch (FilterFieldInfo.GetOperandType(field))
             {
@@ -76,7 +89,7 @@ namespace AdsbCarMap.Data
                     return new FilterCondition(field, null, AircraftKind.Unknown, minimum, maximum);
                 case FilterOperandType.Text:
                 case FilterOperandType.Manufacturer:
-                    return new FilterCondition(field, text, AircraftKind.Unknown, null, null);
+                    return new FilterCondition(field, text, AircraftKind.Unknown, null, null, field == FilterField.TypeCode && family);
                 default:
                     return new FilterCondition(field, null, AircraftKind.Unknown, null, null);
             }
@@ -123,11 +136,12 @@ namespace AdsbCarMap.Data
         /// <summary>
         /// Creates the condition that the aircraft has a given ICAO type code.
         /// </summary>
-        /// <param name="typeCode">Type code, for example "B738".</param>
+        /// <param name="typeCode">Type code in the ICAO or IATA form, for example "B738" or "738".</param>
+        /// <param name="family">True to cover the whole family of the type, for example every 737 including the MAX.</param>
         /// <returns>The condition.</returns>
-        public static FilterCondition OfType(string typeCode)
+        public static FilterCondition OfType(string typeCode, bool family = false)
         {
-            return new FilterCondition(FilterField.TypeCode, typeCode, AircraftKind.Unknown, null, null);
+            return new FilterCondition(FilterField.TypeCode, typeCode, AircraftKind.Unknown, null, null, family);
         }
 
         /// <summary>
@@ -192,7 +206,7 @@ namespace AdsbCarMap.Data
                 case FilterField.TypeCode:
                     return string.IsNullOrWhiteSpace(aircraft.TypeCode)
                         ? FilterResult.Unknown
-                        : ToResult(string.Equals(aircraft.TypeCode.Trim(), Text, StringComparison.OrdinalIgnoreCase));
+                        : ToResult(GetAcceptedTypes().Contains(aircraft.TypeCode.Trim()));
                 case FilterField.CallsignPrefix:
                     return string.IsNullOrWhiteSpace(aircraft.Callsign) || string.IsNullOrEmpty(Text)
                         ? FilterResult.Unknown
@@ -206,6 +220,27 @@ namespace AdsbCarMap.Data
                 default:
                     return FilterResult.Unknown;
             }
+        }
+
+        /// <summary>
+        /// Returns the ICAO type codes accepted by a type condition. The set is computed once for the type table in use and again when the table is replaced.
+        /// </summary>
+        /// <returns>Accepted ICAO type codes.</returns>
+        private HashSet<string> GetAcceptedTypes()
+        {
+            AircraftTypeTable table = AircraftTypeTable.Current;
+            AcceptedTypes? cached = acceptedTypes;
+
+            if (cached != null && ReferenceEquals(cached.Table, table))
+            {
+                return cached.Codes;
+            }
+
+            AcceptedTypes created = new AcceptedTypes(table, table.Resolve(Text, Family));
+
+            acceptedTypes = created;
+
+            return created.Codes;
         }
 
         /// <summary>
@@ -286,6 +321,33 @@ namespace AdsbCarMap.Data
             string wanted = TextFolding.Fold(Text.Trim());
 
             return ToResult(TextFolding.Fold(code) == wanted || (city != null && TextFolding.Fold(city) == wanted));
+        }
+
+        /// <summary>
+        /// ICAO type codes accepted by a type condition together with the table they were computed for.
+        /// </summary>
+        private sealed class AcceptedTypes
+        {
+            /// <summary>
+            /// Creates the cached set.
+            /// </summary>
+            /// <param name="table">Table the codes were computed for.</param>
+            /// <param name="codes">Accepted ICAO type codes.</param>
+            public AcceptedTypes(AircraftTypeTable table, HashSet<string> codes)
+            {
+                Table = table;
+                Codes = codes;
+            }
+
+            /// <summary>
+            /// Table the codes were computed for.
+            /// </summary>
+            public AircraftTypeTable Table { get; }
+
+            /// <summary>
+            /// Accepted ICAO type codes.
+            /// </summary>
+            public HashSet<string> Codes { get; }
         }
     }
 }

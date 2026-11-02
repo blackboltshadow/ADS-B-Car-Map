@@ -127,6 +127,8 @@ namespace AdsbCarMap.Services
                 centerLatitude = latitude;
                 centerLongitude = longitude;
             }
+
+            AppServices.MissingTypes.Record(fetched);
         }
 
         /// <summary>

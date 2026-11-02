@@ -86,7 +86,7 @@ namespace AdsbCarMap.Data
                 case FilterField.Manufacturer:
                     return "producent " + condition.Text;
                 case FilterField.TypeCode:
-                    return "typ " + condition.Text;
+                    return (condition.Family ? "rodzina typu " : "typ ") + condition.Text;
                 case FilterField.CallsignPrefix:
                     return "linia " + condition.Text;
                 case FilterField.Altitude:
@@ -245,6 +245,11 @@ namespace AdsbCarMap.Data
                 case FilterField.Manufacturer:
                     return (negated ? "nie pochodzi od producenta " : "pochodzi od producenta ") + condition.Text;
                 case FilterField.TypeCode:
+                    if (condition.Family)
+                    {
+                        return (negated ? "nie należy do rodziny typu " : "należy do rodziny typu ") + condition.Text;
+                    }
+
                     return (negated ? "nie ma typu " : "ma typ ") + condition.Text;
                 case FilterField.CallsignPrefix:
                     return (negated ? "nie ma znaku zaczynającego się od " : "ma znak zaczynający się od ") + condition.Text;

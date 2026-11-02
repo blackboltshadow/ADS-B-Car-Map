@@ -94,6 +94,11 @@ namespace AdsbCarMap.Activities
         private LinearLayout? trailCard;
 
         /// <summary>
+        /// Button that opens the list of aircraft types missing from the type table.
+        /// </summary>
+        private Button? developerDataButton;
+
+        /// <summary>
         /// Card shared by the tile cache settings, created with the first of them.
         /// </summary>
         private LinearLayout? tileCacheCard;
@@ -133,6 +138,15 @@ namespace AdsbCarMap.Activities
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
             SetContentView(BuildContent());
+        }
+
+        /// <summary>
+        /// Updates the number of missing types, which may have changed while the list screen was open.
+        /// </summary>
+        protected override void OnResume()
+        {
+            base.OnResume();
+            UpdateDeveloperDataButton();
         }
 
         /// <summary>
@@ -235,10 +249,45 @@ namespace AdsbCarMap.Activities
 
             buttons.AddView(CreateResetButton("Przywróć wszystkie domyślne", AppSettings.All, "Przywrócono ustawienia domyślne"));
 
+            AddDeveloperDataCard(root);
+
             LoadSettingInputs();
             UpdateDependentControls();
 
             return scrollView;
+        }
+
+        /// <summary>
+        /// Adds the last card of the screen, "Dane developerskie", with the button that opens the list of aircraft types missing from the type table. The button shows the current number of such types.
+        /// </summary>
+        /// <param name="root">Container of the screen.</param>
+        private void AddDeveloperDataCard(LinearLayout root)
+        {
+            LinearLayout card = CreateCard(root);
+
+            TextView title = new TextView(this);
+            title.Text = "Dane developerskie";
+            StyleTitle(title);
+            card.AddView(title);
+
+            TextView hint = new TextView(this);
+            hint.Text = "Dane zbierane podczas używania mapy, przydatne przy uzupełnianiu tabel w aplikacji.";
+            StyleSecondary(hint);
+            hint.SetPadding(0, Dp(4), 0, 0);
+            card.AddView(hint);
+
+            developerDataButton = new Button(this);
+            developerDataButton.Click += (sender, args) => StartActivity(new Android.Content.Intent(this, typeof(DeveloperDataActivity)));
+            card.AddView(developerDataButton);
+            UpdateDeveloperDataButton();
+        }
+
+        /// <summary>
+        /// Refreshes the text of the developer data button with the number of types missing from the type table.
+        /// </summary>
+        private void UpdateDeveloperDataButton()
+        {
+            developerDataButton?.Text = "Brakujące typy samolotów (" + AppServices.MissingTypes.Missing.Count + ")";
         }
 
         /// <summary>

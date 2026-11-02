@@ -136,6 +136,11 @@ namespace AdsbCarMap.Data
                     writer.WriteString("kind", condition.Kind.ToString());
                 }
 
+                if (condition.Family)
+                {
+                    writer.WriteBoolean("family", true);
+                }
+
                 if (condition.Minimum.HasValue)
                 {
                     writer.WriteNumber("min", condition.Minimum.Value);
@@ -259,7 +264,9 @@ namespace AdsbCarMap.Data
                 return null;
             }
 
-            return FilterCondition.Create(field, GetString(element, "text"), kind, GetNumber(element, "min"), GetNumber(element, "max"));
+            bool family = element.TryGetProperty("family", out JsonElement familyValue) && familyValue.ValueKind == JsonValueKind.True;
+
+            return FilterCondition.Create(field, GetString(element, "text"), kind, GetNumber(element, "min"), GetNumber(element, "max"), family);
         }
 
         /// <summary>

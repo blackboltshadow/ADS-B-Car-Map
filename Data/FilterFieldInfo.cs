@@ -34,7 +34,7 @@ namespace AdsbCarMap.Data
                 FilterField.Military => "Wojskowy",
                 FilterField.Kind => "Rodzaj samolotu",
                 FilterField.Manufacturer => "Producent",
-                FilterField.TypeCode => "Typ (kod ICAO)",
+                FilterField.TypeCode => "Typ (kod ICAO lub IATA)",
                 FilterField.CallsignPrefix => "Linia (początek znaku)",
                 FilterField.Altitude => "Wysokość [m]",
                 FilterField.Origin => "Lotnisko wylotu",
@@ -52,7 +52,7 @@ namespace AdsbCarMap.Data
         {
             return field switch
             {
-                FilterField.TypeCode => "np. B738",
+                FilterField.TypeCode => "np. B738 lub 738",
                 FilterField.CallsignPrefix => "np. LOT",
                 FilterField.Origin => "kod lub miasto, np. WAW",
                 FilterField.Destination => "kod lub miasto, np. RZE",

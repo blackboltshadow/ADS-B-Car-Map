@@ -869,6 +869,7 @@ namespace AdsbCarMap.Activities
                 {
                     condition.Field = chosen;
                     condition.Text = string.Empty;
+                    condition.Family = false;
                     condition.Minimum = null;
                     condition.Maximum = null;
                     RenderTree();
@@ -925,7 +926,28 @@ namespace AdsbCarMap.Activities
                 UpdatePreview();
             };
 
-            return input;
+            if (condition.Field != FilterField.TypeCode)
+            {
+                return input;
+            }
+
+            CheckBox family = new CheckBox(this);
+            family.Text = "Cała rodzina (np. każde 737, także MAX)";
+            family.TextSize = 13f;
+            family.Checked = condition.Family;
+            family.Enabled = !readOnly;
+            family.CheckedChange += (sender, args) =>
+            {
+                condition.Family = args.IsChecked;
+                UpdatePreview();
+            };
+
+            LinearLayout column = new LinearLayout(this);
+            column.Orientation = Orientation.Vertical;
+            column.AddView(input);
+            column.AddView(family);
+
+            return column;
         }
 
         /// <summary>
