@@ -29,6 +29,11 @@ namespace AdsbCarMap.Activities
         private static readonly Color SecondaryTextColor = Color.Rgb(180, 180, 180);
 
         /// <summary>
+        /// Keys of the collapsible cards that are currently expanded. Static, so the state survives the recreation of the activity on rotation.
+        /// </summary>
+        private static readonly HashSet<string> expandedCards = new HashSet<string>();
+
+        /// <summary>
         /// Functions reading the current value of the control of each setting. Return null when the control holds no valid value.
         /// </summary>
         private readonly Dictionary<SettingDefinition, Func<double?>> settingReaders = new Dictionary<SettingDefinition, Func<double?>>();
@@ -42,6 +47,16 @@ namespace AdsbCarMap.Activities
         /// Editor of the altitude color scale shared by all threshold settings, created together with the first threshold.
         /// </summary>
         private AltitudeScaleView? altitudeScale;
+
+        /// <summary>
+        /// Cards with a title shared by several settings, by key.
+        /// </summary>
+        private readonly Dictionary<string, LinearLayout> titledCards = new Dictionary<string, LinearLayout>();
+
+        /// <summary>
+        /// Card of the altitude colors: the unit, the color scale editor and the legend switch.
+        /// </summary>
+        private LinearLayout? altitudeScaleCard;
 
         /// <summary>
         /// Number of threshold settings already connected to <see cref="altitudeScale"/>.
@@ -189,42 +204,58 @@ namespace AdsbCarMap.Activities
             root.SetPadding(Dp(16), Dp(16), Dp(16), Dp(32));
             scrollView.AddView(root);
 
+            LinearLayout appearance = CreateAggregate(root, "Wygląd", "appearance", 20f);
+            LinearLayout aircraft = CreateAggregate(appearance, "Samoloty", "aircraft", 17f);
+            GetAircraftIconCard(aircraft);
+            GetTrailCard(aircraft);
+            GetAltitudeCard(aircraft);
+            GetAirportSettingsCard(appearance);
+            GetTitledCard("map", "Mapa", appearance);
+
+            LinearLayout advanced = CreateAggregate(root, "Zaawansowane", "advanced", 20f);
+            GetTitledCard("refresh", "Odświeżanie", advanced);
+            GetTitledCard("tiles", "Pobieranie kafelków", advanced);
+            GetTileCacheCard(advanced);
+
+            LinearLayout developer = CreateAggregate(root, "Dev", "developer", 20f);
+
             TextView version = new TextView(this);
             version.Text = "ADS-B Car Map v" + BuildInfo.Version + " (" + BuildInfo.Build + ")";
             version.TextSize = 12f;
-            root.AddView(version);
+            version.SetPadding(Dp(4), Dp(4), 0, Dp(4));
+            developer.AddView(version);
 
-            foreach (SettingDefinition definition in AppSettings.All)
+            foreach (SettingDefinition definition in AppSettings.All.OrderBy(item => item == AppSettings.AltitudeUnitSetting ? 0 : 1))
             {
                 switch (definition.Kind)
                 {
                     case SettingKind.Switch:
-                        AddSwitch(root, definition);
+                        AddSwitch(appearance, definition);
                         break;
                     case SettingKind.Choice:
-                        AddChoice(root, definition);
+                        AddChoice(appearance, definition);
                         break;
                     case SettingKind.Slider:
-                        AddSlider(root, definition);
+                        AddSlider(appearance, definition);
                         break;
                     case SettingKind.MultiChoice:
-                        AddMultiChoice(root, definition);
+                        AddMultiChoice(appearance, definition);
                         break;
                     case SettingKind.ZoomRange:
-                        AddZoomRangeBound(root, definition);
+                        AddZoomRangeBound(appearance, definition);
                         break;
                     case SettingKind.Scale:
-                        AddScaleThreshold(root, definition);
+                        AddScaleThreshold(appearance, definition);
                         break;
                     default:
-                        AddNumber(AppSettings.TrailSettings.Contains(definition) ? GetTrailCard(root) : root, definition);
+                        AddNumber(GetNumberCard(definition, appearance), definition);
                         break;
                 }
             }
 
             if (aircraftIconCard != null)
             {
-                aircraftIconCard.AddView(CreateResetButton("Przywróć domyślne ikony", new List<SettingDefinition> { AppSettings.IconScaleSetting, AppSettings.AircraftOutlineWidthSetting }, "Przywrócono domyślne ustawienia ikon"));
+                aircraftIconCard.AddView(CreateResetButton("Przywróć domyślne ikony i etykiety", new List<SettingDefinition> { AppSettings.IconScaleSetting, AppSettings.AircraftOutlineWidthSetting, AppSettings.ShowLabelsSetting, AppSettings.LabelTextSizeSetting }, "Przywrócono domyślne ustawienia ikon i etykiet"));
             }
 
             if (airportSettingsCard != null)
@@ -242,19 +273,296 @@ namespace AdsbCarMap.Activities
                 trailCard.AddView(CreateResetButton("Przywróć domyślne ślady", AppSettings.TrailSettings, "Przywrócono domyślne ustawienia śladów"));
             }
 
+            List<(LinearLayout?, string)> collapsibleCards = new List<(LinearLayout?, string)>
+            {
+                (airportSettingsCard, "airports"),
+                (trailCard, "trails"),
+                (tileCacheCard, "tileCache"),
+                (aircraftIconCard, "aircraftIcons"),
+                (altitudeScaleCard, "altitudeScale"),
+            };
+
+            foreach (KeyValuePair<string, LinearLayout> titled in titledCards)
+            {
+                collapsibleCards.Add((titled.Value, titled.Key));
+            }
+
+            foreach ((LinearLayout? card, string key) in collapsibleCards)
+            {
+                if (card != null && card.ChildCount > 0)
+                {
+                    MakeCollapsible(card, card.GetChildAt(0)!, key);
+                }
+            }
+
             LinearLayout buttons = new LinearLayout(this);
             buttons.Orientation = Orientation.Horizontal;
             buttons.SetPadding(0, Dp(8), 0, 0);
-            root.AddView(buttons);
+            advanced.AddView(buttons);
 
             buttons.AddView(CreateResetButton("Przywróć wszystkie domyślne", AppSettings.All, "Przywrócono ustawienia domyślne"));
 
-            AddDeveloperDataCard(root);
+            AddDeveloperDataCard(developer);
 
             LoadSettingInputs();
             UpdateDependentControls();
 
             return scrollView;
+        }
+
+        /// <summary>
+        /// Makes a card collapsible: everything below the header is moved into a body that an arrow in the header shows or hides.
+        /// </summary>
+        /// <param name="card">Card to change.</param>
+        /// <param name="header">First view of the card, which stays visible when the card is collapsed.</param>
+        /// <param name="key">Key under which the expanded state is remembered while the application runs, so that it survives a rotation.</param>
+        private void MakeCollapsible(LinearLayout card, View header, string key)
+        {
+            List<View> rest = new List<View>();
+
+            for (int index = 1; index < card.ChildCount; index++)
+            {
+                rest.Add(card.GetChildAt(index)!);
+            }
+
+            card.RemoveViews(1, rest.Count);
+
+            LinearLayout body = new LinearLayout(this);
+            body.Orientation = Orientation.Vertical;
+
+            foreach (View view in rest)
+            {
+                body.AddView(view);
+            }
+
+            LinearLayout headerRow;
+            bool wrapped = header is not LinearLayout;
+
+            if (wrapped)
+            {
+                card.RemoveView(header);
+
+                headerRow = new LinearLayout(this);
+                headerRow.Orientation = Orientation.Horizontal;
+                headerRow.SetGravity(GravityFlags.CenterVertical);
+                headerRow.AddView(header, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+                card.AddView(headerRow, 0);
+            }
+            else
+            {
+                headerRow = (LinearLayout)header;
+            }
+
+            card.AddView(body);
+
+            TextView arrow = CreateArrow();
+            headerRow.AddView(arrow, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
+
+            System.Action toggle = BindToggle(arrow, body, key);
+
+            arrow.Click += (sender, args) => toggle();
+
+            if (wrapped)
+            {
+                headerRow.Click += (sender, args) => toggle();
+            }
+        }
+
+        /// <summary>
+        /// Creates the arrow that shows or hides a collapsible section.
+        /// </summary>
+        /// <returns>The arrow, not yet added to any layout.</returns>
+        private TextView CreateArrow()
+        {
+            TextView arrow = new TextView(this);
+            arrow.TextSize = 22f;
+            arrow.SetTextColor(Color.White);
+            arrow.Gravity = GravityFlags.Center;
+            arrow.SetPadding(Dp(12), 0, Dp(4), 0);
+
+            return arrow;
+        }
+
+        /// <summary>
+        /// Connects an arrow to the body it shows or hides and applies the remembered expanded state.
+        /// </summary>
+        /// <param name="arrow">Arrow whose symbol shows the state.</param>
+        /// <param name="body">View shown when the section is expanded.</param>
+        /// <param name="key">Key of the remembered expanded state.</param>
+        /// <returns>Action that toggles the section.</returns>
+        private static System.Action BindToggle(TextView arrow, View body, string key)
+        {
+            System.Action apply = () =>
+            {
+                bool expanded = expandedCards.Contains(key);
+
+                body.Visibility = expanded ? ViewStates.Visible : ViewStates.Gone;
+                arrow.Text = expanded ? "▴" : "▾";
+                arrow.ContentDescription = expanded ? "Zwiń sekcję" : "Rozwiń sekcję";
+            };
+
+            apply();
+
+            return () =>
+            {
+                if (!expandedCards.Remove(key))
+                {
+                    expandedCards.Add(key);
+                }
+
+                apply();
+            };
+        }
+
+        /// <summary>
+        /// Adds a collapsible group of cards: a header with a title and an arrow, followed by a body into which the cards are added. A group may contain other groups.
+        /// </summary>
+        /// <param name="parent">Container of the screen or of the group the new group belongs to.</param>
+        /// <param name="title">Title of the group.</param>
+        /// <param name="key">Key of the remembered expanded state.</param>
+        /// <param name="titleSize">Size of the title text.</param>
+        /// <returns>Body of the group.</returns>
+        private LinearLayout CreateAggregate(LinearLayout parent, string title, string key, float titleSize)
+        {
+            LinearLayout header = new LinearLayout(this);
+            header.Orientation = Orientation.Horizontal;
+            header.SetGravity(GravityFlags.CenterVertical);
+            header.SetMinimumHeight(Dp(44));
+            header.SetPadding(Dp(4), Dp(6), Dp(4), Dp(6));
+            header.Clickable = true;
+            parent.AddView(header);
+
+            TextView label = new TextView(this);
+            label.Text = title;
+            label.TextSize = titleSize;
+            label.SetTextColor(PrimaryTextColor);
+            label.SetTypeface(null, TypefaceStyle.Bold);
+            header.AddView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+
+            TextView arrow = CreateArrow();
+            header.AddView(arrow, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
+
+            LinearLayout body = new LinearLayout(this);
+            body.Orientation = Orientation.Vertical;
+            body.SetPadding(Dp(8), 0, 0, Dp(4));
+            parent.AddView(body);
+
+            System.Action toggle = BindToggle(arrow, body, key);
+            header.Click += (sender, args) => toggle();
+
+            return body;
+        }
+
+        /// <summary>
+        /// Returns the card with a title shared by several settings, creating it at the first call.
+        /// </summary>
+        /// <param name="key">Key of the card, also the key of its expanded state.</param>
+        /// <param name="title">Title shown in the header of the card.</param>
+        /// <param name="container">Container in which the card is created.</param>
+        /// <returns>The shared card.</returns>
+        private LinearLayout GetTitledCard(string key, string title, LinearLayout container)
+        {
+            if (titledCards.TryGetValue(key, out LinearLayout? existing))
+            {
+                return existing;
+            }
+
+            LinearLayout card = CreateCard(container);
+
+            TextView titleView = new TextView(this);
+            titleView.Text = title;
+            StyleTitle(titleView);
+            card.AddView(titleView);
+
+            titledCards[key] = card;
+
+            return card;
+        }
+
+        /// <summary>
+        /// Returns the card to which a number setting belongs.
+        /// </summary>
+        /// <param name="definition">Number setting.</param>
+        /// <param name="container">Container used when the setting belongs to no known card.</param>
+        /// <returns>The card in which the field is placed.</returns>
+        private LinearLayout GetNumberCard(SettingDefinition definition, LinearLayout container)
+        {
+            if (AppSettings.TrailSettings.Contains(definition))
+            {
+                return GetTrailCard(container);
+            }
+
+            if (definition == AppSettings.FetchIntervalSetting || definition == AppSettings.RenderIntervalSetting)
+            {
+                return GetTitledCard("refresh", "Odświeżanie", container);
+            }
+
+            if (definition == AppSettings.MaxCachedTilesSetting || definition == AppSettings.TileRetrySetting)
+            {
+                return GetTitledCard("tiles", "Pobieranie kafelków", container);
+            }
+
+            return GetTitledCard("map", "Mapa", container);
+        }
+
+        /// <summary>
+        /// Returns the shared card to which a switch, list, slider or check box group belongs.
+        /// </summary>
+        /// <param name="definition">Setting.</param>
+        /// <param name="container">Container used when a card has to be created.</param>
+        /// <returns>The shared card, or null when the setting has a card of its own.</returns>
+        private LinearLayout? GetSharedCardFor(SettingDefinition definition, LinearLayout container)
+        {
+            if (AppSettings.AirportSettings.Contains(definition))
+            {
+                return GetAirportSettingsCard(container);
+            }
+
+            if (definition == AppSettings.IconScaleSetting || definition == AppSettings.AircraftOutlineWidthSetting || definition == AppSettings.ShowLabelsSetting || definition == AppSettings.LabelTextSizeSetting)
+            {
+                return GetAircraftIconCard(container);
+            }
+
+            if (AppSettings.TrailSettings.Contains(definition))
+            {
+                return GetTrailCard(container);
+            }
+
+            if (AppSettings.TileCacheSettings.Contains(definition))
+            {
+                return GetTileCacheCard(container);
+            }
+
+            if (definition == AppSettings.AltitudeUnitSetting || definition == AppSettings.ShowAltitudeLegendSetting)
+            {
+                return GetAltitudeCard(container);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Returns the card of the altitude colors, which holds the altitude unit, the color scale editor and the legend switch, creating it at the first call.
+        /// </summary>
+        /// <param name="container">Container in which the card is created.</param>
+        /// <returns>The shared card.</returns>
+        private LinearLayout GetAltitudeCard(LinearLayout container)
+        {
+            if (altitudeScaleCard != null)
+            {
+                return altitudeScaleCard;
+            }
+
+            LinearLayout card = CreateCard(container);
+
+            TextView title = new TextView(this);
+            title.Text = "Kolory wysokości";
+            StyleTitle(title);
+            card.AddView(title);
+
+            altitudeScaleCard = card;
+
+            return card;
         }
 
         /// <summary>
@@ -381,8 +689,9 @@ namespace AdsbCarMap.Activities
         private void AddSwitch(LinearLayout root, SettingDefinition definition)
         {
             bool isAirportMaster = definition == AppSettings.ShowAirportsSetting;
-            bool isGrouped = AppSettings.AirportSettings.Contains(definition) && !isAirportMaster;
-            LinearLayout card = isGrouped || isAirportMaster ? GetAirportSettingsCard(root) : CreateCard(root);
+            LinearLayout? sharedCard = GetSharedCardFor(definition, root);
+            bool isGrouped = sharedCard != null && !isAirportMaster;
+            LinearLayout card = sharedCard ?? CreateCard(root);
             LinearLayout row = new LinearLayout(this);
             row.Orientation = Orientation.Horizontal;
             row.SetGravity(GravityFlags.CenterVertical);
@@ -449,8 +758,9 @@ namespace AdsbCarMap.Activities
         /// <param name="definition">Setting.</param>
         private void AddChoice(LinearLayout root, SettingDefinition definition)
         {
-            bool isGrouped = AppSettings.AirportSettings.Contains(definition);
-            LinearLayout card = isGrouped ? GetAirportSettingsCard(root) : CreateCard(root);
+            LinearLayout? sharedCard = GetSharedCardFor(definition, root);
+            bool isGrouped = sharedCard != null;
+            LinearLayout card = sharedCard ?? CreateCard(root);
             LinearLayout row = new LinearLayout(this);
             row.Orientation = Orientation.Horizontal;
             row.SetGravity(GravityFlags.CenterVertical);
@@ -578,8 +888,9 @@ namespace AdsbCarMap.Activities
         /// <param name="definition">Setting.</param>
         private void AddMultiChoice(LinearLayout root, SettingDefinition definition)
         {
-            bool isGrouped = AppSettings.AirportSettings.Contains(definition);
-            LinearLayout card = isGrouped ? GetAirportSettingsCard(root) : CreateCard(root);
+            LinearLayout? sharedCard = GetSharedCardFor(definition, root);
+            bool isGrouped = sharedCard != null;
+            LinearLayout card = sharedCard ?? CreateCard(root);
 
             LinearLayout titleRow = new LinearLayout(this);
             titleRow.Orientation = Orientation.Horizontal;
@@ -683,12 +994,10 @@ namespace AdsbCarMap.Activities
         /// <param name="definition">Setting.</param>
         private void AddSlider(LinearLayout root, SettingDefinition definition)
         {
-            bool isIconSetting = definition == AppSettings.IconScaleSetting || definition == AppSettings.AircraftOutlineWidthSetting;
             bool isTrailSetting = AppSettings.TrailSettings.Contains(definition);
-            bool isAirportSetting = AppSettings.AirportSettings.Contains(definition);
-            bool isTileCacheSetting = AppSettings.TileCacheSettings.Contains(definition);
-            bool isGrouped = isIconSetting || isTrailSetting || isAirportSetting || isTileCacheSetting;
-            LinearLayout card = isIconSetting ? GetAircraftIconCard(root) : isTrailSetting ? GetTrailCard(root) : isAirportSetting ? GetAirportSettingsCard(root) : isTileCacheSetting ? GetTileCacheCard(root) : CreateCard(root);
+            LinearLayout? sharedCard = GetSharedCardFor(definition, root);
+            bool isGrouped = sharedCard != null;
+            LinearLayout card = sharedCard ?? CreateCard(root);
 
             LinearLayout titleRow = new LinearLayout(this);
             titleRow.Orientation = Orientation.Horizontal;
@@ -871,11 +1180,12 @@ namespace AdsbCarMap.Activities
         {
             if (altitudeScale == null)
             {
-                LinearLayout card = CreateCard(root);
+                LinearLayout card = GetAltitudeCard(root);
 
                 TextView title = new TextView(this);
-                title.Text = "Skala kolorów wysokości";
-                StyleTitle(title);
+                title.Text = "Skala kolorów";
+                StyleSubTitle(title);
+                title.SetPadding(0, Dp(10), 0, 0);
                 card.AddView(title);
 
                 TextView hint = new TextView(this);
@@ -890,11 +1200,11 @@ namespace AdsbCarMap.Activities
 
                 Button resetColors = new Button(this);
                 resetColors.Text = "Przywróć domyślne kolory";
-                resetColors.Click += (sender, args) =>
+                resetColors.Click += (sender, args) => ConfirmReset(resetColors.Text ?? string.Empty, () =>
                 {
                     ResetSettings(altitudeScaleSettings);
                     Toast.MakeText(this, "Przywrócono domyślne kolory", ToastLength.Short)?.Show();
-                };
+                });
                 card.AddView(resetColors);
             }
 
@@ -922,7 +1232,7 @@ namespace AdsbCarMap.Activities
             LinearLayout card = CreateCard(root);
 
             TextView title = new TextView(this);
-            title.Text = "Ikony samolotów";
+            title.Text = "Ikony i etykiety samolotów";
             StyleTitle(title);
             card.AddView(title);
 
@@ -1377,13 +1687,70 @@ namespace AdsbCarMap.Activities
         {
             Button button = new Button(this);
             button.Text = text;
-            button.Click += (sender, args) =>
+            button.Click += (sender, args) => ConfirmReset(text, () =>
             {
                 ResetSettings(definitions);
                 Toast.MakeText(this, message, ToastLength.Short)?.Show();
-            };
+            });
 
             return button;
+        }
+
+        /// <summary>
+        /// Asks the user to confirm a reset to the default values. The confirming button is disabled for the first ten seconds and shows the countdown, so that the reset cannot be made by an accidental tap.
+        /// </summary>
+        /// <param name="title">Title of the dialog.</param>
+        /// <param name="reset">Action performed after the confirmation.</param>
+        private void ConfirmReset(string title, System.Action reset)
+        {
+            const int DelaySeconds = 10;
+            const string ConfirmText = "Przywróć domyślne wartości";
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
+            builder.SetTitle(title);
+            builder.SetMessage("Czy na pewno chcesz przywrócić domyślne wartości? Obecne wartości zostaną zastąpione (każdą zmianę można potem cofnąć przyciskiem ↺).");
+            builder.SetNegativeButton("Anuluj", (sender, args) => { });
+            builder.SetPositiveButton(ConfirmText, (sender, args) => reset());
+
+            AlertDialog dialog = builder.Create()!;
+            dialog.Show();
+
+            Android.Widget.Button? confirm = dialog.GetButton((int)Android.Content.DialogButtonType.Positive);
+
+            if (confirm == null)
+            {
+                return;
+            }
+
+            Handler handler = new Handler(Looper.MainLooper!);
+            bool closed = false;
+            int remaining = DelaySeconds;
+            System.Action? tick = null;
+
+            dialog.DismissEvent += (sender, args) => closed = true;
+
+            tick = () =>
+            {
+                if (closed)
+                {
+                    return;
+                }
+
+                if (remaining > 0)
+                {
+                    confirm.Enabled = false;
+                    confirm.Text = ConfirmText + " (" + remaining + ")";
+                    remaining--;
+                    handler.PostDelayed(tick, 1000);
+                }
+                else
+                {
+                    confirm.Text = ConfirmText;
+                    confirm.Enabled = true;
+                }
+            };
+
+            tick();
         }
 
         /// <summary>
