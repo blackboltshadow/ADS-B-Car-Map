@@ -1,3 +1,4 @@
+using AdsbCarMap.DataSources.Models;
 using System.Globalization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Settings;
@@ -39,7 +40,7 @@ namespace AdsbCarMap.Map
         {
             List<string> descriptors = new List<string>();
             string airline = AircraftSearch.GetAirline(aircraft, route);
-            string kindName = AircraftClassifier.GetDisplayName(aircraft.Kind);
+            string kindName = AircraftClassifier.GetDisplayName(aircraft.GetKind());
 
             if (!string.IsNullOrEmpty(airline))
             {

@@ -1,3 +1,6 @@
+using AdsbCarMap.DataSources.Models;
+
+
 namespace AdsbCarMap.Data
 {
     /// <summary>
@@ -200,7 +203,7 @@ namespace AdsbCarMap.Data
                 case FilterField.Military:
                     return ToResult(aircraft.IsMilitary);
                 case FilterField.Kind:
-                    return ToResult(aircraft.Kind == Kind);
+                    return ToResult(aircraft.GetKind() == Kind);
                 case FilterField.Manufacturer:
                     return EvaluateManufacturer(aircraft);
                 case FilterField.TypeCode:

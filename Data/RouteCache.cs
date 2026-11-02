@@ -1,3 +1,5 @@
+using AdsbCarMap.DataSources.Models;
+using AdsbCarMap.DataSources.Interfaces;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
@@ -33,7 +35,7 @@ namespace AdsbCarMap.Data
         /// <summary>
         /// Klient API tras.
         /// </summary>
-        private readonly RouteClient client;
+        private readonly IRouteSource client;
 
         /// <summary>
         /// Znane trasy według znaku wywoławczego. Wartość null oznacza, że API nie zna trasy.
@@ -74,7 +76,7 @@ namespace AdsbCarMap.Data
         /// Tworzy pamięć tras korzystającą z podanego klienta.
         /// </summary>
         /// <param name="client">Klient API tras.</param>
-        public RouteCache(RouteClient client)
+        public RouteCache(IRouteSource client)
         {
             this.client = client;
         }

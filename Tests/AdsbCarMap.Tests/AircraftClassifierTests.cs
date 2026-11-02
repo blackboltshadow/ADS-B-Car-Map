@@ -1,3 +1,4 @@
+using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.Data;
 using Xunit;
 
@@ -98,8 +99,8 @@ namespace AdsbCarMap.Tests
         {
             Aircraft aircraft = Create("C172", "A1");
 
-            Assert.Equal(AircraftClassifier.Classify(aircraft), aircraft.Kind);
-            Assert.Equal(aircraft.Kind, aircraft.Kind);
+            Assert.Equal(AircraftClassifier.Classify(aircraft), aircraft.GetKind());
+            Assert.Equal(aircraft.GetKind(), aircraft.GetKind());
         }
 
         /// <summary>

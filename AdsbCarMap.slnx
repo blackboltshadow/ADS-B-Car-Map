@@ -1,6 +1,16 @@
 <Solution>
+  <Folder Name="/Sources/">
+    <Project Path="Sources/AdsbCarMap.DataSources/AdsbCarMap.DataSources.csproj" />
+  </Folder>
+  <Folder Name="/Sources/AdsbLol/">
+    <Project Path="Sources/AdsbLol/AdsbCarMap.DataSources.AdsbLol/AdsbCarMap.DataSources.AdsbLol.csproj" />
+    <Project Path="Sources/AdsbLol/AdsbCarMap.DataSources.AdsbLol.Tests/AdsbCarMap.DataSources.AdsbLol.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/AdsbCarMap.Tests/AdsbCarMap.Tests.csproj" />
+    <Project Path="Tests/AdsbCarMap.DataSources.Tests/AdsbCarMap.DataSources.Tests.csproj" />
+  </Folder>
   <Project Path="AdsbCarMap.csproj">
     <Deploy />
   </Project>
-  <Project Path="Tests/AdsbCarMap.Tests.csproj" />
 </Solution>

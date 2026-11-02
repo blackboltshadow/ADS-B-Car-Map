@@ -1,14 +1,15 @@
+using AdsbCarMap.DataSources.Models;
 using System.Net;
 using System.Net.Http.Headers;
-using AdsbCarMap.Data;
+using AdsbCarMap.DataSources.AdsbLol;
 using Xunit;
 
-namespace AdsbCarMap.Tests
+namespace AdsbCarMap.DataSources.AdsbLol.Tests
 {
     /// <summary>
     /// Tests of response parsing and the 429 backoff in the ADS-B client.
     /// </summary>
-    public class AdsbClientTests
+    public class AdsbLolClientTests
     {
         /// <summary>
         /// Handler returning queued responses and counting requests.
@@ -55,9 +56,9 @@ namespace AdsbCarMap.Tests
         /// </summary>
         /// <param name="handler">Handler to use.</param>
         /// <returns>The client.</returns>
-        private static AdsbClient CreateClient(FakeHandler handler)
+        private static AdsbLolClient CreateClient(FakeHandler handler)
         {
-            return new AdsbClient(new HttpClient(handler) { BaseAddress = new Uri("https://example.test/") });
+            return new AdsbLolClient(new HttpClient(handler) { BaseAddress = new Uri("https://example.test/") });
         }
 
         /// <summary>
@@ -127,7 +128,7 @@ namespace AdsbCarMap.Tests
         {
             FakeHandler handler = new FakeHandler();
             handler.Enqueue(() => TooManyRequests());
-            AdsbClient client = CreateClient(handler);
+            AdsbLolClient client = CreateClient(handler);
 
             RateLimitedException first = await Assert.ThrowsAsync<RateLimitedException>(() => client.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));
             RateLimitedException second = await Assert.ThrowsAsync<RateLimitedException>(() => client.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));
@@ -152,6 +153,28 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// The limit state reflects a 429 response and is cleared by a successful one.
+        /// </summary>
+        [Fact]
+        public async Task GetRateLimitStatus_FollowsResponses()
+        {
+            FakeHandler handler = new FakeHandler();
+            handler.Enqueue(() => TooManyRequests());
+            AdsbLolClient client = CreateClient(handler);
+
+            Assert.True(client.GetRateLimitStatus().CanQuery);
+
+            await Assert.ThrowsAsync<RateLimitedException>(() => client.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));
+
+            RateLimitStatus blocked = client.GetRateLimitStatus();
+
+            Assert.False(blocked.CanQuery);
+            Assert.Equal(1, blocked.ConsecutiveRateLimits);
+            Assert.True(blocked.RemainingBlock > TimeSpan.Zero && blocked.RemainingBlock <= TimeSpan.FromSeconds(5));
+            Assert.Equal("adsb.lol", client.Name);
+        }
+
+        /// <summary>
         /// Other HTTP errors are reported as HttpRequestException without starting a backoff.
         /// </summary>
         [Fact]
@@ -159,7 +182,7 @@ namespace AdsbCarMap.Tests
         {
             FakeHandler handler = new FakeHandler();
             handler.Enqueue(() => new HttpResponseMessage(HttpStatusCode.InternalServerError));
-            AdsbClient client = CreateClient(handler);
+            AdsbLolClient client = CreateClient(handler);
 
             await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));
             await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));

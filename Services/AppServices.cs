@@ -1,3 +1,5 @@
+using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.AdsbLol;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Settings;
@@ -19,7 +21,7 @@ namespace AdsbCarMap.Services
         /// <summary>
         /// HTTP client used for the aircraft requests.
         /// </summary>
-        private static readonly HttpClient AdsbHttpClient = CreateHttpClient(AdsbClient.DefaultBaseAddress);
+        private static readonly HttpClient AdsbHttpClient = CreateHttpClient(AdsbLolClient.DefaultBaseAddress);
 
         /// <summary>
         /// HTTP client used to download the map tiles.
@@ -29,17 +31,17 @@ namespace AdsbCarMap.Services
         /// <summary>
         /// HTTP client used for the flight route requests.
         /// </summary>
-        private static readonly HttpClient RouteHttpClient = CreateHttpClient(RouteClient.DefaultBaseAddress);
+        private static readonly HttpClient RouteHttpClient = CreateHttpClient(AdsbdbRouteClient.DefaultBaseAddress);
 
         /// <summary>
         /// ADS-B API client.
         /// </summary>
-        public static AdsbClient Adsb { get; } = new AdsbClient(AdsbHttpClient);
+        public static IAircraftSource Adsb { get; } = new AdsbLolClient(AdsbHttpClient);
 
         /// <summary>
         /// Cache of the flight routes downloaded from adsbdb.com.
         /// </summary>
-        public static RouteCache Routes { get; } = new RouteCache(new RouteClient(RouteHttpClient));
+        public static RouteCache Routes { get; } = new RouteCache(new AdsbdbRouteClient(RouteHttpClient));
 
         /// <summary>
         /// Map tiles stored on the disk, in the cache directory of the application.

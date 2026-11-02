@@ -1,13 +1,14 @@
+using AdsbCarMap.DataSources.Models;
 using System.Net;
-using AdsbCarMap.Data;
+using AdsbCarMap.DataSources.AdsbLol;
 using Xunit;
 
-namespace AdsbCarMap.Tests
+namespace AdsbCarMap.DataSources.AdsbLol.Tests
 {
     /// <summary>
     /// Tests of the adsbdb route client and the flight route model.
     /// </summary>
-    public class RouteClientTests
+    public class AdsbdbRouteClientTests
     {
         /// <summary>
         /// Handler returning a fixed status and body and remembering the requested path.
@@ -58,7 +59,7 @@ namespace AdsbCarMap.Tests
         /// <returns>The route or null.</returns>
         private static async Task<FlightRoute?> GetAsync(HttpStatusCode status, string body, string callsign = "LOT1")
         {
-            RouteClient client = new RouteClient(new HttpClient(new StubHandler(status, body)) { BaseAddress = new Uri("https://example.test/") });
+            AdsbdbRouteClient client = new AdsbdbRouteClient(new HttpClient(new StubHandler(status, body)) { BaseAddress = new Uri("https://example.test/") });
 
             return await client.GetRouteAsync(callsign, CancellationToken.None);
         }
@@ -150,7 +151,7 @@ namespace AdsbCarMap.Tests
         public async Task GetRouteAsync_EscapesCallsign()
         {
             StubHandler handler = new StubHandler(HttpStatusCode.NotFound, "{}");
-            RouteClient client = new RouteClient(new HttpClient(handler) { BaseAddress = new Uri("https://example.test/") });
+            AdsbdbRouteClient client = new AdsbdbRouteClient(new HttpClient(handler) { BaseAddress = new Uri("https://example.test/") });
 
             await client.GetRouteAsync("A B/C", CancellationToken.None);
 

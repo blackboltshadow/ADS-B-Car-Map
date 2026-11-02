@@ -1,13 +1,14 @@
+using AdsbCarMap.DataSources.Models;
 using System.Net;
-using AdsbCarMap.Data;
+using AdsbCarMap.DataSources.AdsbLol;
 using Xunit;
 
-namespace AdsbCarMap.Tests
+namespace AdsbCarMap.DataSources.AdsbLol.Tests
 {
     /// <summary>
     /// Tests of the field-level parsing of the ADS-B API response.
     /// </summary>
-    public class AdsbClientParsingTests
+    public class AdsbLolClientParsingTests
     {
         /// <summary>
         /// Handler returning a fixed JSON body.
@@ -42,7 +43,7 @@ namespace AdsbCarMap.Tests
         /// <returns>Parsed aircraft.</returns>
         private static async Task<IReadOnlyList<Aircraft>> ParseAsync(string json)
         {
-            AdsbClient client = new AdsbClient(new HttpClient(new JsonHandler(json)) { BaseAddress = new Uri("https://example.test/") });
+            AdsbLolClient client = new AdsbLolClient(new HttpClient(new JsonHandler(json)) { BaseAddress = new Uri("https://example.test/") });
 
             return await client.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None);
         }

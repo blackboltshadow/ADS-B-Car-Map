@@ -1,40 +1,45 @@
+using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Models;
 using System.Net;
 using System.Text.Json;
 
-namespace AdsbCarMap.Data
+namespace AdsbCarMap.DataSources.AdsbLol
 {
     /// <summary>
-    /// Klient API adsbdb.com zwracający trasę lotu dla znaku wywoławczego.
+    /// Client of the adsbdb.com API returning the flight route for a callsign.
     /// </summary>
-    public sealed class RouteClient
+    public sealed class AdsbdbRouteClient : IRouteSource
     {
         /// <summary>
-        /// Domyślny adres bazowy API adsbdb.com.
+        /// Default base address of the adsbdb.com API.
         /// </summary>
         public const string DefaultBaseAddress = "https://api.adsbdb.com/";
 
         /// <summary>
-        /// Klient HTTP z ustawionym adresem bazowym API.
+        /// HTTP client with the base address of the API.
         /// </summary>
         private readonly HttpClient httpClient;
 
         /// <summary>
-        /// Tworzy klienta korzystającego z podanego klienta HTTP.
+        /// Creates a client using the given HTTP client.
         /// </summary>
-        /// <param name="httpClient">Klient HTTP z adresem bazowym API.</param>
-        public RouteClient(HttpClient httpClient)
+        /// <param name="httpClient">HTTP client with the base address of the API.</param>
+        public AdsbdbRouteClient(HttpClient httpClient)
         {
             this.httpClient = httpClient;
         }
 
-        /// <summary>
-        /// Pobiera trasę lotu dla znaku wywoławczego.
-        /// </summary>
-        /// <param name="callsign">Znak wywoławczy, np. "LOT281".</param>
-        /// <param name="cancellationToken">Token anulowania.</param>
-        /// <returns>Trasa lub null, gdy API nie zna tego znaku wywoławczego.</returns>
-        /// <exception cref="HttpRequestException">Błąd sieci lub kod odpowiedzi inny niż sukces i 404.</exception>
-        /// <exception cref="JsonException">Niepoprawna odpowiedź JSON.</exception>
+        /// <inheritdoc />
+        public string Name => "adsbdb.com";
+
+        /// <inheritdoc />
+        public RateLimitStatus GetRateLimitStatus()
+        {
+            return RateLimitStatus.None;
+        }
+
+        /// <inheritdoc />
+        /// <exception cref="JsonException">Invalid JSON response.</exception>
         public async Task<FlightRoute?> GetRouteAsync(string callsign, CancellationToken cancellationToken)
         {
             using HttpResponseMessage response = await httpClient.GetAsync("v0/callsign/" + Uri.EscapeDataString(callsign), cancellationToken);
@@ -85,11 +90,11 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Odczytuje kod i miasto lotniska z obiektu trasy.
+        /// Reads the code and the city of an airport from the route object.
         /// </summary>
-        /// <param name="route">Obiekt "flightroute".</param>
-        /// <param name="name">Nazwa właściwości lotniska, "origin" albo "destination".</param>
-        /// <returns>Kod IATA, a gdy go brak ICAO, miasto oraz współrzędne. Null, gdy danych brakuje.</returns>
+        /// <param name="route">The "flightroute" object.</param>
+        /// <param name="name">Name of the airport property, "origin" or "destination".</param>
+        /// <returns>The IATA code, or the ICAO code when there is no IATA code, the city and the coordinates. Null when the data is missing.</returns>
         private static (string? Code, string? City, double? Latitude, double? Longitude) ParseAirport(JsonElement route, string name)
         {
             if (!route.TryGetProperty(name, out JsonElement airport) || airport.ValueKind != JsonValueKind.Object)
@@ -105,11 +110,11 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Odczytuje właściwość liczbową.
+        /// Reads a numeric property.
         /// </summary>
-        /// <param name="element">Obiekt JSON.</param>
-        /// <param name="name">Nazwa właściwości.</param>
-        /// <returns>Wartość lub null, gdy właściwość nie istnieje lub nie jest liczbą.</returns>
+        /// <param name="element">JSON object.</param>
+        /// <param name="name">Property name.</param>
+        /// <returns>The value or null when the property does not exist or is not a number.</returns>
         private static double? GetDouble(JsonElement element, string name)
         {
             if (element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Number)
@@ -121,11 +126,11 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Odczytuje właściwość tekstową.
+        /// Reads a text property.
         /// </summary>
-        /// <param name="element">Obiekt JSON.</param>
-        /// <param name="name">Nazwa właściwości.</param>
-        /// <returns>Wartość lub null, gdy właściwość nie istnieje lub nie jest tekstem.</returns>
+        /// <param name="element">JSON object.</param>
+        /// <param name="name">Property name.</param>
+        /// <returns>The value or null when the property does not exist or is not a string.</returns>
         private static string? GetString(JsonElement element, string name)
         {
             if (element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String)

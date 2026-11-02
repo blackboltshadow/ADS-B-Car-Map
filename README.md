@@ -276,25 +276,41 @@ Zapoznaj się z warunkami użycia tych serwisów, zanim udostępnisz własną ko
 
 ### Testy jednostkowe
 
-Projekt `Tests\AdsbCarMap.Tests.csproj` (xUnit, net10.0) linkuje te pliki aplikacji, które nie zależą od Androida (GeoMath, WebMercator, klasyfikator rodzajów, AdsbClient, RouteClient, SelectionState, SettingDefinition, SettingsHistory, AirportDatabase, AircraftSearch, TextFolding, AltitudeFormatter, AircraftCardText, AirportCardText, AltitudeBlend, tabela producentów, tabela typów samolotów z dziennikiem brakujących typów i model filtrów samolotów) i działa bez Androida i bez telefonu:
+Projekt `Tests\AdsbCarMap.Tests\AdsbCarMap.Tests.csproj` (xUnit, net10.0) linkuje te pliki aplikacji, które nie zależą od Androida (GeoMath, WebMercator, klasyfikator rodzajów, SelectionState, SettingDefinition, SettingsHistory, AirportDatabase, AircraftSearch, TextFolding, AltitudeFormatter, AircraftCardText, AirportCardText, AltitudeBlend, tabela producentów, tabela typów samolotów z dziennikiem brakujących typów i model filtrów samolotów) i działa bez Androida i bez telefonu:
 
 ```powershell
-dotnet test Tests\AdsbCarMap.Tests.csproj
+dotnet test Tests\AdsbCarMap.Tests\AdsbCarMap.Tests.csproj
 ```
 
-Testy obejmują odległość i kierunek, projekcję Web Mercator i dobór kafelków, klasyfikację rodzajów samolotów backoff po odpowiedzi 429 i parsowanie pól odpowiedzi ADS-B (z fałszywym `HttpMessageHandler`), klienta tras adsbdb, wspólny stan zaznaczenia telefonu i samochodu oraz definicje ustawień z historią zmian. Kod zależny od Androida jest rozdzielony na pliki `*.Android.cs` i `*.App.cs` (klasy `partial`), a część czysta dostaje stan z zewnątrz: `AirportDatabase.LoadFrom` przyjmuje linie plików, a `AircraftSearch` odczyt tras, ulubione i formatowanie wysokości jako parametry. Jednostka wysokości jest parametrem metod formatujących (`AltitudeFormatter`, teksty kart), a obliczenia koloru po wysokości są w `AltitudeBlend`, bez `Android.Graphics.Color`. `RouteCache` nadal wymaga wydzielenia logowania Androida. Nowa logika niezależna od Androida powinna dostać test, a jej plik trzeba dopisać jako `Compile Include` w pliku csproj testów.
+Testy obejmują odległość i kierunek, projekcję Web Mercator i dobór kafelków, klasyfikację rodzajów samolotów, wspólny stan zaznaczenia telefonu i samochodu oraz definicje ustawień z historią zmian. Kod zależny od Androida jest rozdzielony na pliki `*.Android.cs` i `*.App.cs` (klasy `partial`), a część czysta dostaje stan z zewnątrz: `AirportDatabase.LoadFrom` przyjmuje linie plików, a `AircraftSearch` odczyt tras, ulubione i formatowanie wysokości jako parametry. Jednostka wysokości jest parametrem metod formatujących (`AltitudeFormatter`, teksty kart), a obliczenia koloru po wysokości są w `AltitudeBlend`, bez `Android.Graphics.Color`. `RouteCache` nadal wymaga wydzielenia logowania Androida. Nowa logika niezależna od Androida powinna dostać test, a jej plik trzeba dopisać jako `Compile Include` w pliku csproj testów.
+
+### Projekty źródeł danych
+
+Wszystko, co zależy od konkretnego serwera danych, leży poza aplikacją, w katalogu `Sources\` (biblioteki net10.0 bez zależności od Androida). Wspólne kontrakty leżą w `Sources\AdsbCarMap.DataSources`, a każde źródło ma własny katalog z projektem i jego testami (obecnie `Sources\AdsbLol`). Testy niezwiązane z jednym źródłem są w `Tests\`:
+
+- `AdsbCarMap.DataSources` zawiera interfejsy (`Interfaces`): `IDataSource` (nazwa i stan limitów), `IAircraftSource` (samoloty w promieniu od punktu) i `IRouteSource` (trasa dla znaku wywoławczego); modele (`Models`): `Aircraft`, `FlightRoute`, `RateLimitStatus` i `RateLimitedException`; `BackoffRateLimiter` (`RateLimiting`, wykładnicze wstrzymanie po 429 z uwzględnieniem `Retry-After`, wspólne dla źródeł); `DataSourceRegistry` (`Selection`, uporządkowana lista źródeł, która odpowiada, czy można teraz zapytać jakieś źródło albo inne niż bieżące). Każde źródło udostępnia `GetRateLimitStatus()` bez wysyłania zapytania. Aplikacja zna tylko te typy.
+- `AdsbCarMap.DataSources.AdsbLol` zawiera obecne źródło: `AdsbLolClient` (adsb.lol, API zgodne z airplanes.live, z backoffem po odpowiedzi 429) i `AdsbdbRouteClient` (adsbdb.com).
+- `Sources\AdsbLol\AdsbCarMap.DataSources.AdsbLol.Tests` zawiera testy klientów adsb.lol i adsbdb, a `Tests\AdsbCarMap.DataSources.Tests` testy wspólnych kontraktów (limiter i rejestr źródeł).
+
+Nowe źródło to nowy katalog `Sources\{Nazwa}` z projektem `AdsbCarMap.DataSources.{Nazwa}` (klasa implementująca `IAircraftSource` i ewentualnie `IRouteSource`) oraz projektem `AdsbCarMap.DataSources.{Nazwa}.Tests`, podłączany w `AppServices`. Testy źródeł uruchamia się osobno:
+
+```powershell
+dotnet test Sources\AdsbLol\AdsbCarMap.DataSources.AdsbLol.Tests\AdsbCarMap.DataSources.AdsbLol.Tests.csproj
+dotnet test Tests\AdsbCarMap.DataSources.Tests\AdsbCarMap.DataSources.Tests.csproj
+```
 
 ## Struktura projektu
 
 ```
 Activities/   ekrany telefonu: mapa (MainActivity), wyszukiwarka, ustawienia
 Auto/         część Android Auto: usługa Car App, ekran mapy, ekran wyszukiwania
-Data/         modele i klienci: samoloty, trasy, klasyfikacja rodzajów, wyszukiwanie
+Data/         dane aplikacji: klasyfikacja rodzajów, filtry, wyszukiwanie, lotniska, cache tras
 Map/          renderowanie mapy: kontroler, kafelki, projekcja, kształty ikon, widok telefonu
 Services/     współdzielone usługi: klienci HTTP, pozycja GPS, usługa pierwszoplanowa, ruch na żywo
 Settings/     definicje i zapis ustawień
 Resources/    ikony i zasoby graficzne
-Tests/        testy jednostkowe (xUnit)
+Sources/      źródła danych: AdsbCarMap.DataSources (interfejsy, modele, limiter, rejestr) i katalog na każde źródło, np. AdsbLol/ (klienci adsb.lol i adsbdb oraz ich testy)
+Tests/        projekty testowe (xUnit): AdsbCarMap.Tests (aplikacja) i AdsbCarMap.DataSources.Tests (wspólne kontrakty źródeł)
 Scripts/      skrypty PowerShell: konfiguracja komputera, build Release, Android Auto DHU
 RELEASE_NOTES.md  historia wersji: co zostało wydane w kolejnych wydaniach
 release-history.csv  wersja, commit i SHA-256 każdej zbudowanej paczki

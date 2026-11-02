@@ -1,79 +1,57 @@
+using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Models;
+using AdsbCarMap.DataSources.RateLimiting;
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text.Json;
 
-namespace AdsbCarMap.Data
+namespace AdsbCarMap.DataSources.AdsbLol
 {
     /// <summary>
-    /// Klient API adsb.lol zwracający samoloty w zadanym promieniu od punktu.
+    /// Client of the adsb.lol API returning the aircraft within a radius of a point.
     /// </summary>
-    public sealed class AdsbClient
+    public sealed class AdsbLolClient : IAircraftSource
     {
         /// <summary>
-        /// Domyślny adres bazowy API adsb.lol.
+        /// Default base address of the adsb.lol API.
         /// </summary>
         public const string DefaultBaseAddress = "https://api.adsb.lol/";
 
         /// <summary>
-        /// Maksymalny promień zapytania akceptowany przez API, w milach morskich.
+        /// Maximum query radius accepted by the API, in nautical miles.
         /// </summary>
         private const double MaxRadiusNauticalMiles = 250.0;
 
         /// <summary>
-        /// Pierwsze wstrzymanie zapytań po odpowiedzi 429, podwajane przy kolejnych.
+        /// Pauses the requests after 429 responses.
         /// </summary>
-        private static readonly TimeSpan BaseBackoff = TimeSpan.FromSeconds(5);
+        private readonly BackoffRateLimiter rateLimiter = new BackoffRateLimiter();
 
         /// <summary>
-        /// Największe wstrzymanie wynikające z wykładniczego wydłużania.
-        /// </summary>
-        private static readonly TimeSpan MaxBackoff = TimeSpan.FromSeconds(60);
-
-        /// <summary>
-        /// Największe wstrzymanie żądane przez serwer nagłówkiem Retry-After.
-        /// </summary>
-        private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromMinutes(5);
-
-        /// <summary>
-        /// Blokada chroniąca stan ograniczenia zapytań.
-        /// </summary>
-        private readonly object rateLimitLock = new object();
-
-        /// <summary>
-        /// Moment, do którego zapytania są wstrzymane po odpowiedzi 429, w UTC.
-        /// </summary>
-        private DateTime blockedUntilUtc = DateTime.MinValue;
-
-        /// <summary>
-        /// Liczba kolejnych odpowiedzi 429 bez udanego zapytania pomiędzy nimi.
-        /// </summary>
-        private int consecutiveRateLimits;
-
-        /// <summary>
-        /// Klient HTTP z ustawionym adresem bazowym API.
+        /// HTTP client with the base address of the API.
         /// </summary>
         private readonly HttpClient httpClient;
 
         /// <summary>
-        /// Tworzy klienta korzystającego z podanego klienta HTTP.
+        /// Creates a client using the given HTTP client.
         /// </summary>
-        /// <param name="httpClient">Klient HTTP z adresem bazowym API.</param>
-        public AdsbClient(HttpClient httpClient)
+        /// <param name="httpClient">HTTP client with the base address of the API.</param>
+        public AdsbLolClient(HttpClient httpClient)
         {
             this.httpClient = httpClient;
         }
 
-        /// <summary>
-        /// Pobiera samoloty w promieniu od podanego punktu. Pomija samoloty bez pozycji.
-        /// </summary>
-        /// <param name="latitude">Szerokość geograficzna środka.</param>
-        /// <param name="longitude">Długość geograficzna środka.</param>
-        /// <param name="radiusNauticalMiles">Promień w milach morskich, ograniczany do limitu API.</param>
-        /// <param name="cancellationToken">Token anulowania.</param>
-        /// <returns>Lista samolotów.</returns>
-        /// <exception cref="HttpRequestException">Błąd sieci lub kod odpowiedzi inny niż sukces.</exception>
-        /// <exception cref="JsonException">Niepoprawna odpowiedź JSON.</exception>
+        /// <inheritdoc />
+        public string Name => "adsb.lol";
+
+        /// <inheritdoc />
+        public RateLimitStatus GetRateLimitStatus()
+        {
+            return rateLimiter.GetStatus();
+        }
+
+        /// <inheritdoc />
+        /// <exception cref="JsonException">Invalid JSON response.</exception>
         public async Task<IReadOnlyList<Aircraft>> GetAircraftAsync(double latitude, double longitude, double radiusNauticalMiles, CancellationToken cancellationToken)
         {
             double radius = Math.Clamp(radiusNauticalMiles, 1.0, MaxRadiusNauticalMiles);
@@ -85,7 +63,7 @@ namespace AdsbCarMap.Data
                 longitude,
                 Math.Ceiling(radius));
 
-            TimeSpan remainingBlock = GetRemainingBlock();
+            TimeSpan remainingBlock = rateLimiter.GetRemainingBlock();
 
             if (remainingBlock > TimeSpan.Zero)
             {
@@ -96,11 +74,11 @@ namespace AdsbCarMap.Data
 
             if (response.StatusCode == HttpStatusCode.TooManyRequests)
             {
-                throw new RateLimitedException(RegisterRateLimit(response.Headers.RetryAfter));
+                throw new RateLimitedException(rateLimiter.RegisterRateLimit(response.Headers.RetryAfter));
             }
 
             response.EnsureSuccessStatusCode();
-            ResetRateLimit();
+            rateLimiter.Reset();
 
             await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using JsonDocument document = await JsonDocument.ParseAsync(stream, new JsonDocumentOptions(), cancellationToken);
@@ -126,62 +104,10 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Zwraca czas, przez jaki zapytania są jeszcze wstrzymane po odpowiedzi 429.
+        /// Converts a JSON element to an aircraft.
         /// </summary>
-        /// <returns>Pozostały czas wstrzymania lub zero, gdy zapytania są dozwolone.</returns>
-        private TimeSpan GetRemainingBlock()
-        {
-            lock (rateLimitLock)
-            {
-                TimeSpan remaining = blockedUntilUtc - DateTime.UtcNow;
-
-                return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
-            }
-        }
-
-        /// <summary>
-        /// Zapamiętuje odpowiedź 429 i wydłuża wstrzymanie zapytań wykładniczo, uwzględniając nagłówek Retry-After.
-        /// </summary>
-        /// <param name="retryAfter">Nagłówek Retry-After z odpowiedzi lub null.</param>
-        /// <returns>Czas wstrzymania zapytań.</returns>
-        private TimeSpan RegisterRateLimit(RetryConditionHeaderValue? retryAfter)
-        {
-            lock (rateLimitLock)
-            {
-                consecutiveRateLimits = Math.Min(consecutiveRateLimits + 1, 10);
-
-                double backoffSeconds = Math.Min(MaxBackoff.TotalSeconds, BaseBackoff.TotalSeconds * Math.Pow(2.0, consecutiveRateLimits - 1));
-                TimeSpan wait = TimeSpan.FromSeconds(backoffSeconds);
-                TimeSpan? requested = retryAfter?.Delta ?? (retryAfter?.Date - DateTimeOffset.UtcNow);
-
-                if (requested.HasValue && requested.Value > wait)
-                {
-                    wait = requested.Value > MaxRetryAfter ? MaxRetryAfter : requested.Value;
-                }
-
-                blockedUntilUtc = DateTime.UtcNow + wait;
-
-                return wait;
-            }
-        }
-
-        /// <summary>
-        /// Kasuje wstrzymanie zapytań po udanej odpowiedzi.
-        /// </summary>
-        private void ResetRateLimit()
-        {
-            lock (rateLimitLock)
-            {
-                consecutiveRateLimits = 0;
-                blockedUntilUtc = DateTime.MinValue;
-            }
-        }
-
-        /// <summary>
-        /// Zamienia element JSON na samolot.
-        /// </summary>
-        /// <param name="element">Element tablicy "ac" z odpowiedzi API.</param>
-        /// <returns>Samolot lub null, gdy brakuje adresu albo pozycji.</returns>
+        /// <param name="element">Element of the "ac" array of the API response.</param>
+        /// <returns>The aircraft or null when the address or the position is missing.</returns>
         private static Aircraft? ParseAircraft(JsonElement element)
         {
             string? hex = GetString(element, "hex");
@@ -237,11 +163,11 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Odczytuje właściwość liczbową.
+        /// Reads a numeric property.
         /// </summary>
-        /// <param name="element">Obiekt JSON.</param>
-        /// <param name="name">Nazwa właściwości.</param>
-        /// <returns>Wartość lub null, gdy właściwość nie istnieje lub nie jest liczbą.</returns>
+        /// <param name="element">JSON object.</param>
+        /// <param name="name">Property name.</param>
+        /// <returns>The value or null when the property does not exist or is not a number.</returns>
         private static double? GetDouble(JsonElement element, string name)
         {
             if (element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Number)
@@ -253,11 +179,11 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Odczytuje właściwość tekstową.
+        /// Reads a text property.
         /// </summary>
-        /// <param name="element">Obiekt JSON.</param>
-        /// <param name="name">Nazwa właściwości.</param>
-        /// <returns>Wartość lub null, gdy właściwość nie istnieje lub nie jest tekstem.</returns>
+        /// <param name="element">JSON object.</param>
+        /// <param name="name">Property name.</param>
+        /// <returns>The value or null when the property does not exist or is not a string.</returns>
         private static string? GetString(JsonElement element, string name)
         {
             if (element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String)

@@ -1,3 +1,5 @@
+using AdsbCarMap.DataSources.Models;
+using AdsbCarMap.DataSources.Interfaces;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
@@ -195,7 +197,7 @@ namespace AdsbCarMap.Map
         /// <summary>
         /// ADS-B API client.
         /// </summary>
-        private readonly AdsbClient adsbClient;
+        private readonly IAircraftSource adsbClient;
 
         /// <summary>
         /// Map tile provider.
@@ -670,7 +672,7 @@ namespace AdsbCarMap.Map
         /// <param name="tileProvider">Map tile provider.</param>
         /// <param name="routeCache">Flight route cache.</param>
         /// <param name="selectionState">Selection and filters shared with the other map.</param>
-        public MapController(AdsbClient adsbClient, TileProvider tileProvider, RouteCache routeCache, SelectionState selectionState)
+        public MapController(IAircraftSource adsbClient, TileProvider tileProvider, RouteCache routeCache, SelectionState selectionState)
         {
             this.adsbClient = adsbClient;
             this.tileProvider = tileProvider;
@@ -2762,7 +2764,7 @@ namespace AdsbCarMap.Map
         {
             aircraftPaint.Color = GetAltitudeColor(item.OnGround, item.AltitudeFeet);
 
-            AircraftKind kind = item.Kind;
+            AircraftKind kind = item.GetKind();
             (AndroidPath Path, float Scale) shape = aircraftShapes.Get(kind);
             float rotation = kind == AircraftKind.Ground || kind == AircraftKind.Balloon ? 0f : (float)(item.TrackDegrees ?? 0.0);
 
