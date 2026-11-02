@@ -58,6 +58,16 @@ namespace AdsbCarMap.Activities
         private const int MenuFavoritesId = 4;
 
         /// <summary>
+        /// Identifier of the menu item that opens the aircraft filters.
+        /// </summary>
+        private const int MenuFiltersId = 5;
+
+        /// <summary>
+        /// Diameter of the badge with the number of filters in dp.
+        /// </summary>
+        private const int BadgeSizeDp = 20;
+
+        /// <summary>
         /// Controller of the map drawn on the phone screen.
         /// </summary>
         private readonly MapController controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes, AppServices.Selection);
@@ -81,6 +91,16 @@ namespace AdsbCarMap.Activities
         /// Button of the filter that shows only military aircraft.
         /// </summary>
         private ImageButton? militaryButton;
+
+        /// <summary>
+        /// Button that opens the list of aircraft filters. It is highlighted while any filter is on.
+        /// </summary>
+        private ImageButton? filtersButton;
+
+        /// <summary>
+        /// Badge on the filters button with the number of filters that are on. Hidden when none is on.
+        /// </summary>
+        private TextView? filtersBadge;
 
         /// <summary>
         /// Card of the primary selected aircraft.
@@ -377,7 +397,16 @@ namespace AdsbCarMap.Activities
             militaryButton = CreateRoundButton(Resource.Drawable.ic_fighter, "Tylko samoloty wojskowe");
             militaryButton.Click += (sender, args) => OnMilitaryClicked();
 
-            foreach (View button in new View[] { isolateButton, multiSelectButton, labelsButton, militaryButton })
+            filtersButton = CreateRoundButton(Resource.Drawable.ic_filter, "Filtry samolotów");
+            filtersButton.Click += (sender, args) => StartActivity(new Intent(this, typeof(FiltersActivity)));
+
+            filtersBadge = CreateBadge();
+
+            FrameLayout filtersHost = new FrameLayout(this);
+            filtersHost.AddView(filtersButton, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.MatchParent));
+            filtersHost.AddView(filtersBadge, new FrameLayout.LayoutParams(Dp(BadgeSizeDp), Dp(BadgeSizeDp), GravityFlags.Top | GravityFlags.End));
+
+            foreach (View button in new View[] { isolateButton, multiSelectButton, labelsButton, militaryButton, filtersHost })
             {
                 LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(Dp(48), Dp(48));
 
@@ -490,6 +519,29 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
+        /// Creates the small round badge with a number that sits on a corner of a button. It starts hidden.
+        /// </summary>
+        /// <returns>The badge.</returns>
+        private TextView CreateBadge()
+        {
+            TextView badge = new TextView(this);
+            badge.TextSize = 11f;
+            badge.SetTypeface(null, TypefaceStyle.Bold);
+            badge.SetTextColor(Color.White);
+            badge.Gravity = GravityFlags.Center;
+            badge.SetPadding(0, 0, 0, 0);
+            badge.Visibility = ViewStates.Gone;
+
+            Android.Graphics.Drawables.GradientDrawable background = new Android.Graphics.Drawables.GradientDrawable();
+            background.SetShape(Android.Graphics.Drawables.ShapeType.Oval);
+            background.SetColor(Color.Rgb(255, 152, 0));
+            background.SetStroke(Dp(1), Color.White);
+            badge.Background = background;
+
+            return badge;
+        }
+
+        /// <summary>
         /// Creates a round button with a letter, overlaid on the map.
         /// </summary>
         /// <param name="text">Letter on the button.</param>
@@ -576,6 +628,27 @@ namespace AdsbCarMap.Activities
             labelsButton?.SetBackgroundResource(AppSettings.ShowLabels ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
 
             UpdateSelectionCounter();
+            UpdateFiltersButton();
+        }
+
+        /// <summary>
+        /// Highlights the filters button and shows the number of filters that are on in its badge, or hides the badge when none is on.
+        /// </summary>
+        private void UpdateFiltersButton()
+        {
+            if (filtersButton == null || filtersBadge == null)
+            {
+                return;
+            }
+
+            int count = AppServices.Filters.ActiveFilters.Count;
+
+            filtersButton.SetBackgroundResource(count > 0 ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
+            filtersBadge.Visibility = count > 0 ? ViewStates.Visible : ViewStates.Gone;
+            filtersBadge.Text = count.ToString(CultureInfo.InvariantCulture);
+            filtersButton.ContentDescription = count > 0
+                ? string.Format(CultureInfo.InvariantCulture, "Filtry samolotów, włączone: {0}", count)
+                : "Filtry samolotów";
         }
 
         /// <summary>
@@ -606,7 +679,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Shows the menu with the search, the favorite airports, the settings and the information about the application under the menu button.
+        /// Shows the menu with the search, the favorite airports, the aircraft filters, the settings and the information about the application under the menu button.
         /// </summary>
         /// <param name="anchor">Button under which the menu appears.</param>
         private void ShowMenu(View anchor)
@@ -614,8 +687,9 @@ namespace AdsbCarMap.Activities
             PopupMenu popup = new PopupMenu(this, anchor);
             popup.Menu?.Add(0, MenuSearchId, 0, "Wyszukaj");
             popup.Menu?.Add(0, MenuFavoritesId, 1, "Ulubione lotniska");
-            popup.Menu?.Add(0, MenuSettingsId, 2, "Ustawienia");
-            popup.Menu?.Add(0, MenuAboutId, 3, "O aplikacji");
+            popup.Menu?.Add(0, MenuFiltersId, 2, "Filtry samolotów");
+            popup.Menu?.Add(0, MenuSettingsId, 3, "Ustawienia");
+            popup.Menu?.Add(0, MenuAboutId, 4, "O aplikacji");
             popup.MenuItemClick += (sender, args) =>
             {
                 args.Handled = true;
@@ -631,6 +705,10 @@ namespace AdsbCarMap.Activities
                 else if (args.Item?.ItemId == MenuFavoritesId)
                 {
                     StartActivity(new Intent(this, typeof(FavoriteAirportsActivity)));
+                }
+                else if (args.Item?.ItemId == MenuFiltersId)
+                {
+                    StartActivity(new Intent(this, typeof(FiltersActivity)));
                 }
                 else if (args.Item?.ItemId == MenuAboutId)
                 {

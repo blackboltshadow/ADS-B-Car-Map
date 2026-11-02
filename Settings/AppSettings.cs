@@ -467,7 +467,6 @@ namespace AdsbCarMap.Settings
         /// Whether the altitude color legend bar is visible on the map.
         /// </summary>
         public static bool ShowAltitudeLegend => Get(ShowAltitudeLegendSetting) >= 0.5;
-
         /// <summary>
         /// Unit in which the aircraft altitude is shown.
         /// </summary>

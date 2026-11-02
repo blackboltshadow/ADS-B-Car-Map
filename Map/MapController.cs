@@ -2161,9 +2161,16 @@ namespace AdsbCarMap.Map
             IReadOnlyList<PopupLine>? popup = ShowSelectionPopup ? GetPopupLines(frameStartUtc) : null;
             RectF? popupArea = popup == null ? null : MeasurePopup(popup, width, height, screenDensity);
 
+            IReadOnlyList<AircraftFilter> activeFilters = AppServices.Filters.ActiveFilters;
+
             foreach (Aircraft item in snapshot)
             {
                 if ((isolated && !selection.Contains(item.Hex)) || (onlyMilitary && !item.IsMilitary))
+                {
+                    continue;
+                }
+
+                if (!selection.Contains(item.Hex) && !AircraftFilterEvaluator.Passes(item, activeFilters, routeCache.Get))
                 {
                     continue;
                 }

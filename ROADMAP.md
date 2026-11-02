@@ -1,30 +1,24 @@
 # Plan rozwoju
 
-Lista planowanych funkcji z priorytetami (stan na 2026-11-02). Wydaniami zajmuje się autor projektu, ten plik ich nie planuje.
+Lista funkcji, które zostały do zrobienia, z priorytetami (stan na 2026-11-02). Ukończone pozycje są usuwane (historia jest w commitach i README). Wydaniami zajmuje się autor projektu, ten plik ich nie planuje.
 
-## P1 – najbliższa praca
-
-| # | Funkcja | Uzasadnienie | Koszt |
-|---|---|---|---|
-| 1 | Cache kafelków mapy na dysku (zrobione) | Mniej transferu i szybszy start, szczególnie w samochodzie przy słabym zasięgu. | średni |
-
-## P2 – następne w kolejności
+## P1 – następne w kolejności
 
 | # | Funkcja | Uzasadnienie | Koszt |
 |---|---|---|---|
-| 2 | Filtry samolotów: zakres wysokości, rodzaj, linia lotnicza, ukrycie samolotów na ziemi | Przy gęstym ruchu mapa jest nieczytelna. Część infrastruktury już istnieje (klasyfikator rodzajów, izolacja). | średni |
-| 3 | Zapasowe źródło danych przy 429 (airplanes.live, adsb.fi) wraz z wyborem źródła w ustawieniach | Backoff istnieje, ale dane nadal znikają. | średni |
-| 4 | Zaokrąglanie współrzędnych wysyłanych do API (razem z pozycją 3) | Prywatność, ten sam klient API. | mały |
-| 5 | Alerty „samolot w pobliżu” (wojskowy, typ, linia, promień) | Wyróżnik aplikacji. Wymaga decyzji, jak powiadamiać w Android Auto. | średni/duży |
+| 1 | Filtry samolotów, część czwarta: wysokość w wybranej jednostce, dopasowanie początku kodu typu (np. `B74`), pobieranie tras od samolotów najbliższych środka mapy, parser zapisu tekstowego | Zrobione: model wyrażeń z logiką trójwartościową, tabela producentów, ekran listy filtrów z przełącznikami, kreator z drzewem warunków (grupy ORAZ/LUB bez praktycznego limitu zagnieżdżeń, NIE na każdym węźle, przesuwanie, przenoszenie, kopiowanie, zwijanie), opis i zdanie „Czytaj”, zapis JSON, trzy filtry wbudowane tylko do odczytu, przycisk z licznikiem na mapie. Do sprawdzenia na telefonie: cały kreator drzewa (wcięcia, menu ⋮, przenoszenie) oraz pobieranie tras w tle dla „Do Rzeszowa”. | średni |
+| 2 | Zapasowe źródło danych przy 429 (airplanes.live, adsb.fi) wraz z wyborem źródła w ustawieniach | Backoff istnieje, ale dane nadal znikają. | średni |
+| 3 | Zaokrąglanie współrzędnych wysyłanych do API (razem z pozycją 2) | Prywatność, ten sam klient API. | mały |
+| 4 | Alerty „samolot w pobliżu” (wojskowy, typ, linia, promień) | Wyróżnik aplikacji. Wymaga decyzji, jak powiadamiać w Android Auto. | średni/duży |
 
-## P3 – przed jakąkolwiek dystrybucją
+## P2 – przed jakąkolwiek dystrybucją
 
 | # | Funkcja | Uzasadnienie | Koszt |
 |---|---|---|---|
-| 6 | Zastąpienie AllowAllHostsValidator listą znanych hostów Android Auto | Jedyna realna luka bezpieczeństwa; przy użyciu własnym mało pilna. | mały |
-| 7 | Pełne nazwy typów samolotów (np. A21N jako Airbus A321neo) | Tabela wbudowana zamiast adsbdb: działa offline i nie dokłada zapytań. | średni |
+| 5 | Zastąpienie AllowAllHostsValidator listą znanych hostów Android Auto | Jedyna realna luka bezpieczeństwa; przy użyciu własnym mało pilna. | mały |
+| 6 | Pełne nazwy typów samolotów (np. A21N jako Airbus A321neo) | Tabela wbudowana zamiast adsbdb: działa offline i nie dokłada zapytań. Tabela producentów (kod typu → Boeing, Airbus itd.) już jest, brakuje nazw modeli i jej pokazania na karcie. | średni |
 
-## P4 – porządki i jakość (przy okazji)
+## P3 – porządki i jakość (przy okazji)
 
 - `.gitattributes` (`* text=auto`) i ujednolicenie końców linii.
 - Plik runsettings do liczenia pokrycia testami w repozytorium.
@@ -33,12 +27,12 @@ Lista planowanych funkcji z priorytetami (stan na 2026-11-02). Wydaniami zajmuje
 - Testy: indeks lotnisk, wyszukiwanie, formatowanie tekstów kart.
 - Zrzuty ekranu do README.
 
-## P5 – pomysły
+## P4 – pomysły
 
-- Własny odbiornik tar1090 jako źródło danych (razem z pozycją 3).
+- Własny odbiornik tar1090 jako źródło danych (razem z pozycją 2).
 - Zapamiętywanie ostatniej pozycji i zoomu mapy między uruchomieniami.
 - Historia obserwowanych samolotów.
 
 ## Proponowana kolejność
 
-1 → 2 → 3 i 4 razem → 6 → 5 → 7. Pozycje z P4 dochodzą przy okazji edycji danego pliku.
+1 → 2 i 3 razem → 5 → 4 → 6. Pozycje z P3 dochodzą przy okazji edycji danego pliku.

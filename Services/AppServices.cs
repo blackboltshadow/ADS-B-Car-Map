@@ -67,6 +67,11 @@ namespace AdsbCarMap.Services
         public static FavoriteAirports Favorites { get; } = new FavoriteAirports();
 
         /// <summary>
+        /// Predefined and user-made aircraft filters with the set of switched on ones, shared by the phone and Android Auto.
+        /// </summary>
+        public static AircraftFilterStore Filters { get; } = new AircraftFilterStore();
+
+        /// <summary>
         /// Creates the airport database and starts loading it in the background.
         /// </summary>
         /// <returns>The database, not yet loaded.</returns>
