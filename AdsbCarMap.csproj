@@ -9,7 +9,7 @@
     <RootNamespace>AdsbCarMap</RootNamespace>
     <ApplicationId>com.blackboltshadow.adsbcarmap</ApplicationId>
     <ApplicationVersion>1</ApplicationVersion>
-    <ApplicationDisplayVersion>0.2</ApplicationDisplayVersion>
+    <ApplicationDisplayVersion>0.4</ApplicationDisplayVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">

@@ -273,7 +273,7 @@ Zapoznaj się z warunkami użycia tych serwisów, zanim udostępnisz własną ko
 
 ## Znane ograniczenia
 
-- **Android Auto:** aplikacja nie zawsze pojawia się lub działa w Android Auto. Walidator hosta (`AllowAllHostsValidator`) jest ustawiony tak, że przyjmuje każdego hosta. To uproszczenie na potrzeby PoC, a nie ustawienie do dystrybucji.
+- **Android Auto:** aplikacja nie zawsze pojawia się lub działa w Android Auto. Z usługą mogą się połączyć tylko znane hosty z listy w `Resources\values\allowed_hosts.xml`: build Debug używa listy `hosts_allowlist_dev`, a Release listy `hosts_allowlist_release`. Obecnie na obu jest Android Auto z Google Play (`com.google.android.projection.gearhead`, skrót certyfikatu sprawdzony na wersji 17.9). Jeśli Twój Android Auto ma inny podpis, aplikacja się w samochodzie nie pokaże; w logu pojawi się wtedy ostrzeżenie biblioteki (tag `CarApp.Val`) z dokładną linią do dopisania, a build Debug zapisuje też w logu (tag `AdsbCarMap`), czy zainstalowany host pasuje do listy.
 - **Limity API:** zbyt częste zapytania kończą się odpowiedzią 429. Aplikacja wtedy wstrzymuje zapytania z wydłużanym odstępem (5, 10, 20, 40, 60 s, albo według `Retry-After`).
 - **Typ samolotu:** pokazywany jest kod ICAO (np. `A21N`), bez pełnej nazwy. Ikona jest dobierana heurystycznie, więc rzadkie typy mogą dostać ogólną ikonę. Znacznik „wojskowy” w bazie bywa niedokładny.
 - **Dane ADS-B:** nie obejmują wszystkich samolotów (część wojskowych, część nieużywających transpondera lub zakłócona). Opóźnienia i błędy pozycji są możliwe.
@@ -335,7 +335,6 @@ Mapa na telefonie i w Android Auto używa tego samego `MapController`, więc zmi
 - Pełne nazwy typów samolotów (np. A21N jako Airbus A321neo) są już w tabeli typów; zostaje pokazanie ich na karcie samolotu i w wyszukiwarce oraz uzupełnienie tabeli o typy z listy brakujących.
 - Alerty „samolot w pobliżu” (wojskowy, wybrany typ, linia) w promieniu wybranym przez użytkownika.
 - Kolejne źródła danych (adsb.fi) i zaokrąglanie współrzędnych wysyłanych do API. Własny odbiornik tar1090 nie jest planowany (patrz `DATA_SOURCES.md`).
-- Zastąpienie `AllowAllHostsValidator` listą znanych hostów Android Auto.
 - GitHub Actions z buildem i testami, zrzuty ekranu w README.
 
 ## Ważna uwaga

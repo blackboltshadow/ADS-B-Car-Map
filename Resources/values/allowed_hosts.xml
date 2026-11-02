@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!--
+    Hosts that may connect to the Car App service. Each item is "digest,package-name":
+    the SHA-256 digest of the DER encoded signing certificate of the host as 64 lowercase
+    hexadecimal digits WITHOUT colons (the format used by the Car App library 1.4, whose
+    documentation shows colons), followed by the package name of the host.
+
+    hosts_allowlist_release is used by Release builds and holds only hosts that real users have.
+    hosts_allowlist_dev is used by Debug builds: it must contain every entry of the release list
+    and may hold more hosts that are needed only during development and tests.
+
+    How to get the digest of an installed host: pull its base.apk and run
+    "apksigner verify" with the option print-certs on it, then take "Signer #1 certificate SHA-256 digest".
+    A host that is rejected is also logged by the library with the tag CarApp.Val together with
+    the exact package name and digest to add.
+  -->
+  <string-array name="hosts_allowlist_release" translatable="false">
+    <!-- Android Auto (Google Play), Signer: CN=Android, OU=Android, O=Google Inc., checked on 2026-11-02 against version 17.9.664044. -->
+    <item>1ca8dcc0bed3cbd872d2cb791200c0292ca9975768a82d676b8b424fb65b5295,com.google.android.projection.gearhead</item>
+  </string-array>
+
+  <string-array name="hosts_allowlist_dev" translatable="false">
+    <!-- Everything from the release list. -->
+    <item>1ca8dcc0bed3cbd872d2cb791200c0292ca9975768a82d676b8b424fb65b5295,com.google.android.projection.gearhead</item>
+    <!-- Add hosts needed only during development here, never to the release list. The Desktop Head Unit (DHU) does not need an entry: it connects through the Android Auto app of the phone. -->
+  </string-array>
+</resources>

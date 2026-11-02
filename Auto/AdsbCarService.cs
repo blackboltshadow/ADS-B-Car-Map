@@ -6,7 +6,7 @@ using AndroidX.Car.App.Validation;
 namespace AdsbCarMap.Auto
 {
     /// <summary>
-    /// Usługa Car App rejestrowana w Android Auto jako aplikacja nawigacyjna.
+    /// Car App service registered in Android Auto as a navigation application.
     /// </summary>
     [Service(Exported = true)]
     [IntentFilter(
@@ -15,18 +15,31 @@ namespace AdsbCarMap.Auto
     public class AdsbCarService : CarAppService
     {
         /// <summary>
-        /// Zwraca walidator hosta. Wariant dopuszczający wszystkich hostów jest przeznaczony wyłącznie do PoC.
+        /// Tag used in the Android logs.
         /// </summary>
-        /// <returns>Walidator akceptujący każdego hosta.</returns>
+        private const string LogTag = "AdsbCarMap";
+
+        /// <summary>
+        /// Returns the validator that decides which hosts may connect. Only the hosts from the allowlist are accepted: the development list in Debug builds and the release list in Release builds (see Resources/values/allowed_hosts.xml). A Debug build also writes to the log whether the installed hosts match the list.
+        /// </summary>
+        /// <returns>Validator that accepts only the hosts from the allowlist.</returns>
         public override HostValidator CreateHostValidator()
         {
-            return HostValidator.AllowAllHostsValidator;
+#if DEBUG
+            int allowlist = Resource.Array.hosts_allowlist_dev;
+            Android.Util.Log.Info(LogTag, "Host validator: development allowlist");
+            HostAllowlistDiagnostics.Log(this, Resources!.GetStringArray(allowlist)!);
+#else
+            int allowlist = Resource.Array.hosts_allowlist_release;
+#endif
+
+            return new HostValidator.Builder(ApplicationContext!).AddAllowedHosts(allowlist)!.Build()!;
         }
 
         /// <summary>
-        /// Tworzy sesję dla połączenia z samochodem.
+        /// Creates a session for a connection to the car.
         /// </summary>
-        /// <returns>Nowa sesja aplikacji.</returns>
+        /// <returns>New application session.</returns>
         public override Session OnCreateSession()
         {
             Android.Util.Log.Info("AdsbCarMap", "OnCreateSession");
@@ -35,15 +48,15 @@ namespace AdsbCarMap.Auto
     }
 
     /// <summary>
-    /// Sesja Android Auto, która tworzy ekran z mapą.
+    /// Android Auto session that creates the screen with the map.
     /// </summary>
     public class AdsbSession : Session
     {
         /// <summary>
-        /// Tworzy pierwszy ekran sesji.
+        /// Creates the first screen of the session.
         /// </summary>
-        /// <param name="intent">Intencja, która uruchomiła sesję.</param>
-        /// <returns>Ekran z mapą samolotów.</returns>
+        /// <param name="intent">Intent that started the session.</param>
+        /// <returns>Screen with the map of the aircraft.</returns>
         public override Screen OnCreateScreen(Intent intent)
         {
             Android.Util.Log.Info("AdsbCarMap", "OnCreateScreen");

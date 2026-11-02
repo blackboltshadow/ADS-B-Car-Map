@@ -1,13 +1,6 @@
 using AdsbCarMap.DataSources.Interfaces;
-using AdsbCarMap.DataSources.Models;
-using AdsbCarMap.DataSources.Adsbdb;
-using AdsbCarMap.DataSources.AdsbLol;
-using AdsbCarMap.DataSources.AirplanesLive;
-using AdsbCarMap.DataSources.Hexdb;
-using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Management.Enrichment;
-using AdsbCarMap.DataSources.Management.RateLimiting;
-using AdsbCarMap.DataSources.Management.Selection;
+using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Settings;
@@ -15,7 +8,7 @@ using AdsbCarMap.Settings;
 namespace AdsbCarMap.Services
 {
     /// <summary>
-    /// Long-lived objects shared by the Android Auto screens and the phone screen. Static members are initialized in the order of their declaration, so every member must be declared after the members that it uses; otherwise it silently receives null.
+    /// Long-lived objects shared by the Android Auto screens and the phone screen. The sources of the flight data are put together by <see cref="DataComposition"/>, which is created at the first use, so the order of the static members below does not matter for it. The remaining static members are initialized in the order of their declaration, so each must be declared after the members that it uses.
     /// </summary>
     public static class AppServices
     {
@@ -27,67 +20,39 @@ namespace AdsbCarMap.Services
             : "AdsbCarMap/" + BuildInfo.Version + " (kontakt: " + BuildInfo.Contact + ")";
 
         /// <summary>
-        /// HTTP client used for the adsb.lol aircraft requests.
-        /// </summary>
-        private static readonly HttpClient AdsbHttpClient = CreateHttpClient(AdsbLolClient.DefaultBaseAddress);
-
-        /// <summary>
-        /// HTTP client used for the airplanes.live aircraft requests.
-        /// </summary>
-        private static readonly HttpClient AirplanesLiveHttpClient = CreateHttpClient(AirplanesLiveClient.DefaultBaseAddress);
-
-        /// <summary>
         /// HTTP client used to download the map tiles.
         /// </summary>
         private static readonly HttpClient TileHttpClient = CreateHttpClient(null);
 
         /// <summary>
-        /// HTTP client used for the flight route requests.
+        /// The sources of the flight data with their limits, fallbacks and memory, created at the first use.
         /// </summary>
-        private static readonly HttpClient RouteHttpClient = CreateHttpClient(AdsbdbClient.DefaultBaseAddress);
+        private static readonly Lazy<DataComposition> Composition = new Lazy<DataComposition>(CreateComposition);
 
         /// <summary>
-        /// Time after which the answer that a source does not know a flight is asked about again, at most.
+        /// Cache of the flight routes downloaded from the route sources, created at the first use.
         /// </summary>
-        private static readonly TimeSpan RouteNotFoundMaxAge = TimeSpan.FromHours(6);
+        private static readonly Lazy<RouteCache> RouteCacheInstance = new Lazy<RouteCache>(() => new RouteCache(Composition.Value.RouteSources, Composition.Value.RouteMemory));
 
         /// <summary>
-        /// Time after which the answer that no source knows more about an aircraft is asked about again, at most.
+        /// Aircraft source used by the maps: the sources in the order chosen in the settings, the next one asked when the previous one gives no data.
         /// </summary>
-        private static readonly TimeSpan AircraftNotFoundMaxAge = TimeSpan.FromMinutes(10);
+        public static IAircraftSource Adsb => Composition.Value.AircraftSources;
 
         /// <summary>
-        /// Delay between a change of the flight information and writing it to the file.
+        /// Completes the type, the full type name and the registration of the selected aircraft from the other sources.
         /// </summary>
-        private static readonly TimeSpan FlightInfoSaveDelay = TimeSpan.FromSeconds(5);
-
-        /// <summary>
-        /// Routes by callsign, kept for the time chosen in the settings counted from the last sighting, and in a file in the cache directory.
-        /// </summary>
-        private static readonly TimedCache<FlightRoute> RouteMemory = CreateFlightInfoCache<FlightRoute>("routes.json", RouteNotFoundMaxAge);
-
-        /// <summary>
-        /// Type, registration and category found by the ICAO address, kept for the time chosen in the settings and in a file in the cache directory.
-        /// </summary>
-        private static readonly TimedCache<AircraftDetails> AircraftMemory = CreateFlightInfoCache<AircraftDetails>("aircraft-details.json", AircraftNotFoundMaxAge);
-
-        /// <summary>
-        /// Aircraft sources queried in the order chosen in the settings; the next source is asked when the previous one gives no data (if enabled in the settings).
-        /// </summary>
-        private static readonly FallbackAircraftSource AircraftSources = new FallbackAircraftSource(
-            new List<IRateLimitedAircraftSource> { new RateLimitedAircraftSource(new AdsbLolClient(AdsbHttpClient)), new RateLimitedAircraftSource(new AirplanesLiveClient(AirplanesLiveHttpClient)) },
-            () => AppSettings.DataSourceOrder,
-            () => AppSettings.DataSourceFallback);
-
-        /// <summary>
-        /// Aircraft source used by the maps.
-        /// </summary>
-        public static IAircraftSource Adsb => AircraftSources;
+        public static AircraftEnricher Enricher => Composition.Value.Enricher;
 
         /// <summary>
         /// Keeps the memory of the flight information in line with the visible aircraft: marks the visible flights as seen and closes those that have landed.
         /// </summary>
-        public static FlightCacheKeeper FlightKeeper { get; } = new FlightCacheKeeper(RouteMemory, AircraftMemory);
+        public static FlightCacheKeeper FlightKeeper => Composition.Value.Keeper;
+
+        /// <summary>
+        /// Cache of the flight routes downloaded from the route sources.
+        /// </summary>
+        public static RouteCache Routes => RouteCacheInstance.Value;
 
         /// <summary>
         /// Map tiles stored on the disk, in the cache directory of the application.
@@ -110,39 +75,6 @@ namespace AdsbCarMap.Services
         public static AirportDatabase Airports { get; } = CreateAirports();
 
         /// <summary>
-        /// HTTP client used for the hexdb.io requests.
-        /// </summary>
-        private static readonly HttpClient HexdbHttpClient = CreateHttpClient(HexdbClient.DefaultBaseAddress);
-
-        /// <summary>
-        /// adsbdb.com: routes with the airline name and the data of an aircraft with the full type name.
-        /// </summary>
-        private static readonly RateLimitedRouteSource AdsbdbSource = new RateLimitedRouteSource(new AdsbdbClient(RouteHttpClient));
-
-        /// <summary>
-        /// hexdb.io: routes as pairs of airport codes, completed from the airports of the application, and the data of an aircraft.
-        /// </summary>
-        private static readonly RateLimitedRouteSource HexdbSource = new RateLimitedRouteSource(new AirportCompletingRouteSource(new HexdbClient(HexdbHttpClient), Airports));
-
-        /// <summary>
-        /// Flight route sources queried in the order chosen in the settings; the next source is asked when the previous one does not know the flight or gives no answer (if enabled in the settings).
-        /// </summary>
-        private static readonly FallbackRouteSource RouteSources = new FallbackRouteSource(
-            new List<IRateLimitedRouteSource> { AdsbdbSource, new RateLimitedRouteSource(new AdsbLolRouteClient(AdsbHttpClient)), HexdbSource },
-            () => AppSettings.RouteSourceOrder,
-            () => AppSettings.DataSourceFallback);
-
-        /// <summary>
-        /// Completes the type, the full type name and the registration of the selected aircraft from the sources that return the data of an aircraft by its ICAO address: first adsbdb.com and hexdb.io, then the position sources.
-        /// </summary>
-        public static AircraftEnricher Enricher { get; } = new AircraftEnricher(AircraftSources, new List<IRateLimitedSource> { AdsbdbSource, HexdbSource }, () => AppSettings.DataSourceDetails, AircraftMemory);
-
-        /// <summary>
-        /// Cache of the flight routes downloaded from the route sources.
-        /// </summary>
-        public static RouteCache Routes { get; } = new RouteCache(RouteSources, RouteMemory);
-
-        /// <summary>
         /// Table of the aircraft types bundled with the application, loaded when the services are created and used by the filters.
         /// </summary>
         public static AircraftTypeTable AircraftTypes { get; } = LoadAircraftTypes();
@@ -161,6 +93,35 @@ namespace AdsbCarMap.Services
         /// Predefined and user-made aircraft filters with the set of switched on ones, shared by the phone and Android Auto.
         /// </summary>
         public static AircraftFilterStore Filters { get; } = new AircraftFilterStore();
+
+        /// <summary>
+        /// Number of flights and aircraft whose information is kept in the memory, including the answers that nothing is known.
+        /// </summary>
+        public static int FlightInfoCount => Composition.Value.FlightInfoCount;
+
+        /// <summary>
+        /// Forgets all stored information about flights and aircraft, also in the files.
+        /// </summary>
+        public static void ClearFlightInfo()
+        {
+            Composition.Value.ClearFlightInfo();
+        }
+
+        /// <summary>
+        /// Puts together the sources of the flight data from the settings, the airports and the cache directory of the application.
+        /// </summary>
+        /// <returns>The composition.</returns>
+        private static DataComposition CreateComposition()
+        {
+            DataCompositionSettings settings = new DataCompositionSettings(
+                () => AppSettings.DataSourceOrder,
+                () => AppSettings.RouteSourceOrder,
+                () => AppSettings.DataSourceFallback,
+                () => AppSettings.DataSourceDetails,
+                () => AppSettings.FlightInfoMaxAge);
+
+            return new DataComposition(System.IO.Path.Combine(Android.App.Application.Context.CacheDir!.AbsolutePath, "flights"), address => CreateHttpClient(address), Airports, settings);
+        }
 
         /// <summary>
         /// Reads the bundled aircraft type table and makes it the one used by the filters.
@@ -183,46 +144,6 @@ namespace AdsbCarMap.Services
             database.StartLoading();
 
             return database;
-        }
-
-        /// <summary>
-        /// Number of flights and aircraft whose information is kept in the memory, including the answers that nothing is known.
-        /// </summary>
-        public static int FlightInfoCount => RouteMemory.Count + AircraftMemory.Count;
-
-        /// <summary>
-        /// Forgets all stored information about flights and aircraft, also in the files.
-        /// </summary>
-        public static void ClearFlightInfo()
-        {
-            RouteMemory.Clear();
-            AircraftMemory.Clear();
-            RouteMemory.Flush();
-            AircraftMemory.Flush();
-        }
-
-        /// <summary>
-        /// Creates a memory of flight information kept for the time chosen in the settings and in a file in the cache directory of the application.
-        /// </summary>
-        /// <typeparam name="T">Kind of the stored information.</typeparam>
-        /// <param name="fileName">Name of the file in the directory "flights" of the cache.</param>
-        /// <param name="notFoundMaxAge">Time after which the answer that nothing is known is asked about again, at most.</param>
-        /// <returns>The memory with the stored items already loaded.</returns>
-        private static TimedCache<T> CreateFlightInfoCache<T>(string fileName, TimeSpan notFoundMaxAge) where T : class
-        {
-            TimedCache<T> cache = new TimedCache<T>(() => AppSettings.FlightInfoMaxAge, notFoundMaxAge);
-            string directory = System.IO.Path.Combine(Android.App.Application.Context.CacheDir!.AbsolutePath, "flights");
-
-            try
-            {
-                System.IO.Directory.CreateDirectory(directory);
-                cache.AttachFile(System.IO.Path.Combine(directory, fileName), FlightInfoSaveDelay);
-            }
-            catch (Exception exception) when (exception is System.IO.IOException || exception is UnauthorizedAccessException)
-            {
-            }
-
-            return cache;
         }
 
         /// <summary>
