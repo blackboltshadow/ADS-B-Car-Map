@@ -1,9 +1,10 @@
 using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Management.RateLimiting;
 using AdsbCarMap.DataSources.Models;
-using AdsbCarMap.DataSources.Selection;
+using AdsbCarMap.DataSources.Management.Selection;
 using Xunit;
 
-namespace AdsbCarMap.DataSources.Tests
+namespace AdsbCarMap.DataSources.Management.Tests
 {
     /// <summary>
     /// Tests of choosing an available data source.
@@ -13,7 +14,7 @@ namespace AdsbCarMap.DataSources.Tests
         /// <summary>
         /// Source with a block time set by the test.
         /// </summary>
-        private sealed class FakeSource : IDataSource
+        private sealed class FakeSource : IRateLimitedSource
         {
             /// <summary>
             /// Creates a source.

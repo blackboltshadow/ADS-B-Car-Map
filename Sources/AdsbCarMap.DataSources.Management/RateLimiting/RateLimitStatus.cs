@@ -1,4 +1,4 @@
-namespace AdsbCarMap.DataSources.Models
+namespace AdsbCarMap.DataSources.Management.RateLimiting
 {
     /// <summary>
     /// State of the request limits of a data source at a given moment.

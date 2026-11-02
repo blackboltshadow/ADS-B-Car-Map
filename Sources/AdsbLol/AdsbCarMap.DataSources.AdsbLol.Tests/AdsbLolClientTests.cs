@@ -7,7 +7,7 @@ using Xunit;
 namespace AdsbCarMap.DataSources.AdsbLol.Tests
 {
     /// <summary>
-    /// Tests of response parsing and the 429 backoff in the ADS-B client.
+    /// Tests of response parsing and the 429 backoff in the adsb.lol client.
     /// </summary>
     public class AdsbLolClientTests
     {
@@ -121,28 +121,27 @@ namespace AdsbCarMap.DataSources.AdsbLol.Tests
         }
 
         /// <summary>
-        /// After a 429 further requests are blocked locally without reaching the server.
+        /// A 429 response is reported as RateLimitedException; pausing further requests is left to the manager, so the next request reaches the server again.
         /// </summary>
         [Fact]
-        public async Task GetAircraftAsync_After429_BlocksFurtherRequests()
+        public async Task GetAircraftAsync_After429_ThrowsRateLimitedEveryTime()
         {
             FakeHandler handler = new FakeHandler();
             handler.Enqueue(() => TooManyRequests());
             AdsbLolClient client = CreateClient(handler);
 
             RateLimitedException first = await Assert.ThrowsAsync<RateLimitedException>(() => client.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));
-            RateLimitedException second = await Assert.ThrowsAsync<RateLimitedException>(() => client.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));
+            await Assert.ThrowsAsync<RateLimitedException>(() => client.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));
 
-            Assert.Equal(1, handler.RequestCount);
-            Assert.Equal(TimeSpan.FromSeconds(5), first.RetryAfter);
-            Assert.True(second.RetryAfter > TimeSpan.Zero && second.RetryAfter <= first.RetryAfter);
+            Assert.Equal(2, handler.RequestCount);
+            Assert.Equal(TimeSpan.Zero, first.RetryAfter);
         }
 
         /// <summary>
-        /// A longer Retry-After from the server wins over the base backoff.
+        /// The Retry-After header of the 429 response is passed on in the exception.
         /// </summary>
         [Fact]
-        public async Task GetAircraftAsync_RetryAfterHeader_ExtendsWait()
+        public async Task GetAircraftAsync_RetryAfterHeader_IsPassedOn()
         {
             FakeHandler handler = new FakeHandler();
             handler.Enqueue(() => TooManyRequests(30));
@@ -150,28 +149,6 @@ namespace AdsbCarMap.DataSources.AdsbLol.Tests
             RateLimitedException exception = await Assert.ThrowsAsync<RateLimitedException>(() => CreateClient(handler).GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));
 
             Assert.Equal(TimeSpan.FromSeconds(30), exception.RetryAfter);
-        }
-
-        /// <summary>
-        /// The limit state reflects a 429 response and is cleared by a successful one.
-        /// </summary>
-        [Fact]
-        public async Task GetRateLimitStatus_FollowsResponses()
-        {
-            FakeHandler handler = new FakeHandler();
-            handler.Enqueue(() => TooManyRequests());
-            AdsbLolClient client = CreateClient(handler);
-
-            Assert.True(client.GetRateLimitStatus().CanQuery);
-
-            await Assert.ThrowsAsync<RateLimitedException>(() => client.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));
-
-            RateLimitStatus blocked = client.GetRateLimitStatus();
-
-            Assert.False(blocked.CanQuery);
-            Assert.Equal(1, blocked.ConsecutiveRateLimits);
-            Assert.True(blocked.RemainingBlock > TimeSpan.Zero && blocked.RemainingBlock <= TimeSpan.FromSeconds(5));
-            Assert.Equal("adsb.lol", client.Name);
         }
 
         /// <summary>
@@ -188,6 +165,62 @@ namespace AdsbCarMap.DataSources.AdsbLol.Tests
             await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAircraftAsync(0.0, 0.0, 10.0, CancellationToken.None));
 
             Assert.Equal(2, handler.RequestCount);
+        }
+
+        /// <summary>
+        /// The client reports its name and the default address of the service.
+        /// </summary>
+        [Fact]
+        public void Client_ReportsNameAndAddress()
+        {
+            AdsbLolClient client = new AdsbLolClient(new HttpClient());
+
+            Assert.Equal("adsb.lol", client.Name);
+            Assert.Equal("https://api.adsb.lol/", AdsbLolClient.DefaultBaseAddress);
+        }
+
+        /// <summary>
+        /// The details of a single aircraft are requested by its ICAO address and read from the first matching record.
+        /// </summary>
+        [Fact]
+        public async Task GetAircraftDetailsAsync_QueriesHexEndpointAndReadsDetails()
+        {
+            FakeHandler handler = new FakeHandler();
+            handler.Enqueue(() => Json("{\"ac\":[{\"hex\":\"ABC123\",\"t\":\" A320 \",\"r\":\"D-AIZZ\",\"category\":\"A3\"}]}"));
+
+            AircraftDetails? details = await CreateClient(handler).GetAircraftDetailsAsync("abc123", CancellationToken.None);
+
+            Assert.Equal("/v2/hex/abc123", handler.LastPath);
+            Assert.NotNull(details);
+            Assert.Equal("A320", details.TypeCode);
+            Assert.Equal("D-AIZZ", details.Registration);
+            Assert.Equal("A3", details.Category);
+        }
+
+        /// <summary>
+        /// An empty answer means that the source does not know the aircraft.
+        /// </summary>
+        [Fact]
+        public async Task GetAircraftDetailsAsync_NoRecord_ReturnsNull()
+        {
+            FakeHandler handler = new FakeHandler();
+            handler.Enqueue(() => Json("{\"ac\":[]}"));
+
+            Assert.Null(await CreateClient(handler).GetAircraftDetailsAsync("abc123", CancellationToken.None));
+        }
+
+        /// <summary>
+        /// A 429 answer to the lookup is reported as RateLimitedException with the Retry-After value.
+        /// </summary>
+        [Fact]
+        public async Task GetAircraftDetailsAsync_After429_ThrowsRateLimited()
+        {
+            FakeHandler handler = new FakeHandler();
+            handler.Enqueue(() => TooManyRequests(20));
+
+            RateLimitedException exception = await Assert.ThrowsAsync<RateLimitedException>(() => CreateClient(handler).GetAircraftDetailsAsync("abc123", CancellationToken.None));
+
+            Assert.Equal(TimeSpan.FromSeconds(20), exception.RetryAfter);
         }
     }
 }

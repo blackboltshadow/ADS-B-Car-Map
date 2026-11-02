@@ -1,4 +1,7 @@
 using System.Collections.Concurrent;
+using AdsbCarMap.DataSources.AdsbLol;
+using AdsbCarMap.DataSources.AirplanesLive;
+using AdsbCarMap.DataSources.Management.Selection;
 using Android.Content;
 
 namespace AdsbCarMap.Settings
@@ -42,6 +45,31 @@ namespace AdsbCarMap.Settings
         /// Time in seconds before a failed tile download is retried.
         /// </summary>
         public static readonly SettingDefinition TileRetrySetting = new SettingDefinition("tile_retry_s", "Ponowienie kafelka [s]", 15.0, 1.0, 600.0, true, Help: "Po ilu sekundach aplikacja ponowi pobieranie kafelka mapy, którego nie udało się pobrać (np. przy braku zasięgu). Krótszy czas szybciej uzupełni mapę po powrocie sieci, ale częściej obciąża serwer kafelków OpenStreetMap, który ma politykę uczciwego użytkowania.");
+
+        /// <summary>
+        /// Names of the aircraft sources in the order in which the application registers them.
+        /// </summary>
+        private static readonly IReadOnlyList<string> DataSourceNames = new List<string> { AdsbLolClient.SourceName, AirplanesLiveClient.SourceName };
+
+        /// <summary>
+        /// All orders of the aircraft sources that the user can choose from; the stored value is the index in this list. The settings screen shows them as a list that is dragged, not as a drop-down.
+        /// </summary>
+        public static readonly IReadOnlyList<IReadOnlyList<string>> DataSourceOrders = SourceOrder.GetOrders(DataSourceNames);
+
+        /// <summary>
+        /// Order in which the aircraft sources are asked: the first one is the main source, the next ones are asked when the previous one gives no data.
+        /// </summary>
+        public static readonly SettingDefinition DataSourceSetting = SettingDefinition.CreateChoice("data_source", "Kolejność źródeł samolotów", 0, "Kolejność, w jakiej aplikacja pyta serwisy o pozycje samolotów. Pierwszy serwis jest głównym źródłem, a kolejne są pytane tylko wtedy, gdy poprzedni nie zwraca danych (przy włączonym zapasowym źródle). Oba serwisy (adsb.lol i airplanes.live) są darmowe, mają ten sam format danych i służą do użytku osobistego, niekomercyjnego. Zmiana działa od następnego odświeżenia mapy.", DataSourceOrders.Select(SourceOrder.Describe).ToArray());
+
+        /// <summary>
+        /// Whether the next sources are asked when the previous one gives no data.
+        /// </summary>
+        public static readonly SettingDefinition DataSourceFallbackSetting = SettingDefinition.CreateSwitch("data_source_fallback", "Zapasowe źródło przy braku danych", true, "Gdy główne źródło nie zwraca danych (limit zapytań 429, brak połączenia z serwisem albo błąd serwera), aplikacja pyta kolejne źródło z listy zamiast pokazywać pustą mapę. Pusta lista samolotów z działającego serwisu nie jest brakiem danych, bo w rzadko uczęszczanych rejonach to normalne. Wyłącz, jeśli chcesz używać wyłącznie głównego źródła.");
+
+        /// <summary>
+        /// Whether the type, the registration and the category of the selected aircraft are completed from the other sources when the main source lacks them.
+        /// </summary>
+        public static readonly SettingDefinition DataSourceDetailsSetting = SettingDefinition.CreateSwitch("data_source_details", "Uzupełniaj dane zaznaczonego samolotu", true, "Gdy główne źródło nie podaje typu, rejestracji lub kategorii zaznaczonego samolotu, aplikacja dopyta o ten jeden samolot pozostałe źródła (po kodzie ICAO, jedno krótkie zapytanie na samolot, nie częściej niż raz na 10 minut). Dzięki temu karta samolotu, ikona i filtry mają komplet danych. Dotyczy tylko samolotu, który zaznaczysz, a nie całej mapy.");
 
         /// <summary>
         /// Size limit of the tile cache on the disk in megabytes.
@@ -227,6 +255,9 @@ namespace AdsbCarMap.Settings
             MaxZoomSetting,
             MaxCachedTilesSetting,
             TileRetrySetting,
+            DataSourceSetting,
+            DataSourceFallbackSetting,
+            DataSourceDetailsSetting,
             MapDimSetting,
         };
 
@@ -467,6 +498,42 @@ namespace AdsbCarMap.Settings
         /// Whether the altitude color legend bar is visible on the map.
         /// </summary>
         public static bool ShowAltitudeLegend => Get(ShowAltitudeLegendSetting) >= 0.5;
+
+        /// <summary>
+        /// Settings that describe the sources of the aircraft positions. They share one section on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> DataSourceSettings = new List<SettingDefinition>
+        {
+            DataSourceSetting,
+            DataSourceFallbackSetting,
+            DataSourceDetailsSetting,
+        };
+
+        /// <summary>
+        /// Names of the aircraft sources in the order in which they are asked.
+        /// </summary>
+        public static IReadOnlyList<string> DataSourceOrder => DataSourceOrders[Math.Clamp((int)Get(DataSourceSetting), 0, DataSourceOrders.Count - 1)];
+
+        /// <summary>
+        /// Returns the stored value of the order of the aircraft sources for the given list of names.
+        /// </summary>
+        /// <param name="order">Names in the order of preference.</param>
+        /// <returns>Index of the order, or 0 (the default order) when the list is not a known order.</returns>
+        public static int GetDataSourceOrderIndex(IReadOnlyList<string> order)
+        {
+            return Math.Max(0, SourceOrder.IndexOf(DataSourceOrders, order));
+        }
+
+        /// <summary>
+        /// Whether the next sources are asked when the previous one gives no data.
+        /// </summary>
+        public static bool DataSourceFallback => Get(DataSourceFallbackSetting) >= 0.5;
+
+        /// <summary>
+        /// Whether the data of the selected aircraft is completed from the other sources.
+        /// </summary>
+        public static bool DataSourceDetails => Get(DataSourceDetailsSetting) >= 0.5;
+
         /// <summary>
         /// Unit in which the aircraft altitude is shown.
         /// </summary>

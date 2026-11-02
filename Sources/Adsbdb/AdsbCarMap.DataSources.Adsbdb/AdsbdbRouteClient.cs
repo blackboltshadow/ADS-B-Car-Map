@@ -3,7 +3,7 @@ using AdsbCarMap.DataSources.Models;
 using System.Net;
 using System.Text.Json;
 
-namespace AdsbCarMap.DataSources.AdsbLol
+namespace AdsbCarMap.DataSources.Adsbdb
 {
     /// <summary>
     /// Client of the adsbdb.com API returning the flight route for a callsign.
@@ -14,6 +14,11 @@ namespace AdsbCarMap.DataSources.AdsbLol
         /// Default base address of the adsbdb.com API.
         /// </summary>
         public const string DefaultBaseAddress = "https://api.adsbdb.com/";
+
+        /// <summary>
+        /// Display name of the source.
+        /// </summary>
+        public const string SourceName = "adsbdb.com";
 
         /// <summary>
         /// HTTP client with the base address of the API.
@@ -30,13 +35,7 @@ namespace AdsbCarMap.DataSources.AdsbLol
         }
 
         /// <inheritdoc />
-        public string Name => "adsbdb.com";
-
-        /// <inheritdoc />
-        public RateLimitStatus GetRateLimitStatus()
-        {
-            return RateLimitStatus.None;
-        }
+        public string Name => SourceName;
 
         /// <inheritdoc />
         /// <exception cref="JsonException">Invalid JSON response.</exception>

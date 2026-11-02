@@ -7,7 +7,7 @@ Lista funkcji, które zostały do zrobienia, z priorytetami (stan na 2026-11-02)
 | # | Funkcja | Uzasadnienie | Koszt |
 |---|---|---|---|
 | 1 | Filtry samolotów, część czwarta: wysokość w wybranej jednostce, tabela linii lotniczych (kody IATA i nazwy linii w warunku linii; źródło OpenFlights na licencji ODbL wymaga atrybucji i sprawdzenia licencji przed użyciem), kod ICAO lotniska obok IATA w warunkach lotniska, podpowiedzi przy wpisywaniu, pobieranie tras od samolotów najbliższych środka mapy, parser zapisu tekstowego | Zrobione: tabela typów z kodami IATA i rodzinami, pole „Cała rodzina” w warunku typu, dziennik brakujących typów z ekranem „Dane developerskie” w ustawieniach (sprawdzone na telefonie), model wyrażeń z logiką trójwartościową, tabela producentów, ekran listy filtrów z przełącznikami, kreator z drzewem warunków (grupy ORAZ/LUB bez praktycznego limitu zagnieżdżeń, NIE na każdym węźle, przesuwanie, przenoszenie, kopiowanie, zwijanie), opis i zdanie „Czytaj”, zapis JSON, trzy filtry wbudowane tylko do odczytu, przycisk z licznikiem na mapie. Do sprawdzenia na telefonie: cały kreator drzewa (wcięcia, menu ⋮, przenoszenie) oraz pobieranie tras w tle dla „Do Rzeszowa”. | średni |
-| 2 | Zapasowe źródło danych przy 429 (airplanes.live, adsb.fi) wraz z wyborem źródła w ustawieniach. Podłączyć DataSourceRegistry i BackoffRateLimiter (już gotowe w Sources) w AppServices i MapController oraz zastąpić LiveTraffic.ReportRateLimited stanem z IDataSource. | Backoff istnieje, ale dane nadal znikają. | średni |
+| 2 | Źródła danych, część druga: adsb.fi (opendata.adsb.fi/api, 1 zapytanie/s, tylko użytek osobisty; ścieżka punktu do sprawdzenia na żywym zapytaniu), pokazanie w aplikacji, które źródło odpowiada (FallbackAircraftSource.LastUsedSourceName), zastąpienie LiveTraffic.ReportRateLimited stanem z IDataSource, zapasowe źródło tras (adsbdb nie ma dziś obsługi 429), notatka licencyjna przed udostępnieniem aplikacji szerzej (patrz DATA_SOURCES.md) | Pierwsza część jest zrobiona, ale ikona limitu 429 nadal opiera się na starym liczniku. | średni |
 | 3 | Zaokrąglanie współrzędnych wysyłanych do API (razem z pozycją 2) | Prywatność, ten sam klient API. | mały |
 | 4 | Alerty „samolot w pobliżu” (wojskowy, typ, linia, promień) | Wyróżnik aplikacji. Wymaga decyzji, jak powiadamiać w Android Auto. | średni/duży |
 
@@ -29,7 +29,6 @@ Lista funkcji, które zostały do zrobienia, z priorytetami (stan na 2026-11-02)
 
 ## P4 – pomysły
 
-- Własny odbiornik tar1090 jako źródło danych (razem z pozycją 2).
 - Zapamiętywanie ostatniej pozycji i zoomu mapy między uruchomieniami.
 - Historia obserwowanych samolotów.
 

@@ -1,16 +1,15 @@
-using AdsbCarMap.DataSources.Interfaces;
-using AdsbCarMap.DataSources.Models;
-using AdsbCarMap.DataSources.RateLimiting;
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
+using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Models;
 
 namespace AdsbCarMap.DataSources.AdsbLol
 {
     /// <summary>
-    /// Client of the adsb.lol API returning the aircraft within a radius of a point.
+    /// Client of the adsb.lol API returning the aircraft within a radius of a point and the data of a single aircraft. It only fetches and converts the data; pausing the requests after limit responses is up to the manager.
     /// </summary>
-    public sealed class AdsbLolClient : IAircraftSource
+    public sealed class AdsbLolClient : IAircraftSource, IAircraftLookupSource
     {
         /// <summary>
         /// Default base address of the adsb.lol API.
@@ -18,14 +17,14 @@ namespace AdsbCarMap.DataSources.AdsbLol
         public const string DefaultBaseAddress = "https://api.adsb.lol/";
 
         /// <summary>
+        /// Display name of the source.
+        /// </summary>
+        public const string SourceName = "adsb.lol";
+
+        /// <summary>
         /// Maximum query radius accepted by the API, in nautical miles.
         /// </summary>
         private const double MaxRadiusNauticalMiles = 250.0;
-
-        /// <summary>
-        /// Pauses the requests after 429 responses.
-        /// </summary>
-        private readonly BackoffRateLimiter rateLimiter = new BackoffRateLimiter();
 
         /// <summary>
         /// HTTP client with the base address of the API.
@@ -42,13 +41,7 @@ namespace AdsbCarMap.DataSources.AdsbLol
         }
 
         /// <inheritdoc />
-        public string Name => "adsb.lol";
-
-        /// <inheritdoc />
-        public RateLimitStatus GetRateLimitStatus()
-        {
-            return rateLimiter.GetStatus();
-        }
+        public string Name => SourceName;
 
         /// <inheritdoc />
         /// <exception cref="JsonException">Invalid JSON response.</exception>
@@ -63,36 +56,11 @@ namespace AdsbCarMap.DataSources.AdsbLol
                 longitude,
                 Math.Ceiling(radius));
 
-            TimeSpan remainingBlock = rateLimiter.GetRemainingBlock();
-
-            if (remainingBlock > TimeSpan.Zero)
-            {
-                throw new RateLimitedException(remainingBlock);
-            }
-
-            using HttpResponseMessage response = await httpClient.GetAsync(path, cancellationToken);
-
-            if (response.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                throw new RateLimitedException(rateLimiter.RegisterRateLimit(response.Headers.RetryAfter));
-            }
-
-            response.EnsureSuccessStatusCode();
-            rateLimiter.Reset();
-
-            await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using JsonDocument document = await JsonDocument.ParseAsync(stream, new JsonDocumentOptions(), cancellationToken);
-
             List<Aircraft> result = new List<Aircraft>();
 
-            if (!document.RootElement.TryGetProperty("ac", out JsonElement list) || list.ValueKind != JsonValueKind.Array)
+            foreach (AdsbLolAircraftRecord record in await GetRecordsAsync(path, cancellationToken))
             {
-                return result;
-            }
-
-            foreach (JsonElement element in list.EnumerateArray())
-            {
-                Aircraft? aircraft = ParseAircraft(element);
+                Aircraft? aircraft = record.ToAircraft();
 
                 if (aircraft != null)
                 {
@@ -103,95 +71,66 @@ namespace AdsbCarMap.DataSources.AdsbLol
             return result;
         }
 
-        /// <summary>
-        /// Converts a JSON element to an aircraft.
-        /// </summary>
-        /// <param name="element">Element of the "ac" array of the API response.</param>
-        /// <returns>The aircraft or null when the address or the position is missing.</returns>
-        private static Aircraft? ParseAircraft(JsonElement element)
+        /// <inheritdoc />
+        /// <exception cref="JsonException">Invalid JSON response.</exception>
+        public async Task<AircraftDetails?> GetAircraftDetailsAsync(string hex, CancellationToken cancellationToken)
         {
-            string? hex = GetString(element, "hex");
-            double? latitude = GetDouble(element, "lat");
-            double? longitude = GetDouble(element, "lon");
-
-            if (string.IsNullOrEmpty(hex) || !latitude.HasValue || !longitude.HasValue)
+            foreach (AdsbLolAircraftRecord record in await GetRecordsAsync("v2/hex/" + Uri.EscapeDataString(hex), cancellationToken))
             {
-                return null;
-            }
-
-            string? callsign = GetString(element, "flight")?.Trim();
-
-            bool onGround = false;
-            int? altitudeFeet = null;
-
-            if (element.TryGetProperty("alt_baro", out JsonElement altitude))
-            {
-                if (altitude.ValueKind == JsonValueKind.String && altitude.GetString() == "ground")
+                if (string.Equals(record.Hex, hex, StringComparison.OrdinalIgnoreCase))
                 {
-                    onGround = true;
+                    return record.ToDetails();
                 }
-                else if (altitude.ValueKind == JsonValueKind.Number)
-                {
-                    altitudeFeet = (int)Math.Round(altitude.GetDouble());
-                }
-            }
-
-            double? track = GetDouble(element, "track") ?? GetDouble(element, "true_heading");
-            string? typeCode = GetString(element, "t")?.Trim();
-            string? registration = GetString(element, "r")?.Trim();
-            string? category = GetString(element, "category")?.Trim();
-            bool isMilitary = GetDouble(element, "dbFlags") is double flags && ((int)flags & 1) != 0;
-            double? verticalRate = GetDouble(element, "baro_rate") ?? GetDouble(element, "geom_rate");
-            string? squawk = GetString(element, "squawk")?.Trim();
-
-            return new Aircraft(
-                hex,
-                string.IsNullOrEmpty(callsign) ? null : callsign,
-                latitude.Value,
-                longitude.Value,
-                altitudeFeet,
-                onGround,
-                GetDouble(element, "gs"),
-                track,
-                GetDouble(element, "seen_pos") ?? 0.0,
-                string.IsNullOrEmpty(typeCode) ? null : typeCode,
-                string.IsNullOrEmpty(registration) ? null : registration,
-                string.IsNullOrEmpty(category) ? null : category,
-                isMilitary,
-                verticalRate.HasValue ? (int)Math.Round(verticalRate.Value) : null,
-                string.IsNullOrEmpty(squawk) ? null : squawk);
-        }
-
-        /// <summary>
-        /// Reads a numeric property.
-        /// </summary>
-        /// <param name="element">JSON object.</param>
-        /// <param name="name">Property name.</param>
-        /// <returns>The value or null when the property does not exist or is not a number.</returns>
-        private static double? GetDouble(JsonElement element, string name)
-        {
-            if (element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Number)
-            {
-                return value.GetDouble();
             }
 
             return null;
         }
 
         /// <summary>
-        /// Reads a text property.
+        /// Downloads the "ac" array of a response.
         /// </summary>
-        /// <param name="element">JSON object.</param>
-        /// <param name="name">Property name.</param>
-        /// <returns>The value or null when the property does not exist or is not a string.</returns>
-        private static string? GetString(JsonElement element, string name)
+        /// <param name="path">Path of the request relative to the base address.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The records of the response, empty when the response has no "ac" array.</returns>
+        private async Task<List<AdsbLolAircraftRecord>> GetRecordsAsync(string path, CancellationToken cancellationToken)
         {
-            if (element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String)
+            using HttpResponseMessage response = await httpClient.GetAsync(path, cancellationToken);
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
             {
-                return value.GetString();
+                throw new RateLimitedException(GetRetryAfter(response));
             }
 
-            return null;
+            response.EnsureSuccessStatusCode();
+
+            await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using JsonDocument document = await JsonDocument.ParseAsync(stream, new JsonDocumentOptions(), cancellationToken);
+
+            List<AdsbLolAircraftRecord> records = new List<AdsbLolAircraftRecord>();
+
+            if (!document.RootElement.TryGetProperty("ac", out JsonElement list) || list.ValueKind != JsonValueKind.Array)
+            {
+                return records;
+            }
+
+            foreach (JsonElement element in list.EnumerateArray())
+            {
+                records.Add(AdsbLolAircraftRecord.FromJson(element));
+            }
+
+            return records;
+        }
+
+        /// <summary>
+        /// Reads the pause requested by the server with the Retry-After header.
+        /// </summary>
+        /// <param name="response">The limit response.</param>
+        /// <returns>The requested pause or zero when the header is missing.</returns>
+        private static TimeSpan GetRetryAfter(HttpResponseMessage response)
+        {
+            TimeSpan? requested = response.Headers.RetryAfter?.Delta ?? (response.Headers.RetryAfter?.Date - DateTimeOffset.UtcNow);
+
+            return requested.HasValue && requested.Value > TimeSpan.Zero ? requested.Value : TimeSpan.Zero;
         }
     }
 }

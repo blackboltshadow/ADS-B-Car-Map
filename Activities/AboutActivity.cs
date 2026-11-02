@@ -70,14 +70,14 @@ namespace AdsbCarMap.Activities
             AddText(root, "© współtwórcy OpenStreetMap, dane na licencji ODbL (openstreetmap.org/copyright). Kafelki mapy pochodzą z serwera tile.openstreetmap.org.", 14f, Color.White, false, 4, true);
 
             AddSection(root, "Samoloty i trasy");
-            AddText(root, "Pozycje samolotów: adsb.lol (otwarte dane ADS-B, API zgodne z airplanes.live). Trasy lotów i linie lotnicze: adsbdb.com.", 14f, Color.White, false, 4, true);
+            AddText(root, "Pozycje samolotów: adsb.lol albo airplanes.live (otwarte dane ADS-B, wybór w ustawieniach zaawansowanych). Trasy lotów i linie lotnicze: adsbdb.com.", 14f, Color.White, false, 4, true);
 
             AddSection(root, "Lotniska i pasy startowe");
             AddText(root, "Dane lotnisk i pasów startowych pochodzą z projektu OurAirports (ourairports.com), udostępnionego jako domena publiczna. " + GetAirportDataDate(), 14f, Color.White, false, 4, true);
             AddText(root, "Dane są dołączone do aplikacji i aktualizowane przy każdym wydaniu. Lotnisko wojskowe jest rozpoznawane po nazwie, więc zdarzają się pomyłki.", 13f, Color.Rgb(180, 180, 180), false, 6);
 
             AddSection(root, "Prywatność");
-            AddText(root, "Aplikacja nie ma kont ani analityki i nie wysyła niczego poza tym, co potrzebne do działania mapy: do serwera adsb.lol środek i promień widocznego obszaru mapy (gdy mapa podąża za Tobą, jest to Twoja okolica), do adsbdb.com znak wywoławczy zaznaczonego lub wyszukiwanego lotu, do serwera kafelków numery kafelków. Do każdego z nich dochodzi nagłówek User-Agent z nazwą aplikacji i opcjonalnym kontaktem właściciela. Twoja pozycja GPS służy tylko do wyświetlania na mapie i liczenia odległości na urządzeniu.", 14f, Color.White, false, 4);
+            AddText(root, "Aplikacja nie ma kont ani analityki i nie wysyła niczego poza tym, co potrzebne do działania mapy: do serwera samolotów (adsb.lol lub airplanes.live, a gdy pierwszy nie odpowiada i zapasowe źródło jest włączone, do obu) środek i promień widocznego obszaru mapy (gdy mapa podąża za Tobą, jest to Twoja okolica), do adsbdb.com znak wywoławczy zaznaczonego lub wyszukiwanego lotu, do serwera kafelków numery kafelków. Do każdego z nich dochodzi nagłówek User-Agent z nazwą aplikacji i opcjonalnym kontaktem właściciela. Twoja pozycja GPS służy tylko do wyświetlania na mapie i liczenia odległości na urządzeniu.", 14f, Color.White, false, 4);
 
             AddSection(root, "Biblioteki");
             AddText(root, "AndroidX Car App Library (Android Auto), .NET for Android.", 14f, Color.White, false, 4);

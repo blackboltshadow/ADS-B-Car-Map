@@ -34,7 +34,7 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 - Dotknięcie lotniska (gdy pod palcem nie ma samolotu) zaznacza je: na telefonie pojawia się karta, a w Android Auto popup, z nazwą, kodami IATA i ICAO, miastem i krajem, wysokością w wybranej jednostce, odległością i kierunkiem od Ciebie oraz najdłuższymi pasami. Karta ma przycisk „Wyśrodkuj”. Zaznaczenie lotniska jest wspólne dla telefonu i samochodu.
 - Wyszukiwarka (telefon i Android Auto) szuka też lotnisk po kodzie, nazwie i mieście (bez względu na polskie znaki). Wyniki są uporządkowane według dopasowania, a przy takim samym dopasowaniu lotniska są przed samolotami. W samochodzie dwa wiersze z sześciu są zawsze zarezerwowane dla samolotów. Przy pustym polu na górze są trzy najbliższe lotniska. Wybór lotniska zaznacza je, centruje na nim mapę i przybliża do zoomu 11.
 - **Ulubione lotniska:** osobny ekran w menu („Ulubione lotniska”). Ulubione są zawsze widoczne na mapie od zoomu 5, bez względu na wybrane rodzaje i filtr małych lotnisk, ze złotym pierścieniem i etykietą o najwyższym priorytecie. Dodajesz je gwiazdką na karcie lotniska, przyciskiem „＋” w wynikach wyszukiwania na tym ekranie albo w oknie szczegółów. Lista pozwala zmieniać kolejność (▲ ▼), usuwać (✕) i po dotknięciu wiersza zobaczyć szczegóły lotniska z przyciskiem „Pokaż na mapie”. W wyszukiwarce ulubione są przed innymi lotniskami o takim samym dopasowaniu, a przy pustym polu stoją na początku. Lista jest wspólna dla telefonu i samochodu (w samochodzie popup oznacza ulubione, zarządzanie jest na telefonie) i jest zapisana osobno od ustawień: „Przywróć wszystkie domyślne” jej nie kasuje.
-- Ekran „O aplikacji” (menu) zawiera wersję, licencję, źródła danych z atrybucją (OpenStreetMap, adsb.lol, adsbdb, OurAirports) i informację o prywatności. Atrybucja „© OpenStreetMap” zostaje też na mapie.
+- Ekran „O aplikacji” (menu) zawiera wersję, licencję, źródła danych z atrybucją (OpenStreetMap, adsb.lol, airplanes.live, adsbdb, OurAirports) i informację o prywatności. Atrybucja „© OpenStreetMap” zostaje też na mapie.
 
 **Samoloty**
 - Pozycje z ADS-B odświeżane domyślnie co 3 sekundy, a między odpowiedziami przesuwane na podstawie kursu i prędkości, żeby ruch był płynny.
@@ -128,6 +128,8 @@ Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązuj�
 | Maksymalny zoom | 13 | 1–18 | największe przybliżenie |
 | Kafelki w pamięci | 128 | 16–1024 | liczba zdekodowanych kafelków w pamięci (zawsze co najmniej tyle, ile widać na ekranie plus zapas) |
 | Ponowienie kafelka [s] | 15 | 1–600 | po jakim czasie ponawiane jest nieudane pobranie kafelka |
+| Kolejność źródeł samolotów | adsb.lol, airplanes.live | wszystkie kolejności źródeł | lista przeciągana za uchwyt ≡ (Zaawansowane → Źródło danych): wiersz na górze (GŁÓWNE) to główne źródło, wiersze pod nim (ZAPASOWE 1, 2…) są pytane po kolei, gdy poprzedni nie zwraca danych; zapasowe są przyciemnione, gdy zapas jest wyłączony; zmiana działa od następnego odświeżenia |
+| Zapasowe źródło przy braku danych | włączone | wł./wył. | gdy główne źródło nie zwraca danych (429, błąd sieci lub serwera), aplikacja pyta kolejne według kolejności |
 | Limit pamięci podręcznej [MB] | 100 | 10–1000 | maksymalny rozmiar kafelków na dysku, suwak co 10 MB; zmniejszenie limitu od razu usuwa najstarsze kafelki |
 | Czas trzymania kafelków [dni] | 7 | 1–90 | przez ile dni kafelek z dysku jest świeży i używany bez pytania serwera; starszy służy jako zapas, gdy pobranie się nie uda |
 | Długość śladu [min] | 30 | 0–120 | jak długo pamiętany jest ślad lotu (0 wyłącza ślady), suwak co 1 min |
@@ -254,7 +256,7 @@ Wszystkie parametry są opcjonalne (`-SetSigningVariables` zapisuje hasła w zmi
 | Dane | Źródło | Uwagi |
 |---|---|---|
 | Mapa | © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, kafelki z `tile.openstreetmap.org` | obowiązuje [Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/); atrybucja jest rysowana na mapie |
-| Samoloty (ADS-B) | [adsb.lol](https://adsb.lol), `api.adsb.lol` (API zgodne z airplanes.live) | pozycje, kurs, wysokość, typ, rejestracja, kategoria |
+| Samoloty (ADS-B) | [adsb.lol](https://adsb.lol), `api.adsb.lol`, oraz [airplanes.live](https://airplanes.live), `api.airplanes.live` (oba w formacie ADS-B Exchange v2); źródło wybiera się w ustawieniach | pozycje, kurs, wysokość, typ, rejestracja, kategoria; oba serwisy są do użytku osobistego, niekomercyjnego (patrz `DATA_SOURCES.md`) |
 | Trasa i linia lotnicza | [adsbdb](https://www.adsbdb.com), `api.adsbdb.com` | pobierane po znaku wywoławczym |
 
 Zapoznaj się z warunkami użycia tych serwisów, zanim udostępnisz własną kompilację innym osobom. Aplikacja nie ma własnego serwera: wszystkie zapytania idą bezpośrednio z telefonu.
@@ -262,7 +264,7 @@ Zapoznaj się z warunkami użycia tych serwisów, zanim udostępnisz własną ko
 ## Prywatność
 
 - Aplikacja **nie ma telemetrii ani kont** i niczego nie wysyła do autora.
-- Pozycja GPS jest używana lokalnie. **Do serwera samolotów (adsb.lol) trafiają współrzędne środka widocznej mapy** (oraz promień), bo tym zapytaniem pobierane są samoloty w okolicy. Gdy mapa jest wyśrodkowana na Twojej pozycji, jest to przybliżenie Twojej lokalizacji. Serwery kafelków dostają numery kafelków, a serwis tras (adsbdb) znaki wywoławcze samolotów, których trasę aplikacja pokazuje.
+- Pozycja GPS jest używana lokalnie. **Do serwera samolotów (adsb.lol lub airplanes.live, a przy awarii pierwszego z włączonym zapasowym źródłem do obu po kolei) trafiają współrzędne środka widocznej mapy** (oraz promień), bo tym zapytaniem pobierane są samoloty w okolicy. Gdy mapa jest wyśrodkowana na Twojej pozycji, jest to przybliżenie Twojej lokalizacji. Serwery kafelków dostają numery kafelków, a serwis tras (adsbdb) znaki wywoławcze samolotów, których trasę aplikacja pokazuje.
 - Wszystkie serwery widzą adres IP telefonu i nagłówek User-Agent (nazwa aplikacji, wersja, opcjonalny kontakt).
 
 ## Znane ograniczenia
@@ -286,17 +288,20 @@ Testy obejmują odległość i kierunek, projekcję Web Mercator i dobór kafelk
 
 ### Projekty źródeł danych
 
-Wszystko, co zależy od konkretnego serwera danych, leży poza aplikacją, w katalogu `Sources\` (biblioteki net10.0 bez zależności od Androida). Wspólne kontrakty leżą w `Sources\AdsbCarMap.DataSources`, a każde źródło ma własny katalog z projektem i jego testami (obecnie `Sources\AdsbLol`). Testy niezwiązane z jednym źródłem są w `Tests\`:
+Dane z zewnętrznych serwisów są obsługiwane w osobnych bibliotekach net10.0 bez zależności od Androida, w katalogu `Sources\`. Zależności idą tylko w jedną stronę: źródła i zarządca znają tylko Core, ale nie znają siebie nawzajem, a żadne źródło nie wie o istnieniu innego.
 
-- `AdsbCarMap.DataSources` zawiera interfejsy (`Interfaces`): `IDataSource` (nazwa i stan limitów), `IAircraftSource` (samoloty w promieniu od punktu) i `IRouteSource` (trasa dla znaku wywoławczego); modele (`Models`): `Aircraft`, `FlightRoute`, `RateLimitStatus` i `RateLimitedException`; `BackoffRateLimiter` (`RateLimiting`, wykładnicze wstrzymanie po 429 z uwzględnieniem `Retry-After`, wspólne dla źródeł); `DataSourceRegistry` (`Selection`, uporządkowana lista źródeł, która odpowiada, czy można teraz zapytać jakieś źródło albo inne niż bieżące). Każde źródło udostępnia `GetRateLimitStatus()` bez wysyłania zapytania. Aplikacja zna tylko te typy.
-- `AdsbCarMap.DataSources.AdsbLol` zawiera obecne źródło: `AdsbLolClient` (adsb.lol, API zgodne z airplanes.live, z backoffem po odpowiedzi 429) i `AdsbdbRouteClient` (adsbdb.com).
-- `Sources\AdsbLol\AdsbCarMap.DataSources.AdsbLol.Tests` zawiera testy klientów adsb.lol i adsbdb, a `Tests\AdsbCarMap.DataSources.Tests` testy wspólnych kontraktów (limiter i rejestr źródeł).
+- **Core**, `Sources\AdsbCarMap.DataSources`: wyłącznie kontrakt, bez logiki. Interfejsy `IDataSource` (nazwa), `IAircraftSource` (samoloty w promieniu od punktu) i `IRouteSource` (trasa dla znaku wywoławczego) oraz modele `Aircraft`, `FlightRoute` i `RateLimitedException`, którą źródło zgłasza, gdy serwer odpowiada 429.
+- **Źródła**, po jednym katalogu na serwis (`Sources\AdsbLol`, `Sources\AirplanesLive`, `Sources\Adsbdb`), każdy z projektem `AdsbCarMap.DataSources.{Nazwa}` i projektem `.Tests`. Źródło ma własny model rekordu API i własne parsowanie, a wynik mapuje na modele Core. Tylko pobiera dane: przy odpowiedzi 429 zgłasza `RateLimitedException` (z `Retry-After`), ale niczego nie wstrzymuje. Dwa serwisy w formacie ADS-B Exchange v2 (adsb.lol i airplanes.live) celowo mają osobne kopie parsera, żeby były całkowicie niezależne.
+- **Zarządca**, `Sources\AdsbCarMap.DataSources.Management` (testy w `Tests\AdsbCarMap.DataSources.Management.Tests`): cała logika wokół źródeł. `BackoffRateLimiter` i `RateLimitedAircraftSource` wstrzymują zapytania po 429 (wykładniczo 5, 10, 20, 40, 60 s albo według `Retry-After`) i udostępniają `RateLimitStatus`. `DataSourceRegistry` mówi, czy jakieś lub inne niż bieżące źródło można teraz odpytać. `FallbackAircraftSource` składa źródła w jedno: pyta źródło domyślne, a gdy ono nie zwraca danych (429, błąd sieci lub serwera, błędna odpowiedź), pyta kolejne; wstrzymane pomija, a gdy wszystkie są wstrzymane, zgłasza najkrótszy czas oczekiwania. Pusta lista samolotów nie jest brakiem danych. `AircraftEnricher` (`Enrichment`) uzupełnia typ, rejestrację i kategorię zaznaczonego samolotu: gdy główne źródło ich nie podaje, pyta pozostałe źródła o ten jeden samolot po kodzie ICAO (interfejs `IAircraftLookupSource`, endpoint `/v2/hex/{hex}`), nie częściej niż raz na 10 minut na samolot, i nie nadpisuje niczego, co główne źródło już podało.
+- **Aplikacja** składa całość w `AppServices`: źródła są opakowane w `RateLimitedAircraftSource` i połączone w `FallbackAircraftSource`, a ustawienia wybierają źródło domyślne.
 
-Nowe źródło to nowy katalog `Sources\{Nazwa}` z projektem `AdsbCarMap.DataSources.{Nazwa}` (klasa implementująca `IAircraftSource` i ewentualnie `IRouteSource`) oraz projektem `AdsbCarMap.DataSources.{Nazwa}.Tests`, podłączany w `AppServices`. Testy źródeł uruchamia się osobno:
+Nowe źródło to nowy katalog `Sources\{Nazwa}` z projektem `AdsbCarMap.DataSources.{Nazwa}` (klasa implementująca `IAircraftSource` i ewentualnie `IRouteSource`, własny model i parser, referencja tylko do Core) oraz projektem `AdsbCarMap.DataSources.{Nazwa}.Tests`. Potem wystarczy dopisać je w `AppServices`, w `DataSourceSetting` (nazwa musi być taka sama jak `Name` źródła) i w `AdsbCarMap.csproj`. Testy źródeł uruchamia się osobno:
 
 ```powershell
 dotnet test Sources\AdsbLol\AdsbCarMap.DataSources.AdsbLol.Tests\AdsbCarMap.DataSources.AdsbLol.Tests.csproj
-dotnet test Tests\AdsbCarMap.DataSources.Tests\AdsbCarMap.DataSources.Tests.csproj
+dotnet test Sources\AirplanesLive\AdsbCarMap.DataSources.AirplanesLive.Tests\AdsbCarMap.DataSources.AirplanesLive.Tests.csproj
+dotnet test Sources\Adsbdb\AdsbCarMap.DataSources.Adsbdb.Tests\AdsbCarMap.DataSources.Adsbdb.Tests.csproj
+dotnet test Tests\AdsbCarMap.DataSources.Management.Tests\AdsbCarMap.DataSources.Management.Tests.csproj
 ```
 
 ## Struktura projektu
@@ -309,8 +314,8 @@ Map/          renderowanie mapy: kontroler, kafelki, projekcja, kształty ikon, 
 Services/     współdzielone usługi: klienci HTTP, pozycja GPS, usługa pierwszoplanowa, ruch na żywo
 Settings/     definicje i zapis ustawień
 Resources/    ikony i zasoby graficzne
-Sources/      źródła danych: AdsbCarMap.DataSources (interfejsy, modele, limiter, rejestr) i katalog na każde źródło, np. AdsbLol/ (klienci adsb.lol i adsbdb oraz ich testy)
-Tests/        projekty testowe (xUnit): AdsbCarMap.Tests (aplikacja) i AdsbCarMap.DataSources.Tests (wspólne kontrakty źródeł)
+Sources/      dane zewnętrzne: AdsbCarMap.DataSources (Core: interfejsy i modele), AdsbCarMap.DataSources.Management (limity, wybór źródła, zapas) i katalog na każde źródło (AdsbLol/, AirplanesLive/, Adsbdb/) z jego testami
+Tests/        projekty testowe (xUnit): AdsbCarMap.Tests (aplikacja) i AdsbCarMap.DataSources.Management.Tests (zarządca źródeł)
 Scripts/      skrypty PowerShell: konfiguracja komputera, build Release, Android Auto DHU
 RELEASE_NOTES.md  historia wersji: co zostało wydane w kolejnych wydaniach
 release-history.csv  wersja, commit i SHA-256 każdej zbudowanej paczki
@@ -324,7 +329,7 @@ Mapa na telefonie i w Android Auto używa tego samego `MapController`, więc zmi
 - Filtry samolotów: wysokość w wybranej jednostce (dziś w metrach), kody IATA linii lotniczych i nazwy linii (potrzebna tabela linii), kod ICAO lotniska wylotu i przylotu obok IATA, podpowiedzi przy wpisywaniu typu i lotniska, kolejność pobierania tras od samolotów najbliższych środka mapy, zapis tekstowy filtru (np. `Boeing + LOT - WAW`).
 - Pełne nazwy typów samolotów (np. A21N jako Airbus A321neo) są już w tabeli typów; zostaje pokazanie ich na karcie samolotu i w wyszukiwarce oraz uzupełnienie tabeli o typy z listy brakujących.
 - Alerty „samolot w pobliżu” (wojskowy, wybrany typ, linia) w promieniu wybranym przez użytkownika.
-- Wybór źródła danych (adsb.lol, airplanes.live, adsb.fi, własny tar1090), zapasowe źródło przy 429 i zaokrąglanie współrzędnych wysyłanych do API.
+- Kolejne źródła danych (adsb.fi) i zaokrąglanie współrzędnych wysyłanych do API. Własny odbiornik tar1090 nie jest planowany (patrz `DATA_SOURCES.md`).
 - Zastąpienie `AllowAllHostsValidator` listą znanych hostów Android Auto.
 - GitHub Actions z buildem i testami, zrzuty ekranu w README.
 

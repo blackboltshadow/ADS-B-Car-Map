@@ -1,7 +1,5 @@
-using System.Net.Http.Headers;
-using AdsbCarMap.DataSources.Models;
 
-namespace AdsbCarMap.DataSources.RateLimiting
+namespace AdsbCarMap.DataSources.Management.RateLimiting
 {
     /// <summary>
     /// Pauses the requests of one data source after limit responses (429), lengthening the pause exponentially and honoring the Retry-After header.
@@ -98,9 +96,9 @@ namespace AdsbCarMap.DataSources.RateLimiting
         /// <summary>
         /// Remembers a limit response and lengthens the pause of the requests exponentially, honoring the Retry-After header.
         /// </summary>
-        /// <param name="retryAfter">Retry-After header of the response or null.</param>
+        /// <param name="retryAfter">Pause requested by the server with the Retry-After header; zero or less when the server did not say.</param>
         /// <returns>The pause of the requests.</returns>
-        public TimeSpan RegisterRateLimit(RetryConditionHeaderValue? retryAfter)
+        public TimeSpan RegisterRateLimit(TimeSpan retryAfter)
         {
             lock (stateLock)
             {
@@ -108,11 +106,11 @@ namespace AdsbCarMap.DataSources.RateLimiting
 
                 double backoffSeconds = Math.Min(maxBackoff.TotalSeconds, baseBackoff.TotalSeconds * Math.Pow(2.0, consecutiveRateLimits - 1));
                 TimeSpan wait = TimeSpan.FromSeconds(backoffSeconds);
-                TimeSpan? requested = retryAfter?.Delta ?? (retryAfter?.Date - utcNow());
+                TimeSpan requested = retryAfter;
 
-                if (requested.HasValue && requested.Value > wait)
+                if (requested > wait)
                 {
-                    wait = requested.Value > maxRetryAfter ? maxRetryAfter : requested.Value;
+                    wait = requested > maxRetryAfter ? maxRetryAfter : requested;
                 }
 
                 blockedUntilUtc = utcNow() + wait;

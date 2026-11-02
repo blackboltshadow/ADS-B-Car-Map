@@ -1,5 +1,6 @@
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Management.Enrichment;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
@@ -198,6 +199,11 @@ namespace AdsbCarMap.Map
         /// ADS-B API client.
         /// </summary>
         private readonly IAircraftSource adsbClient;
+
+        /// <summary>
+        /// Completes the data of the selected aircraft from the other sources, or null when it is not used.
+        /// </summary>
+        private readonly AircraftEnricher? enricher;
 
         /// <summary>
         /// Map tile provider.
@@ -672,9 +678,11 @@ namespace AdsbCarMap.Map
         /// <param name="tileProvider">Map tile provider.</param>
         /// <param name="routeCache">Flight route cache.</param>
         /// <param name="selectionState">Selection and filters shared with the other map.</param>
-        public MapController(IAircraftSource adsbClient, TileProvider tileProvider, RouteCache routeCache, SelectionState selectionState)
+        /// <param name="enricher">Completes the data of the selected aircraft from the other sources, or null when it is not used.</param>
+        public MapController(IAircraftSource adsbClient, TileProvider tileProvider, RouteCache routeCache, SelectionState selectionState, AircraftEnricher? enricher = null)
         {
             this.adsbClient = adsbClient;
+            this.enricher = enricher;
             this.tileProvider = tileProvider;
             this.routeCache = routeCache;
             this.selectionState = selectionState;
@@ -1777,6 +1785,66 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Starts asking the other sources for the type, the registration and the category of the selected aircraft when the main source did not give them. The answer is merged into the current list of aircraft.
+        /// </summary>
+        /// <param name="fetched">Aircraft just downloaded from the main source.</param>
+        /// <param name="cancellationToken">Token that stops the request.</param>
+        private void RequestSelectedAircraftDetails(IReadOnlyList<Aircraft> fetched, CancellationToken cancellationToken)
+        {
+            AircraftEnricher? source = enricher;
+            string? hex;
+
+            lock (stateLock)
+            {
+                hex = primaryHex;
+            }
+
+            if (source == null || hex == null)
+            {
+                return;
+            }
+
+            Aircraft? aircraft = fetched.FirstOrDefault(item => item.Hex == hex);
+
+            if (aircraft == null || !source.NeedsLookup(aircraft))
+            {
+                return;
+            }
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    Aircraft? filled = await source.LookupAsync(aircraft, cancellationToken);
+
+                    if (filled == null)
+                    {
+                        return;
+                    }
+
+                    lock (stateLock)
+                    {
+                        List<Aircraft> list = new List<Aircraft>(latestAircraft);
+                        int index = list.FindIndex(item => item.Hex == filled.Hex);
+
+                        if (index >= 0)
+                        {
+                            list[index] = AircraftMerger.FillMissing(list[index], new AircraftDetails(filled.Hex, filled.TypeCode, filled.Registration, filled.Category));
+                            latestAircraft = list;
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                }
+                catch (Exception exception)
+                {
+                    Log.Warn(LogTag, "Uzupełnianie danych samolotu nie powiodło się: " + exception.Message);
+                }
+            }, cancellationToken);
+        }
+
+        /// <summary>
         /// Loop that downloads the aircraft within the range of the visible area.
         /// </summary>
         /// <param name="cancellationToken">Token that stops the loop.</param>
@@ -1818,6 +1886,12 @@ namespace AdsbCarMap.Map
                 try
                 {
                     IReadOnlyList<Aircraft> fetched = await adsbClient.GetAircraftAsync(latitude, longitude, radiusNauticalMiles, cancellationToken);
+
+                    if (enricher != null)
+                    {
+                        fetched = enricher.Apply(fetched);
+                    }
+
                     DateTime fetchedAtUtc = DateTime.UtcNow;
                     IReadOnlyDictionary<string, TrailPoint[]> previousTrails;
 
@@ -1836,6 +1910,7 @@ namespace AdsbCarMap.Map
                     }
 
                     LiveTraffic.Update(fetched, fetchedAtUtc, latitude, longitude);
+                    RequestSelectedAircraftDetails(fetched, cancellationToken);
                     Volatile.Write(ref aircraftFailed, 0);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

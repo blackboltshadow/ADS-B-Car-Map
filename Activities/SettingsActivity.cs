@@ -1,4 +1,5 @@
 using System.Globalization;
+using AdsbCarMap.DataSources.Adsbdb;
 using AdsbCarMap.Services;
 using AdsbCarMap.Settings;
 using Android.App;
@@ -114,6 +115,11 @@ namespace AdsbCarMap.Activities
         private Button? developerDataButton;
 
         /// <summary>
+        /// List of the aircraft sources in the order in which they are asked, or null before the screen is built.
+        /// </summary>
+        private SourceOrderView? sourceOrderView;
+
+        /// <summary>
         /// Card shared by the tile cache settings, created with the first of them.
         /// </summary>
         private LinearLayout? tileCacheCard;
@@ -213,6 +219,8 @@ namespace AdsbCarMap.Activities
             GetTitledCard("map", "Mapa", appearance);
 
             LinearLayout advanced = CreateAggregate(root, "Zaawansowane", "advanced", 20f);
+            GetTitledCard("dataSource", "Źródło danych", advanced);
+            AddRouteSourcesCard(GetTitledCard("routeSources", "Źródła tras", advanced));
             GetTitledCard("refresh", "Odświeżanie", advanced);
             GetTitledCard("tiles", "Pobieranie kafelków", advanced);
             GetTileCacheCard(advanced);
@@ -233,7 +241,15 @@ namespace AdsbCarMap.Activities
                         AddSwitch(appearance, definition);
                         break;
                     case SettingKind.Choice:
-                        AddChoice(appearance, definition);
+                        if (definition == AppSettings.DataSourceSetting)
+                        {
+                            AddSourceOrder(appearance, definition);
+                        }
+                        else
+                        {
+                            AddChoice(appearance, definition);
+                        }
+
                         break;
                     case SettingKind.Slider:
                         AddSlider(appearance, definition);
@@ -513,6 +529,11 @@ namespace AdsbCarMap.Activities
         /// <returns>The shared card, or null when the setting has a card of its own.</returns>
         private LinearLayout? GetSharedCardFor(SettingDefinition definition, LinearLayout container)
         {
+            if (AppSettings.DataSourceSettings.Contains(definition))
+            {
+                return titledCards["dataSource"];
+            }
+
             if (AppSettings.AirportSettings.Contains(definition))
             {
                 return GetAirportSettingsCard(container);
@@ -749,6 +770,99 @@ namespace AdsbCarMap.Activities
                     SaveValue(definition, value);
                 }
             };
+        }
+
+        /// <summary>
+        /// Adds the list of the aircraft sources that is dragged to change the order in which they are asked. The first row is the main source, the rows below it are the fallback sources in the order of the queries.
+        /// </summary>
+        /// <param name="root">Container of the screen.</param>
+        /// <param name="definition">Setting that stores the order.</param>
+        private void AddSourceOrder(LinearLayout root, SettingDefinition definition)
+        {
+            LinearLayout? sharedCard = GetSharedCardFor(definition, root);
+            LinearLayout card = sharedCard ?? CreateCard(root);
+            LinearLayout row = new LinearLayout(this);
+            row.Orientation = Orientation.Horizontal;
+            row.SetGravity(GravityFlags.CenterVertical);
+            row.SetMinimumHeight(Dp(28));
+            row.SetPadding(0, Dp(10), 0, 0);
+            card.AddView(row);
+
+            TextView label = new TextView(this);
+            label.Text = definition.Label;
+            StyleSubTitle(label);
+            row.AddView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+            AddUndoButton(row, definition);
+            AddInfoButton(row, definition);
+
+            TextView hint = new TextView(this);
+            hint.Text = "Przytrzymaj ≡ i przeciągnij. Pierwszy serwis jest głównym źródłem, kolejne są pytane po kolei, gdy poprzedni nie zwraca danych.";
+            StyleSecondary(hint);
+            hint.SetPadding(0, Dp(4), 0, Dp(6));
+            card.AddView(hint);
+
+            SourceOrderView view = new SourceOrderView(this);
+            view.SetOrder(AppSettings.DataSourceOrder);
+            view.SetFallbackEnabled(AppSettings.DataSourceFallback);
+            card.AddView(view, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent));
+            sourceOrderView = view;
+
+            view.OrderChanged += newOrder =>
+            {
+                double saved = AppSettings.Get(definition);
+                double selected = AppSettings.GetDataSourceOrderIndex(newOrder);
+
+                if (Differs(selected, saved))
+                {
+                    SaveValue(definition, selected);
+                    RecordChange(definition, saved);
+                }
+            };
+
+            settingReaders[definition] = () => AppSettings.GetDataSourceOrderIndex(view.Order);
+            settingWriters[definition] = value => view.SetOrder(AppSettings.DataSourceOrders[Math.Clamp((int)Math.Round(value), 0, AppSettings.DataSourceOrders.Count - 1)]);
+        }
+
+        /// <summary>
+        /// Fills the card of the flight route sources. There is only one source of the routes, so it is shown without any order; it gets its own list when a second source is added.
+        /// </summary>
+        /// <param name="card">Card titled "Źródła tras".</param>
+        private void AddRouteSourcesCard(LinearLayout card)
+        {
+            LinearLayout row = new LinearLayout(this);
+            row.Orientation = Orientation.Horizontal;
+            row.SetGravity(GravityFlags.CenterVertical);
+            row.SetPadding(Dp(14), 0, Dp(10), 0);
+
+            GradientDrawable background = new GradientDrawable();
+            background.SetColor(Color.Argb(70, 76, 175, 80));
+            background.SetStroke(Dp(1), Color.Argb(190, 129, 199, 132));
+            background.SetCornerRadius(Dp(8));
+            row.Background = background;
+
+            TextView name = new TextView(this);
+            name.Text = AdsbdbRouteClient.SourceName;
+            name.TextSize = 15f;
+            name.SetTextColor(PrimaryTextColor);
+            name.SetTypeface(null, TypefaceStyle.Bold);
+            row.AddView(name, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+
+            TextView badge = new TextView(this);
+            badge.Text = "JEDYNE ŹRÓDŁO";
+            badge.TextSize = 11f;
+            badge.SetTextColor(Color.Argb(255, 165, 214, 167));
+            badge.SetTypeface(null, TypefaceStyle.Bold);
+            row.AddView(badge, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
+
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, Dp(48));
+            rowParams.SetMargins(0, Dp(8), 0, 0);
+            card.AddView(row, rowParams);
+
+            TextView description = new TextView(this);
+            description.Text = "Trasa lotu i linia lotnicza pobierane po znaku wywoławczym zaznaczonego samolotu. To baza tras przypisanych do znaku wywoławczego, więc trasa nie zawsze odpowiada bieżącemu przelotowi. Samolotów na mapie ten serwis nie dostarcza, dlatego nie jest na liście źródeł samolotów. Kolejność pojawi się tu, gdy dodamy drugie źródło tras.";
+            StyleSecondary(description);
+            description.SetPadding(0, Dp(6), 0, 0);
+            card.AddView(description);
         }
 
         /// <summary>
@@ -1495,7 +1609,7 @@ namespace AdsbCarMap.Activities
                 });
             }
 
-            if (definition == AppSettings.AirportTypesSetting || definition == AppSettings.ShowAirportsSetting || definition == AppSettings.ShowOnlyFavoriteAirportsSetting)
+            if (definition == AppSettings.AirportTypesSetting || definition == AppSettings.ShowAirportsSetting || definition == AppSettings.ShowOnlyFavoriteAirportsSetting || definition == AppSettings.DataSourceFallbackSetting)
             {
                 UpdateDependentControls();
             }
@@ -1517,10 +1631,12 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Enables or disables the controls that depend on other settings. When the airports are switched off, everything in their section except the main switch and the info buttons is grayed out; when only the favorite airports are shown, the categories, the paved runway filter and the zoom range are grayed out too. The paved runway filter additionally works only while the small airports are switched on. Info buttons stay active, because they explain the settings.
+        /// Enables or disables the controls that depend on other settings. The sources below the main one in the source order are dimmed while the fallback is switched off. When the airports are switched off, everything in their section except the main switch and the info buttons is grayed out; when only the favorite airports are shown, the categories, the paved runway filter and the zoom range are grayed out too. The paved runway filter additionally works only while the small airports are switched on. Info buttons stay active, because they explain the settings.
         /// </summary>
         private void UpdateDependentControls()
         {
+            sourceOrderView?.SetFallbackEnabled(AppSettings.DataSourceFallback);
+
             bool airportsOn = AppSettings.ShowAirports;
 
             if (airportSettingsCard != null)

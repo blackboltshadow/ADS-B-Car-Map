@@ -1,8 +1,7 @@
-using System.Net.Http.Headers;
-using AdsbCarMap.DataSources.RateLimiting;
+using AdsbCarMap.DataSources.Management.RateLimiting;
 using Xunit;
 
-namespace AdsbCarMap.DataSources.Tests
+namespace AdsbCarMap.DataSources.Management.Tests
 {
     /// <summary>
     /// Tests of the exponential pause after limit responses.
@@ -44,12 +43,12 @@ namespace AdsbCarMap.DataSources.Tests
         {
             BackoffRateLimiter limiter = Create();
 
-            Assert.Equal(TimeSpan.FromSeconds(5), limiter.RegisterRateLimit(null));
-            Assert.Equal(TimeSpan.FromSeconds(10), limiter.RegisterRateLimit(null));
-            Assert.Equal(TimeSpan.FromSeconds(20), limiter.RegisterRateLimit(null));
-            Assert.Equal(TimeSpan.FromSeconds(40), limiter.RegisterRateLimit(null));
-            Assert.Equal(TimeSpan.FromSeconds(60), limiter.RegisterRateLimit(null));
-            Assert.Equal(TimeSpan.FromSeconds(60), limiter.RegisterRateLimit(null));
+            Assert.Equal(TimeSpan.FromSeconds(5), limiter.RegisterRateLimit(TimeSpan.Zero));
+            Assert.Equal(TimeSpan.FromSeconds(10), limiter.RegisterRateLimit(TimeSpan.Zero));
+            Assert.Equal(TimeSpan.FromSeconds(20), limiter.RegisterRateLimit(TimeSpan.Zero));
+            Assert.Equal(TimeSpan.FromSeconds(40), limiter.RegisterRateLimit(TimeSpan.Zero));
+            Assert.Equal(TimeSpan.FromSeconds(60), limiter.RegisterRateLimit(TimeSpan.Zero));
+            Assert.Equal(TimeSpan.FromSeconds(60), limiter.RegisterRateLimit(TimeSpan.Zero));
         }
 
         /// <summary>
@@ -59,7 +58,7 @@ namespace AdsbCarMap.DataSources.Tests
         public void GetStatus_AfterPause_CanQuery()
         {
             BackoffRateLimiter limiter = Create();
-            limiter.RegisterRateLimit(null);
+            limiter.RegisterRateLimit(TimeSpan.Zero);
 
             Assert.False(limiter.GetStatus().CanQuery);
             Assert.Equal(TimeSpan.FromSeconds(5), limiter.GetStatus().RemainingBlock);
@@ -80,23 +79,11 @@ namespace AdsbCarMap.DataSources.Tests
         {
             BackoffRateLimiter limiter = Create();
 
-            Assert.Equal(TimeSpan.FromSeconds(30), limiter.RegisterRateLimit(new RetryConditionHeaderValue(TimeSpan.FromSeconds(30))));
+            Assert.Equal(TimeSpan.FromSeconds(30), limiter.RegisterRateLimit(TimeSpan.FromSeconds(30)));
             limiter.Reset();
-            Assert.Equal(TimeSpan.FromMinutes(5), limiter.RegisterRateLimit(new RetryConditionHeaderValue(TimeSpan.FromHours(2))));
+            Assert.Equal(TimeSpan.FromMinutes(5), limiter.RegisterRateLimit(TimeSpan.FromHours(2)));
             limiter.Reset();
-            Assert.Equal(TimeSpan.FromSeconds(5), limiter.RegisterRateLimit(new RetryConditionHeaderValue(TimeSpan.FromSeconds(1))));
-        }
-
-        /// <summary>
-        /// A Retry-After given as a date is measured from the controlled clock.
-        /// </summary>
-        [Fact]
-        public void RegisterRateLimit_RetryAfterDate_UsesClock()
-        {
-            BackoffRateLimiter limiter = Create();
-            RetryConditionHeaderValue header = new RetryConditionHeaderValue(new DateTimeOffset(now.AddSeconds(45), TimeSpan.Zero));
-
-            Assert.Equal(TimeSpan.FromSeconds(45), limiter.RegisterRateLimit(header));
+            Assert.Equal(TimeSpan.FromSeconds(5), limiter.RegisterRateLimit(TimeSpan.FromSeconds(1)));
         }
 
         /// <summary>
@@ -106,8 +93,8 @@ namespace AdsbCarMap.DataSources.Tests
         public void Reset_ClearsState()
         {
             BackoffRateLimiter limiter = Create();
-            limiter.RegisterRateLimit(null);
-            limiter.RegisterRateLimit(null);
+            limiter.RegisterRateLimit(TimeSpan.Zero);
+            limiter.RegisterRateLimit(TimeSpan.Zero);
 
             Assert.Equal(2, limiter.GetStatus().ConsecutiveRateLimits);
 
@@ -128,7 +115,7 @@ namespace AdsbCarMap.DataSources.Tests
 
             for (int i = 0; i < 30; i++)
             {
-                limiter.RegisterRateLimit(null);
+                limiter.RegisterRateLimit(TimeSpan.Zero);
             }
 
             Assert.Equal(10, limiter.GetStatus().ConsecutiveRateLimits);

@@ -1,5 +1,10 @@
 using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Adsbdb;
 using AdsbCarMap.DataSources.AdsbLol;
+using AdsbCarMap.DataSources.AirplanesLive;
+using AdsbCarMap.DataSources.Management.Enrichment;
+using AdsbCarMap.DataSources.Management.RateLimiting;
+using AdsbCarMap.DataSources.Management.Selection;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Settings;
@@ -19,9 +24,14 @@ namespace AdsbCarMap.Services
             : "AdsbCarMap/" + BuildInfo.Version + " (kontakt: " + BuildInfo.Contact + ")";
 
         /// <summary>
-        /// HTTP client used for the aircraft requests.
+        /// HTTP client used for the adsb.lol aircraft requests.
         /// </summary>
         private static readonly HttpClient AdsbHttpClient = CreateHttpClient(AdsbLolClient.DefaultBaseAddress);
+
+        /// <summary>
+        /// HTTP client used for the airplanes.live aircraft requests.
+        /// </summary>
+        private static readonly HttpClient AirplanesLiveHttpClient = CreateHttpClient(AirplanesLiveClient.DefaultBaseAddress);
 
         /// <summary>
         /// HTTP client used to download the map tiles.
@@ -34,9 +44,22 @@ namespace AdsbCarMap.Services
         private static readonly HttpClient RouteHttpClient = CreateHttpClient(AdsbdbRouteClient.DefaultBaseAddress);
 
         /// <summary>
-        /// ADS-B API client.
+        /// Aircraft sources queried in the order chosen in the settings; the next source is asked when the previous one gives no data (if enabled in the settings).
         /// </summary>
-        public static IAircraftSource Adsb { get; } = new AdsbLolClient(AdsbHttpClient);
+        private static readonly FallbackAircraftSource AircraftSources = new FallbackAircraftSource(
+            new List<IRateLimitedAircraftSource> { new RateLimitedAircraftSource(new AdsbLolClient(AdsbHttpClient)), new RateLimitedAircraftSource(new AirplanesLiveClient(AirplanesLiveHttpClient)) },
+            () => AppSettings.DataSourceOrder,
+            () => AppSettings.DataSourceFallback);
+
+        /// <summary>
+        /// Aircraft source used by the maps.
+        /// </summary>
+        public static IAircraftSource Adsb => AircraftSources;
+
+        /// <summary>
+        /// Completes the type, the registration and the category of the selected aircraft from the other sources when the main source lacks them.
+        /// </summary>
+        public static AircraftEnricher Enricher { get; } = new AircraftEnricher(AircraftSources, () => AppSettings.DataSourceDetails);
 
         /// <summary>
         /// Cache of the flight routes downloaded from adsbdb.com.

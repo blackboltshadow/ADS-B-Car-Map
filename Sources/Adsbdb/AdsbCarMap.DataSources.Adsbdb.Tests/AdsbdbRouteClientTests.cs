@@ -1,9 +1,9 @@
 using AdsbCarMap.DataSources.Models;
 using System.Net;
-using AdsbCarMap.DataSources.AdsbLol;
+using AdsbCarMap.DataSources.Adsbdb;
 using Xunit;
 
-namespace AdsbCarMap.DataSources.AdsbLol.Tests
+namespace AdsbCarMap.DataSources.Adsbdb.Tests
 {
     /// <summary>
     /// Tests of the adsbdb route client and the flight route model.

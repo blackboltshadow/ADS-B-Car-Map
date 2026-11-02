@@ -1,12 +1,12 @@
-using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Management.RateLimiting;
 
-namespace AdsbCarMap.DataSources.Selection
+namespace AdsbCarMap.DataSources.Management.Selection
 {
     /// <summary>
     /// Ordered list of data sources of one kind, answering whether any source, or another source than the current one, can be queried now.
     /// </summary>
     /// <typeparam name="TSource">Kind of the sources, e.g. IAircraftSource.</typeparam>
-    public sealed class DataSourceRegistry<TSource> where TSource : class, IDataSource
+    public sealed class DataSourceRegistry<TSource> where TSource : class, IRateLimitedSource
     {
         /// <summary>
         /// Sources in the order of preference, the first one is the preferred one.

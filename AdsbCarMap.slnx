@@ -1,14 +1,23 @@
 <Solution>
   <Folder Name="/Sources/">
     <Project Path="Sources/AdsbCarMap.DataSources/AdsbCarMap.DataSources.csproj" />
+    <Project Path="Sources/AdsbCarMap.DataSources.Management/AdsbCarMap.DataSources.Management.csproj" />
   </Folder>
   <Folder Name="/Sources/AdsbLol/">
     <Project Path="Sources/AdsbLol/AdsbCarMap.DataSources.AdsbLol/AdsbCarMap.DataSources.AdsbLol.csproj" />
     <Project Path="Sources/AdsbLol/AdsbCarMap.DataSources.AdsbLol.Tests/AdsbCarMap.DataSources.AdsbLol.Tests.csproj" />
   </Folder>
+  <Folder Name="/Sources/AirplanesLive/">
+    <Project Path="Sources/AirplanesLive/AdsbCarMap.DataSources.AirplanesLive/AdsbCarMap.DataSources.AirplanesLive.csproj" />
+    <Project Path="Sources/AirplanesLive/AdsbCarMap.DataSources.AirplanesLive.Tests/AdsbCarMap.DataSources.AirplanesLive.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Sources/Adsbdb/">
+    <Project Path="Sources/Adsbdb/AdsbCarMap.DataSources.Adsbdb/AdsbCarMap.DataSources.Adsbdb.csproj" />
+    <Project Path="Sources/Adsbdb/AdsbCarMap.DataSources.Adsbdb.Tests/AdsbCarMap.DataSources.Adsbdb.Tests.csproj" />
+  </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/AdsbCarMap.Tests/AdsbCarMap.Tests.csproj" />
-    <Project Path="Tests/AdsbCarMap.DataSources.Tests/AdsbCarMap.DataSources.Tests.csproj" />
+    <Project Path="Tests/AdsbCarMap.DataSources.Management.Tests/AdsbCarMap.DataSources.Management.Tests.csproj" />
   </Folder>
   <Project Path="AdsbCarMap.csproj">
     <Deploy />
