@@ -4,6 +4,7 @@ using AdsbCarMap.DataSources.Adsbdb;
 using AdsbCarMap.DataSources.AdsbLol;
 using AdsbCarMap.DataSources.Hexdb;
 using AdsbCarMap.DataSources.AirplanesLive;
+using AdsbCarMap.DataSources.Management.Privacy;
 using AdsbCarMap.DataSources.Management.Selection;
 using Android.Content;
 
@@ -260,6 +261,46 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition DevLogDeduplicateSetting = SettingDefinition.CreateSwitch("dev_log_deduplicate", "Łącz powtarzające się wpisy", true, "Identyczne zdarzenia (ten sam poziom, miejsce, opis i wyjątek) są zapisywane jako jeden wpis z licznikiem i czasem pierwszego oraz ostatniego wystąpienia, dzięki czemu powtarzający się błąd nie zapełnia logu. Po wyłączeniu każde zdarzenie jest osobnym wpisem, co pozwala zobaczyć dokładną kolejność zdarzeń, ale log zapełnia się szybciej.");
 
         /// <summary>
+        /// Grid sizes in kilometers of the options of <see cref="PrivacyPrecisionSetting"/>; zero sends the exact position.
+        /// </summary>
+        public static readonly IReadOnlyList<double> PrivacyGridKilometers = new List<double> { 0.0, 1.0, 5.0, 10.0, 25.0 };
+
+        /// <summary>
+        /// Radius steps in kilometers of the options of <see cref="PrivacyRadiusStepSetting"/>; zero leaves the radius as it is.
+        /// </summary>
+        public static readonly IReadOnlyList<double> PrivacyRadiusStepsKilometers = new List<double> { 0.0, 10.0, 20.0, 50.0 };
+
+        /// <summary>
+        /// How precisely the position of the map is sent to the aircraft servers; the stored value is the index in <see cref="PrivacyGridKilometers"/>.
+        /// </summary>
+        public static readonly SettingDefinition PrivacyPrecisionSetting = SettingDefinition.CreateChoice("privacy_precision", "Dokładność wysyłanego położenia", 1, "Serwer samolotów dostaje od aplikacji środek widocznego obszaru i promień. Przy śledzeniu GPS środek to Twoje dokładne położenie. Ta opcja przyciąga środek do siatki o wybranym rozmiarze, więc serwer widzi tylko okolicę, a nie dokładne miejsce. Wynik zależy tylko od położenia, więc wielu zapytań nie da się uśrednić do dokładnego punktu. Aplikacja powiększa promień o możliwe przesunięcie, dzięki czemu widoczny obszar jest nadal w całości pokryty, a mapa wygląda tak samo. Im większa siatka, tym większa odpowiedź serwera. Nie ukrywa to adresu IP ani obszaru, z którego pobierane są kafelki mapy, ani tego, o który lot pytasz.", "Dokładne", "Około 1 km", "Około 5 km", "Około 10 km", "Około 25 km");
+
+        /// <summary>
+        /// Switch that makes the privacy settings of the Dev section replace the choice of the user.
+        /// </summary>
+        public static readonly SettingDefinition PrivacyDevOverrideSetting = SettingDefinition.CreateSwitch("privacy_dev_override", "Ustawienia Dev nadpisują ustawienia użytkownika", false, "Gdy włączone, o zaokrąglaniu położenia decydują wyłącznie ustawienia z tej karty (rozmiar siatki, zaokrąglanie promienia, powiększanie promienia i logowanie), a wybór z sekcji Prywatność w Zaawansowanych jest ignorowany. Gdy wyłączone, ustawienia z tej karty nie mają żadnego wpływu i obowiązuje tylko wybór użytkownika.");
+
+        /// <summary>
+        /// Own size of the grid in kilometers, used while <see cref="PrivacyDevOverrideSetting"/> is on.
+        /// </summary>
+        public static readonly SettingDefinition PrivacyCustomGridSetting = SettingDefinition.CreateSlider("privacy_custom_grid_km", "Własny rozmiar siatki", 5.0, 0.0, 50.0, 1.0, " km", "Rozmiar siatki, do której przyciągany jest środek zapytania, gdy włączone jest nadpisywanie ustawień użytkownika. Zero oznacza dokładne położenie, bez zaokrąglania.");
+
+        /// <summary>
+        /// Step to which the query radius is rounded up; the stored value is the index in <see cref="PrivacyRadiusStepsKilometers"/>.
+        /// </summary>
+        public static readonly SettingDefinition PrivacyRadiusStepSetting = SettingDefinition.CreateChoice("privacy_radius_step", "Zaokrąglanie promienia w górę", 0, "Zaokrągla promień zapytania w górę do wielokrotności wybranej wartości. Dzięki temu serwer nie widzi dokładnego poziomu przybliżenia mapy. Większy promień oznacza większą odpowiedź.", "Bez zaokrąglania", "10 km", "20 km", "50 km");
+
+        /// <summary>
+        /// Switch that enlarges the query radius by the largest possible shift of the center.
+        /// </summary>
+        public static readonly SettingDefinition PrivacyExpandRadiusSetting = SettingDefinition.CreateSwitch("privacy_expand_radius", "Powiększaj promień o błąd zaokrąglenia", true, "Po przyciągnięciu środka do siatki promień rośnie o największą możliwą odległość między prawdziwym a wysłanym środkiem, żeby widoczny obszar był w całości pokryty. Wyłączenie pokazuje, co dzieje się bez tego: przy brzegu ekranu mogą brakować samolotów.");
+
+        /// <summary>
+        /// Switch that writes every aircraft query with the real and the sent position to the developer log.
+        /// </summary>
+        public static readonly SettingDefinition PrivacyLogSetting = SettingDefinition.CreateSwitch("privacy_log_requests", "Loguj wysyłane współrzędne w Dev logu", false, "Każde zapytanie o samoloty trafia do Dev logu jako informacja z prawdziwym położeniem i położeniem wysłanym do serwera. Pozwala sprawdzić działanie zaokrąglania. Uwaga: log zawiera wtedy Twoje prawdziwe położenie, więc nie udostępniaj go innym, dopóki ten przełącznik jest włączony. Wpisy widać przy poziomie logowania „Wszystko”.");
+
+        /// <summary>
         /// All settings in display order.
         /// </summary>
         public static readonly IReadOnlyList<SettingDefinition> All = new List<SettingDefinition>
@@ -308,6 +349,32 @@ namespace AdsbCarMap.Settings
             DevLogLevelSetting,
             DevLogMaxEntriesSetting,
             DevLogDeduplicateSetting,
+            PrivacyPrecisionSetting,
+            PrivacyDevOverrideSetting,
+            PrivacyCustomGridSetting,
+            PrivacyRadiusStepSetting,
+            PrivacyExpandRadiusSetting,
+            PrivacyLogSetting,
+        };
+
+        /// <summary>
+        /// Settings of the privacy section available to every user. They share one section on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> PrivacySettings = new List<SettingDefinition>
+        {
+            PrivacyPrecisionSetting,
+        };
+
+        /// <summary>
+        /// Advanced privacy settings of the Dev section. They share one section on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> PrivacyDevSettings = new List<SettingDefinition>
+        {
+            PrivacyDevOverrideSetting,
+            PrivacyCustomGridSetting,
+            PrivacyRadiusStepSetting,
+            PrivacyExpandRadiusSetting,
+            PrivacyLogSetting,
         };
 
         /// <summary>
@@ -491,6 +558,24 @@ namespace AdsbCarMap.Settings
         /// Whether identical events of the developer log are merged into one entry.
         /// </summary>
         public static bool DevLogDeduplicate => Get(DevLogDeduplicateSetting) >= 0.5;
+
+        /// <summary>
+        /// How precisely the position of the map is sent to the aircraft servers: the settings of the Dev section while they override the user, otherwise only the size chosen by the user.
+        /// </summary>
+        public static PrivacyOptions PrivacyOptions
+        {
+            get
+            {
+                if (Get(PrivacyDevOverrideSetting) >= 0.5)
+                {
+                    double radiusStepKilometers = PrivacyRadiusStepsKilometers[Math.Clamp((int)Get(PrivacyRadiusStepSetting), 0, PrivacyRadiusStepsKilometers.Count - 1)];
+
+                    return new PrivacyOptions(Get(PrivacyCustomGridSetting), radiusStepKilometers / CoordinateRounder.KilometersPerNauticalMile, Get(PrivacyExpandRadiusSetting) >= 0.5, Get(PrivacyLogSetting) >= 0.5);
+                }
+
+                return new PrivacyOptions(PrivacyGridKilometers[Math.Clamp((int)Get(PrivacyPrecisionSetting), 0, PrivacyGridKilometers.Count - 1)]);
+            }
+        }
 
         /// <summary>
         /// Whether the airports are drawn on the map.

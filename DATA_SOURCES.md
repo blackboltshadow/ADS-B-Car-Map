@@ -65,7 +65,7 @@ Core (AdsbCarMap.DataSources)             tylko kontrakt, bez logiki; nie zna ni
 ```
 Sources\
   AdsbCarMap.DataSources\                 Core: Interfaces\, Models\
-  AdsbCarMap.DataSources.Management\      RateLimiting\, Selection\
+  AdsbCarMap.DataSources.Management\      RateLimiting\, Selection\, Privacy\
   AdsbLol\       AdsbCarMap.DataSources.AdsbLol        + .Tests
   AirplanesLive\ AdsbCarMap.DataSources.AirplanesLive  + .Tests
   Adsbdb\        AdsbCarMap.DataSources.Adsbdb         + .Tests   (trasy lotów i dane samolotu)
@@ -76,6 +76,10 @@ Tests\
 ```
 
 Aplikacja zna tylko interfejsy; konkretne klienty składa `AppServices`. Nowe źródło: katalog `Sources\{Nazwa}` z projektem `AdsbCarMap.DataSources.{Nazwa}` (własny model, własny parser, referencja tylko do Core) i projektem `.Tests`, wpis w `AppServices`, w `AdsbCarMap.csproj` oraz nazwa w opcjach `DataSourceSetting` (musi być taka sama jak `Name` źródła).
+
+## Prywatność położenia
+
+Zapytanie o samoloty niesie środek widocznej mapy (przy śledzeniu GPS: położenie użytkownika) i promień. `PrivacyAircraftSource` (`Privacy\` w zarządcy) opakowuje `FallbackAircraftSource`, więc każde źródło, także dodane w przyszłości, dostaje już zaokrąglone zapytanie i nic o tym nie wie. Środek jest przyciągany do siatki o rozmiarze w km (deterministycznie, bez szumu, którego dałoby się pozbyć uśrednianiem), a promień rośnie o połowę przekątnej komórki z zapasem 10%. Przesunięcie jest stałe, nie wyliczane z faktycznej odległości, bo inaczej promień zdradzałby położenie w komórce. Opcje czyta się przy każdym zapytaniu (`Func<PrivacyOptions>`). Lokalnie (odległości, wyszukiwanie, `LiveTraffic`) używane jest prawdziwe położenie. Zapytania po kodzie ICAO i znaku wywoławczym nie mają współrzędnych.
 
 ## Pamięć informacji o lotach (cache)
 
@@ -95,6 +99,5 @@ Pozycje samolotów zmieniają się co kilka sekund, więc ich nie zapamiętujemy
 - Pokazanie użytkownikowi, które źródło aktualnie odpowiada (`LastUsedSourceName` jest gotowe, brakuje miejsca w UI).
 - Ikona limitu 429 nadal opiera się na `LiveTraffic.ReportRateLimited`, a nie na stanie z `IDataSource`.
 - Pokazanie użytkownikowi, które źródło tras odpowiedziało.
-- Zaokrąglanie współrzędnych wysyłanych do API (prywatność).
 - Licencje: przed udostępnieniem aplikacji poza własny użytek ponownie sprawdzić warunki airplanes.live, adsb.lol i adsb.fi; ewentualnie przejść na FlyItalyADSB lub umowę z dostawcą.
 - Nie potwierdzono limitów zapytań airplanes.live ani adsb.lol. Strona porównawcza podaje je jako „nie podano”.

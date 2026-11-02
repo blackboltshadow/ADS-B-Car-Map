@@ -1,3 +1,4 @@
+using AdsbCarMap.DataSources.Management.Privacy;
 using AdsbCarMap.DataSources.Management.Selection;
 
 namespace AdsbCarMap.Data
@@ -11,11 +12,13 @@ namespace AdsbCarMap.Data
     /// <param name="DetailsEnabled">Whether the data of the selected aircraft is completed from the other sources.</param>
     /// <param name="FlightInfoMaxAge">How long after the last sighting the information about a flight or aircraft is kept.</param>
     /// <param name="Report">Receives the failures of the sources and the switches between them, or null when nobody listens.</param>
+    /// <param name="Privacy">Returns how precisely the position is sent to the aircraft sources, or null to send the exact position.</param>
     public sealed record DataCompositionSettings(
         Func<IReadOnlyList<string>> AircraftOrder,
         Func<IReadOnlyList<string>> RouteOrder,
         Func<bool> FallbackEnabled,
         Func<bool> DetailsEnabled,
         Func<TimeSpan> FlightInfoMaxAge,
-        Action<SourceEventKind, string, Exception?>? Report = null);
+        Action<SourceEventKind, string, Exception?>? Report = null,
+        Func<PrivacyOptions>? Privacy = null);
 }

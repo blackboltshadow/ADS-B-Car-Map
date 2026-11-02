@@ -38,7 +38,7 @@ namespace AdsbCarMap.Services
         /// <summary>
         /// Aircraft source used by the maps: the sources in the order chosen in the settings, the next one asked when the previous one gives no data.
         /// </summary>
-        public static IAircraftSource Adsb => Composition.Value.AircraftSources;
+        public static IAircraftSource Adsb => Composition.Value.PositionSource;
 
         /// <summary>
         /// Completes the type, the full type name and the registration of the selected aircraft from the other sources.
@@ -120,7 +120,8 @@ namespace AdsbCarMap.Services
                 () => AppSettings.DataSourceFallback,
                 () => AppSettings.DataSourceDetails,
                 () => AppSettings.FlightInfoMaxAge,
-                ReportSourceEvent);
+                ReportSourceEvent,
+                () => AppSettings.PrivacyOptions);
 
             return new DataComposition(System.IO.Path.Combine(Android.App.Application.Context.CacheDir!.AbsolutePath, "flights"), address => CreateHttpClient(address), Airports, settings);
         }

@@ -1,5 +1,8 @@
 root = true
 
+[*]
+end_of_line = lf
+
 [*.cs]
 # Namespaces are declared with braces: namespace Xyz { ... }, not file-scoped.
 csharp_style_namespace_declarations = block_scoped:suggestion

@@ -2,8 +2,10 @@ using AdsbCarMap.DataSources.Adsbdb;
 using AdsbCarMap.DataSources.AdsbLol;
 using AdsbCarMap.DataSources.AirplanesLive;
 using AdsbCarMap.DataSources.Hexdb;
+using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Management.Enrichment;
+using AdsbCarMap.DataSources.Management.Privacy;
 using AdsbCarMap.DataSources.Management.RateLimiting;
 using AdsbCarMap.DataSources.Management.Selection;
 using AdsbCarMap.DataSources.Models;
@@ -58,6 +60,8 @@ namespace AdsbCarMap.Data
                 settings.FallbackEnabled,
                 settings.Report);
 
+            PositionSource = new PrivacyAircraftSource(AircraftSources, settings.Privacy ?? (() => PrivacyOptions.Exact), settings.Report);
+
             RateLimitedRouteSource adsbdb = new RateLimitedRouteSource(new AdsbdbClient(adsbdbHttp));
             RateLimitedRouteSource hexdb = new RateLimitedRouteSource(new AirportCompletingRouteSource(new HexdbClient(hexdbHttp), airports));
 
@@ -75,6 +79,11 @@ namespace AdsbCarMap.Data
         /// Aircraft position sources queried in the order chosen in the settings; the next source is asked when the previous one gives no data (if enabled in the settings).
         /// </summary>
         public FallbackAircraftSource AircraftSources { get; }
+
+        /// <summary>
+        /// The aircraft sources as the maps query them: the position of every query is rounded as the privacy settings say. Queries by the ICAO address carry no position and go straight to <see cref="AircraftSources"/>.
+        /// </summary>
+        public IAircraftSource PositionSource { get; }
 
         /// <summary>
         /// Flight route sources queried in the order chosen in the settings; the next source is asked when the previous one does not know the flight or gives no answer (if enabled in the settings).

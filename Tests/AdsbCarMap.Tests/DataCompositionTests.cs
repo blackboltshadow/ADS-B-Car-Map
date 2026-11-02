@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using AdsbCarMap.Data;
+using AdsbCarMap.DataSources.Management.Privacy;
 using AdsbCarMap.DataSources.Models;
 using Xunit;
 
@@ -42,12 +43,18 @@ namespace AdsbCarMap.Tests
             /// </summary>
             public List<string> Hosts { get; } = new List<string>();
 
+            /// <summary>
+            /// Paths of the requests in the order in which they were made.
+            /// </summary>
+            public List<string> Paths { get; } = new List<string>();
+
             /// <inheritdoc />
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 lock (Hosts)
                 {
                     Hosts.Add(request.RequestUri!.Host);
+                    Paths.Add(request.RequestUri.AbsolutePath);
                 }
 
                 return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
@@ -121,6 +128,38 @@ namespace AdsbCarMap.Tests
             Assert.Throws<ArgumentNullException>(() => new DataComposition(directory, address => new HttpClient(), null!, settings));
             Assert.Throws<ArgumentNullException>(() => new DataComposition(directory, address => new HttpClient(), new AirportDatabase(), null!));
             Assert.Throws<ArgumentException>(() => new DataComposition(string.Empty, address => new HttpClient(), new AirportDatabase(), settings));
+        }
+
+        /// <summary>
+        /// The position source sends the rounded position of the privacy settings, while the sources used directly are not touched.
+        /// </summary>
+        [Fact]
+        public async Task PositionSource_SendsRoundedPosition()
+        {
+            RecordingHandler handler = new RecordingHandler(HttpStatusCode.OK, "{\"ac\":[]}");
+            DataCompositionSettings settings = new DataCompositionSettings(() => new List<string> { "adsb.lol" }, () => new List<string>(), () => false, () => true, () => TimeSpan.FromMinutes(10), null, () => new PrivacyOptions(10.0));
+            DataComposition composition = new DataComposition(directory, address => new HttpClient(handler) { BaseAddress = new Uri(address) }, new AirportDatabase(), settings);
+
+            await composition.PositionSource.GetAircraftAsync(52.123456, 21.654321, 50.0, CancellationToken.None);
+            await composition.AircraftSources.GetAircraftAsync(52.123456, 21.654321, 50.0, CancellationToken.None);
+
+            Assert.StartsWith("/v2/point/52.12346/21.65432/", handler.Paths[1]);
+            Assert.DoesNotContain("52.12346", handler.Paths[0]);
+            Assert.DoesNotContain("21.65432", handler.Paths[0]);
+        }
+
+        /// <summary>
+        /// Without privacy settings the position source sends the exact position.
+        /// </summary>
+        [Fact]
+        public async Task PositionSource_WithoutPrivacySettings_SendsExactPosition()
+        {
+            RecordingHandler handler = new RecordingHandler(HttpStatusCode.OK, "{\"ac\":[]}");
+            DataComposition composition = Create(handler, new List<string> { "adsb.lol" }, new List<string>());
+
+            await composition.PositionSource.GetAircraftAsync(52.123456, 21.654321, 50.0, CancellationToken.None);
+
+            Assert.Equal("/v2/point/52.12346/21.65432/50", handler.Paths[0]);
         }
 
         /// <summary>

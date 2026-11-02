@@ -246,6 +246,7 @@ namespace AdsbCarMap.Activities
             LinearLayout advanced = CreateAggregate(root, "Zaawansowane", "advanced", 20f);
             GetTitledCard("dataSource", "Źródło danych", advanced);
             GetTitledCard("routeSources", "Źródła tras", advanced);
+            GetTitledCard("privacy", "Prywatność", advanced);
             GetTitledCard("refresh", "Odświeżanie", advanced);
             GetTitledCard("tiles", "Pobieranie kafelków", advanced);
             GetTileCacheCard(advanced);
@@ -260,6 +261,7 @@ namespace AdsbCarMap.Activities
             developer.AddView(version);
 
             GetDevLogCard(developer);
+            GetTitledCard("privacyDev", "Prywatność (zaawansowane)", developer);
 
             foreach (SettingDefinition definition in AppSettings.All.OrderBy(item => item == AppSettings.AltitudeUnitSetting ? 0 : 1))
             {
@@ -321,6 +323,8 @@ namespace AdsbCarMap.Activities
             {
                 devLogCard.AddView(CreateResetButton("Przywróć domyślny Dev log", AppSettings.DevLogSettings, "Przywrócono domyślne ustawienia Dev logu"));
             }
+
+            titledCards["privacyDev"].AddView(CreateResetButton("Przywróć domyślną prywatność", AppSettings.PrivacyDevSettings.Concat(AppSettings.PrivacySettings).ToList(), "Przywrócono domyślne ustawienia prywatności"));
 
             if (trailCard != null)
             {
@@ -577,6 +581,16 @@ namespace AdsbCarMap.Activities
             if (AppSettings.DataSourceSettings.Contains(definition))
             {
                 return titledCards["dataSource"];
+            }
+
+            if (AppSettings.PrivacySettings.Contains(definition))
+            {
+                return titledCards["privacy"];
+            }
+
+            if (AppSettings.PrivacyDevSettings.Contains(definition))
+            {
+                return titledCards["privacyDev"];
             }
 
             if (AppSettings.AirportSettings.Contains(definition))
@@ -1720,7 +1734,7 @@ namespace AdsbCarMap.Activities
                 });
             }
 
-            if (definition == AppSettings.AirportTypesSetting || definition == AppSettings.ShowAirportsSetting || definition == AppSettings.ShowOnlyFavoriteAirportsSetting || definition == AppSettings.DataSourceFallbackSetting)
+            if (definition == AppSettings.AirportTypesSetting || definition == AppSettings.ShowAirportsSetting || definition == AppSettings.ShowOnlyFavoriteAirportsSetting || definition == AppSettings.DataSourceFallbackSetting || definition == AppSettings.PrivacyDevOverrideSetting)
             {
                 UpdateDependentControls();
             }
@@ -1748,6 +1762,21 @@ namespace AdsbCarMap.Activities
         {
             sourceOrderView?.SetFallbackEnabled(AppSettings.DataSourceFallback);
             routeOrderView?.SetFallbackEnabled(AppSettings.DataSourceFallback);
+
+            bool privacyOverride = AppSettings.Get(AppSettings.PrivacyDevOverrideSetting) >= 0.5;
+
+            if (titledCards.TryGetValue("privacyDev", out LinearLayout? privacyDevCard))
+            {
+                for (int index = 2; index < privacyDevCard.ChildCount - 1; index++)
+                {
+                    View? child = privacyDevCard.GetChildAt(index);
+
+                    if (child != null)
+                    {
+                        ApplyGroupState(child, privacyOverride);
+                    }
+                }
+            }
 
             bool airportsOn = AppSettings.ShowAirports;
 
