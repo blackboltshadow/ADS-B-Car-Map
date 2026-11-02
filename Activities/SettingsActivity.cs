@@ -114,6 +114,16 @@ namespace AdsbCarMap.Activities
         private Button? developerDataButton;
 
         /// <summary>
+        /// Card shared by the settings of the developer log, created with the screen.
+        /// </summary>
+        private LinearLayout? devLogCard;
+
+        /// <summary>
+        /// Button that opens the developer log screen.
+        /// </summary>
+        private Button? devLogButton;
+
+        /// <summary>
         /// List of the aircraft sources in the order in which they are asked, or null before the screen is built.
         /// </summary>
         private SourceOrderView? sourceOrderView;
@@ -182,6 +192,7 @@ namespace AdsbCarMap.Activities
         {
             base.OnResume();
             UpdateDeveloperDataButton();
+            UpdateDevLogButton();
         }
 
         /// <summary>
@@ -248,6 +259,8 @@ namespace AdsbCarMap.Activities
             version.SetPadding(Dp(4), Dp(4), 0, Dp(4));
             developer.AddView(version);
 
+            GetDevLogCard(developer);
+
             foreach (SettingDefinition definition in AppSettings.All.OrderBy(item => item == AppSettings.AltitudeUnitSetting ? 0 : 1))
             {
                 switch (definition.Kind)
@@ -304,6 +317,11 @@ namespace AdsbCarMap.Activities
                 flightCacheCard.AddView(CreateResetButton("Przywróć domyślny czas przechowywania", AppSettings.FlightCacheSettings, "Przywrócono domyślny czas przechowywania informacji o lotach"));
             }
 
+            if (devLogCard != null)
+            {
+                devLogCard.AddView(CreateResetButton("Przywróć domyślny Dev log", AppSettings.DevLogSettings, "Przywrócono domyślne ustawienia Dev logu"));
+            }
+
             if (trailCard != null)
             {
                 trailCard.AddView(CreateResetButton("Przywróć domyślne ślady", AppSettings.TrailSettings, "Przywrócono domyślne ustawienia śladów"));
@@ -315,6 +333,7 @@ namespace AdsbCarMap.Activities
                 (trailCard, "trails"),
                 (tileCacheCard, "tileCache"),
                 (flightCacheCard, "flightCache"),
+                (devLogCard, "devLog"),
                 (aircraftIconCard, "aircraftIcons"),
                 (altitudeScaleCard, "altitudeScale"),
             };
@@ -578,6 +597,11 @@ namespace AdsbCarMap.Activities
             if (AppSettings.FlightCacheSettings.Contains(definition))
             {
                 return GetFlightCacheCard(container);
+            }
+
+            if (AppSettings.DevLogSettings.Contains(definition))
+            {
+                return GetDevLogCard(container);
             }
 
             if (AppSettings.TileCacheSettings.Contains(definition))
@@ -1486,6 +1510,43 @@ namespace AdsbCarMap.Activities
             UpdateFlightCacheUsage();
 
             return card;
+        }
+
+        /// <summary>
+        /// Returns the card shared by the settings of the developer log, creating it at the first call. Besides the settings it has a button that opens the log with the current number of entries.
+        /// </summary>
+        /// <param name="root">Container in which the card is created.</param>
+        /// <returns>The shared card.</returns>
+        private LinearLayout GetDevLogCard(LinearLayout root)
+        {
+            if (devLogCard != null)
+            {
+                return devLogCard;
+            }
+
+            LinearLayout card = CreateCard(root);
+
+            TextView title = new TextView(this);
+            title.Text = "Dev log";
+            StyleTitle(title);
+            card.AddView(title);
+
+            devLogButton = new Button(this);
+            devLogButton.Click += (sender, args) => StartActivity(new Android.Content.Intent(this, typeof(DevLogActivity)));
+            card.AddView(devLogButton);
+
+            devLogCard = card;
+            UpdateDevLogButton();
+
+            return card;
+        }
+
+        /// <summary>
+        /// Refreshes the text of the button that opens the developer log with the number of entries.
+        /// </summary>
+        private void UpdateDevLogButton()
+        {
+            devLogButton?.Text = "Otwórz Dev log (" + DevLogger.Store.Log.Count + ")";
         }
 
         /// <summary>

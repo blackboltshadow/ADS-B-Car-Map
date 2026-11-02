@@ -1,3 +1,4 @@
+using AdsbCarMap.Services;
 using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Models;
@@ -274,7 +275,7 @@ namespace AdsbCarMap.Data
                     catch (Exception exception) when (exception is HttpRequestException || exception is OperationCanceledException || exception is JsonException)
                     {
                         retryAfterUtc[key] = DateTime.UtcNow + RetryDelay;
-                        Log.Warn(LogTag, "Pobieranie trasy " + key + " nie powiodło się: " + exception.Message);
+                        DevLogger.Warn(LogTag, "Pobieranie trasy lotu nie powiodło się", exception);
                     }
                     finally
                     {

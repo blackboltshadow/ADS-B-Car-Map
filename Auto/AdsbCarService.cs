@@ -1,3 +1,4 @@
+using AdsbCarMap.Services;
 using Android.App;
 using Android.Content;
 using AndroidX.Car.App;
@@ -18,6 +19,15 @@ namespace AdsbCarMap.Auto
         /// Tag used in the Android logs.
         /// </summary>
         private const string LogTag = "AdsbCarMap";
+
+        /// <summary>
+        /// Starts reporting the exceptions that nothing handles to the developer log.
+        /// </summary>
+        public override void OnCreate()
+        {
+            base.OnCreate();
+            DevLogger.InstallGlobalHandlers();
+        }
 
         /// <summary>
         /// Returns the validator that decides which hosts may connect. Only the hosts from the allowlist are accepted: the development list in Debug builds and the release list in Release builds (see Resources/values/allowed_hosts.xml). A Debug build also writes to the log whether the installed hosts match the list.

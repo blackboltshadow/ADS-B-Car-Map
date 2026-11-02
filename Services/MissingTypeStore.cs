@@ -59,7 +59,7 @@ namespace AdsbCarMap.Services
             }
             catch (Exception exception)
             {
-                Android.Util.Log.Warn(LogTag, "Wczytanie listy brakujących typów nie powiodło się: " + exception.Message);
+                DevLogger.Warn(LogTag, "Wczytanie listy brakujących typów nie powiodło się", exception);
             }
         }
 
@@ -111,7 +111,7 @@ namespace AdsbCarMap.Services
                 }
                 catch (Exception exception)
                 {
-                    Android.Util.Log.Warn(LogTag, "Usunięcie listy brakujących typów nie powiodło się: " + exception.Message);
+                    DevLogger.Warn(LogTag, "Usunięcie listy brakujących typów nie powiodło się", exception);
                 }
             }
         }
@@ -138,7 +138,7 @@ namespace AdsbCarMap.Services
                 }
                 catch (Exception exception)
                 {
-                    Android.Util.Log.Warn(LogTag, "Zapis listy brakujących typów nie powiodł się: " + exception.Message);
+                    DevLogger.Warn(LogTag, "Zapis listy brakujących typów nie powiodł się", exception);
                 }
             }
         }

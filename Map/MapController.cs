@@ -832,7 +832,7 @@ namespace AdsbCarMap.Map
 
                 if (!lockTaken)
                 {
-                    Log.Warn(LogTag, "Rysowanie klatki nie zakończyło się w czasie, powierzchnia zwolniona bez czekania.");
+                    DevLogger.Warn(LogTag, "Rysowanie klatki nie zakończyło się w czasie, powierzchnia zwolniona bez czekania.");
                 }
             }
             finally
@@ -1847,7 +1847,7 @@ namespace AdsbCarMap.Map
                 }
                 catch (Exception exception)
                 {
-                    Log.Warn(LogTag, "Uzupełnianie danych samolotu nie powiodło się: " + exception.Message);
+                    DevLogger.Warn(LogTag, "Uzupełnianie danych samolotu nie powiodło się", exception);
                 }
             }, cancellationToken);
         }
@@ -1929,13 +1929,13 @@ namespace AdsbCarMap.Map
                 }
                 catch (RateLimitedException exception)
                 {
-                    Log.Warn(LogTag, "Pobieranie samolotów wstrzymane: " + exception.Message);
+                    DevLogger.Warn(LogTag, "Pobieranie samolotów wstrzymane przez źródło (limit zapytań lub odmowa dostępu)");
                     delay = exception.RetryAfter > delay ? exception.RetryAfter : delay;
                     LiveTraffic.ReportRateLimited(delay);
                 }
                 catch (Exception exception)
                 {
-                    Log.Warn(LogTag, "Pobieranie samolotów nie powiodło się: " + exception);
+                    DevLogger.Warn(LogTag, "Pobieranie samolotów nie powiodło się", exception);
                     Volatile.Write(ref aircraftFailed, 1);
                 }
 
@@ -2061,7 +2061,7 @@ namespace AdsbCarMap.Map
                 }
                 catch (Java.Lang.Exception exception)
                 {
-                    Log.Warn(LogTag, "Rysowanie klatki nie powiodło się: " + exception.Message);
+                    DevLogger.Warn(LogTag, "Rysowanie klatki nie powiodło się: " + exception.Message);
 
                     if ((exception.Message ?? string.Empty).Contains("already locked", StringComparison.OrdinalIgnoreCase))
                     {
@@ -3138,7 +3138,7 @@ namespace AdsbCarMap.Map
                     {
                         if (data != null)
                         {
-                            Log.Warn(LogTag, string.Format(CultureInfo.InvariantCulture, "Dekodowanie kafelka {0}/{1}/{2} nie powiodło się, bajtów: {3}", key.Zoom, key.X, key.Y, data.Length));
+                            DevLogger.Warn(LogTag, "Dekodowanie pobranego kafelka nie powiodło się");
                         }
 
                         Interlocked.Increment(ref tilesFailedCount);
@@ -3147,7 +3147,7 @@ namespace AdsbCarMap.Map
                 }
                 catch (Exception exception)
                 {
-                    Log.Warn(LogTag, string.Format(CultureInfo.InvariantCulture, "Kafelek {0}/{1}/{2}: nieoczekiwany wyjątek: {3}", key.Zoom, key.X, key.Y, exception));
+                    DevLogger.Error(LogTag, "Nieoczekiwany wyjątek przy wczytywaniu kafelka", exception);
                     Interlocked.Increment(ref tilesFailedCount);
                     tileRetryAfterUtc[key] = DateTime.UtcNow + AppSettings.TileRetry;
                 }

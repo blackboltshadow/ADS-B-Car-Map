@@ -64,6 +64,11 @@ namespace AdsbCarMap.Activities
         private const int MenuFiltersId = 5;
 
         /// <summary>
+        /// Identifier of the menu item that opens the developer log.
+        /// </summary>
+        private const int MenuDevLogId = 6;
+
+        /// <summary>
         /// Diameter of the badge with the number of filters in dp.
         /// </summary>
         private const int BadgeSizeDp = 20;
@@ -160,6 +165,7 @@ namespace AdsbCarMap.Activities
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            DevLogger.InstallGlobalHandlers();
             Log.Info(LogTag, "MainActivity.OnCreate");
 
             controller.SelectionChanged += () => RunOnUiThread(OnSelectionChanged);
@@ -691,6 +697,12 @@ namespace AdsbCarMap.Activities
             popup.Menu?.Add(0, MenuFiltersId, 2, "Filtry samolotów");
             popup.Menu?.Add(0, MenuSettingsId, 3, "Ustawienia");
             popup.Menu?.Add(0, MenuAboutId, 4, "O aplikacji");
+
+            if (AppSettings.ShowDevLog)
+            {
+                popup.Menu?.Add(0, MenuDevLogId, 5, "Dev log");
+            }
+
             popup.MenuItemClick += (sender, args) =>
             {
                 args.Handled = true;
@@ -714,6 +726,10 @@ namespace AdsbCarMap.Activities
                 else if (args.Item?.ItemId == MenuAboutId)
                 {
                     StartActivity(new Intent(this, typeof(AboutActivity)));
+                }
+                else if (args.Item?.ItemId == MenuDevLogId)
+                {
+                    StartActivity(new Intent(this, typeof(DevLogActivity)));
                 }
             };
             popup.Show();

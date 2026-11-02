@@ -272,5 +272,26 @@ namespace AdsbCarMap.DataSources.Management.Tests
 
             Assert.Null(await single.GetRouteAsync("LOT1", CancellationToken.None));
         }
+
+        /// <summary>
+        /// A route source that fails or answers with a limit response is reported, a source that does not know the flight is not.
+        /// </summary>
+        [Fact]
+        public async Task Report_GetsFailuresOfRouteSources()
+        {
+            List<(SourceEventKind Kind, string Message, Exception? Exception)> events = new List<(SourceEventKind, string, Exception?)>();
+            StubRouteSource limited = new StubRouteSource("a") { Failure = new RateLimitedException(TimeSpan.FromSeconds(5)) };
+            StubRouteSource failing = new StubRouteSource("b") { Failure = new HttpRequestException("boom") };
+            StubRouteSource unknown = new StubRouteSource("c");
+            FallbackRouteSource source = new FallbackRouteSource(new List<RateLimitedRouteSource> { Wrap(limited), Wrap(failing), Wrap(unknown) }, () => new List<string> { "a", "b", "c" }, () => true, (SourceEventKind kind, string message, Exception? exception) => events.Add((kind, message, exception)));
+
+            FlightRoute? route = await source.GetRouteAsync("LOT281", CancellationToken.None);
+
+            Assert.Null(route);
+            Assert.Equal(2, events.Count);
+            Assert.Equal("Route source a answered with a limit response (429), paused", events[0].Message);
+            Assert.Equal("Route source b failed (HttpRequestException)", events[1].Message);
+            Assert.All(events, (item) => Assert.Equal(SourceEventKind.Failure, item.Kind));
+        }
     }
 }

@@ -205,7 +205,7 @@ namespace AdsbCarMap.Activities
             }
             catch (Exception exception) when (exception is HttpRequestException || exception is System.OperationCanceledException || exception is JsonException)
             {
-                Log.Warn(LogTag, "Pobieranie samolotów w oknie wyszukiwania nie powiodło się: " + exception.Message);
+                DevLogger.Warn(LogTag, "Pobieranie samolotów w oknie wyszukiwania nie powiodło się", exception);
             }
             finally
             {

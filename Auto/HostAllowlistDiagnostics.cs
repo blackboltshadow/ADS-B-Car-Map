@@ -1,3 +1,4 @@
+using AdsbCarMap.Services;
 using System.Globalization;
 using System.Security.Cryptography;
 using Android.Content;
@@ -28,7 +29,7 @@ namespace AdsbCarMap.Auto
 
                 if (parts.Length != 2)
                 {
-                    Android.Util.Log.Error(LogTag, "Host allowlist: malformed entry '" + entry + "'");
+                    DevLogger.Error(LogTag, "Host allowlist: malformed entry '" + entry + "'");
                     continue;
                 }
 
@@ -46,7 +47,7 @@ namespace AdsbCarMap.Auto
                 }
                 else
                 {
-                    Android.Util.Log.Warn(LogTag, "Host allowlist: " + package + " is installed but its certificate does NOT match the list. Digests of the installed host: " + string.Join(", ", installedDigests));
+                    DevLogger.Warn(LogTag, "Host allowlist: " + package + " is installed but its certificate does NOT match the list. Digests of the installed host: " + string.Join(", ", installedDigests));
                 }
             }
         }

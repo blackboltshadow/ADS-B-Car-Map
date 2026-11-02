@@ -90,7 +90,7 @@ namespace AdsbCarMap.Services
             }
             catch (Java.Lang.Exception exception)
             {
-                Log.Warn(LogTag, "Nie udało się uruchomić usługi lokalizacji: " + exception.Message);
+                DevLogger.Warn(LogTag, "Nie udało się uruchomić usługi lokalizacji: " + exception.Message);
 
                 lock (ClientsLock)
                 {
@@ -172,7 +172,7 @@ namespace AdsbCarMap.Services
             }
             catch (Exception exception)
             {
-                Log.Warn(LogTag, "Nie udało się przejść na pierwszy plan: " + exception.Message);
+                DevLogger.Warn(LogTag, "Nie udało się przejść na pierwszy plan: " + exception.Message);
             }
 
             bool stopNow;

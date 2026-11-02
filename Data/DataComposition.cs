@@ -55,7 +55,8 @@ namespace AdsbCarMap.Data
             AircraftSources = new FallbackAircraftSource(
                 new List<IRateLimitedAircraftSource> { new RateLimitedAircraftSource(new AdsbLolClient(adsbLolHttp)), new RateLimitedAircraftSource(new AirplanesLiveClient(airplanesLiveHttp)) },
                 settings.AircraftOrder,
-                settings.FallbackEnabled);
+                settings.FallbackEnabled,
+                settings.Report);
 
             RateLimitedRouteSource adsbdb = new RateLimitedRouteSource(new AdsbdbClient(adsbdbHttp));
             RateLimitedRouteSource hexdb = new RateLimitedRouteSource(new AirportCompletingRouteSource(new HexdbClient(hexdbHttp), airports));
@@ -63,7 +64,8 @@ namespace AdsbCarMap.Data
             RouteSources = new FallbackRouteSource(
                 new List<IRateLimitedRouteSource> { adsbdb, new RateLimitedRouteSource(new AdsbLolRouteClient(adsbLolHttp)), hexdb },
                 settings.RouteOrder,
-                settings.FallbackEnabled);
+                settings.FallbackEnabled,
+                settings.Report);
 
             Enricher = new AircraftEnricher(AircraftSources, new List<IRateLimitedSource> { adsbdb, hexdb }, settings.DetailsEnabled, AircraftMemory);
             Keeper = new FlightCacheKeeper(RouteMemory, AircraftMemory);

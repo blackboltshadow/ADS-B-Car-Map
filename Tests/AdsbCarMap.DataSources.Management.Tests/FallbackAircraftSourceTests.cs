@@ -252,5 +252,54 @@ namespace AdsbCarMap.DataSources.Management.Tests
             Assert.Equal("b", result[0].Hex);
             Assert.Equal(0, first.Calls);
         }
+
+        /// <summary>
+        /// A limit response and the switch to another source are reported with the same text every time.
+        /// </summary>
+        [Fact]
+        public async Task Report_GetsLimitResponseAndSourceChange()
+        {
+            List<(SourceEventKind Kind, string Message, Exception? Exception)> events = new List<(SourceEventKind, string, Exception?)>();
+            StubSource first = new StubSource("a");
+            StubSource second = new StubSource("b");
+            FallbackAircraftSource source = new FallbackAircraftSource(new List<IRateLimitedAircraftSource> { first, second }, () => new List<string> { "a" }, () => true, (SourceEventKind kind, string message, Exception? exception) => events.Add((kind, message, exception)));
+
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+            Assert.Empty(events);
+
+            first.Failure = new RateLimitedException(TimeSpan.FromSeconds(5));
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+
+            Assert.Equal(2, events.Count);
+            Assert.Equal(SourceEventKind.Failure, events[0].Kind);
+            Assert.Equal("Aircraft source a answered with a limit response (429), paused", events[0].Message);
+            Assert.Null(events[0].Exception);
+            Assert.Equal(SourceEventKind.Information, events[1].Kind);
+            Assert.Equal("Aircraft source changed from a to b", events[1].Message);
+        }
+
+        /// <summary>
+        /// A network failure is reported with its exception, and with no listener the fallback still works.
+        /// </summary>
+        [Fact]
+        public async Task Report_NetworkFailure_PassesException()
+        {
+            List<(SourceEventKind Kind, string Message, Exception? Exception)> events = new List<(SourceEventKind, string, Exception?)>();
+            HttpRequestException failure = new HttpRequestException("boom");
+            StubSource first = new StubSource("a") { Failure = failure };
+            StubSource second = new StubSource("b");
+            FallbackAircraftSource source = new FallbackAircraftSource(new List<IRateLimitedAircraftSource> { first, second }, () => new List<string> { "a" }, () => true, (SourceEventKind kind, string message, Exception? exception) => events.Add((kind, message, exception)));
+
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+
+            Assert.Equal("Aircraft source a failed (HttpRequestException)", events[0].Message);
+            Assert.Same(failure, events[0].Exception);
+
+            FallbackAircraftSource silent = Create(new StubSource("a") { Failure = new HttpRequestException("boom") }, new StubSource("b"), "a");
+
+            IReadOnlyList<Aircraft> result = await silent.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+
+            Assert.Equal("b", result[0].Hex);
+        }
     }
 }

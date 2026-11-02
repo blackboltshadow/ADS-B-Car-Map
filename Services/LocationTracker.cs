@@ -113,7 +113,7 @@ namespace AdsbCarMap.Services
                 }
                 catch (Java.Lang.SecurityException exception)
                 {
-                    Log.Warn(LogTag, "Brak uprawnienia do lokalizacji: " + exception.Message);
+                    DevLogger.Warn(LogTag, "Brak uprawnienia do lokalizacji: " + exception.Message);
                     locationManager.RemoveUpdates(this);
                     LocationForegroundService.Stop();
                     return false;

@@ -1,6 +1,7 @@
 using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.Enrichment;
 using AdsbCarMap.DataSources.Management.Caching;
+using AdsbCarMap.DataSources.Management.Selection;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Settings;
@@ -118,9 +119,28 @@ namespace AdsbCarMap.Services
                 () => AppSettings.RouteSourceOrder,
                 () => AppSettings.DataSourceFallback,
                 () => AppSettings.DataSourceDetails,
-                () => AppSettings.FlightInfoMaxAge);
+                () => AppSettings.FlightInfoMaxAge,
+                ReportSourceEvent);
 
             return new DataComposition(System.IO.Path.Combine(Android.App.Application.Context.CacheDir!.AbsolutePath, "flights"), address => CreateHttpClient(address), Airports, settings);
+        }
+
+        /// <summary>
+        /// Passes an event of the data sources to the developer log.
+        /// </summary>
+        /// <param name="kind">Kind of the event.</param>
+        /// <param name="message">Description of the event.</param>
+        /// <param name="exception">Exception that caused the event, or null.</param>
+        private static void ReportSourceEvent(SourceEventKind kind, string message, Exception? exception)
+        {
+            if (kind == SourceEventKind.Information)
+            {
+                DevLogger.Info("DataSources", message);
+            }
+            else
+            {
+                DevLogger.Warn("DataSources", message, exception);
+            }
         }
 
         /// <summary>

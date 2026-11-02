@@ -1,3 +1,4 @@
+using AdsbCarMap.Services;
 using System.Globalization;
 using System.Text;
 using Android.Util;
@@ -62,7 +63,7 @@ namespace AdsbCarMap.Data
             }
             catch (Exception exception)
             {
-                Log.Warn(LogTag, "Wczytanie lotnisk nie powiodło się: " + exception.Message);
+                DevLogger.Error(LogTag, "Wczytanie lotnisk nie powiodło się", exception);
             }
         }
 

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using AdsbCarMap.Data;
 using AdsbCarMap.DataSources.Adsbdb;
 using AdsbCarMap.DataSources.AdsbLol;
 using AdsbCarMap.DataSources.Hexdb;
@@ -239,6 +240,26 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition AltitudeUnitSetting = SettingDefinition.CreateChoice("altitude_unit", "Jednostka wysokości", 0, "Jednostka, w której pokazywana jest wysokość samolotów w całej aplikacji, na telefonie i w Android Auto: na etykietach, w wynikach wyszukiwania, na karcie i w popupie samolotu, w legendzie oraz w skali kolorów. Metry to m i km, stopy to ft, a poziom lotu (FL) to wysokość w setkach stóp, np. FL350 to 35 000 ft. Karta samolotu pokazuje dodatkowo wartość w drugiej jednostce.", "Metry (m, km)", "Stopy (ft)", "Poziom lotu (FL)");
 
         /// <summary>
+        /// Switch that shows the "Dev log" item in the menu.
+        /// </summary>
+        public static readonly SettingDefinition ShowDevLogSetting = SettingDefinition.CreateSwitch("show_dev_log", "Pokaż Dev log w menu", false, "Dodaje do menu głównego pozycję „Dev log” pod „O aplikacji”. Zbieranie zdarzeń działa niezależnie od tego przełącznika, on tylko pokazuje lub ukrywa ekran z logiem. Log służy do przekazania twórcy informacji, co w aplikacji nie działa jak powinno.");
+
+        /// <summary>
+        /// Least severe kind of event that is written to the developer log.
+        /// </summary>
+        public static readonly SettingDefinition DevLogLevelSetting = SettingDefinition.CreateChoice("dev_log_level", "Poziom logowania", 1, "Które zdarzenia trafiają do Dev logu. „Tylko błędy” to nieobsłużone wyjątki i awarie. „Błędy i ostrzeżenia” dodają zdarzenia, po których aplikacja radzi sobie dalej, np. nieudane pobranie kafelka, limit zapytań (429) lub odmowę serwera. „Wszystko” dodaje także informacje, np. przełączenie na zapasowe źródło danych. Zmiana działa od następnego zdarzenia, zapisanych wpisów nie usuwa.", "Tylko błędy", "Błędy i ostrzeżenia", "Wszystko");
+
+        /// <summary>
+        /// Maximum number of entries kept in the developer log; the stored value is the index in <see cref="DevLog.MaxEntriesOptions"/>.
+        /// </summary>
+        public static readonly SettingDefinition DevLogMaxEntriesSetting = SettingDefinition.CreateChoice("dev_log_max_entries", "Długość logu", 2, "Ile wpisów Dev log przechowuje. Po przekroczeniu limitu najstarsze wpisy są usuwane. Zmniejszenie limitu od razu usuwa nadmiar.", DevLog.MaxEntriesOptions.Select((int count) => count + " wpisów").ToArray());
+
+        /// <summary>
+        /// Switch that merges identical events of the developer log into one entry with a counter.
+        /// </summary>
+        public static readonly SettingDefinition DevLogDeduplicateSetting = SettingDefinition.CreateSwitch("dev_log_deduplicate", "Łącz powtarzające się wpisy", true, "Identyczne zdarzenia (ten sam poziom, miejsce, opis i wyjątek) są zapisywane jako jeden wpis z licznikiem i czasem pierwszego oraz ostatniego wystąpienia, dzięki czemu powtarzający się błąd nie zapełnia logu. Po wyłączeniu każde zdarzenie jest osobnym wpisem, co pozwala zobaczyć dokładną kolejność zdarzeń, ale log zapełnia się szybciej.");
+
+        /// <summary>
         /// All settings in display order.
         /// </summary>
         public static readonly IReadOnlyList<SettingDefinition> All = new List<SettingDefinition>
@@ -283,6 +304,21 @@ namespace AdsbCarMap.Settings
             DataSourceDetailsSetting,
             RouteSourceSetting,
             MapDimSetting,
+            ShowDevLogSetting,
+            DevLogLevelSetting,
+            DevLogMaxEntriesSetting,
+            DevLogDeduplicateSetting,
+        };
+
+        /// <summary>
+        /// Settings of the developer log. They share one section on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> DevLogSettings = new List<SettingDefinition>
+        {
+            ShowDevLogSetting,
+            DevLogLevelSetting,
+            DevLogMaxEntriesSetting,
+            DevLogDeduplicateSetting,
         };
 
         /// <summary>
@@ -345,6 +381,11 @@ namespace AdsbCarMap.Settings
         /// Whether the settings have already been loaded.
         /// </summary>
         private static bool loaded;
+
+        /// <summary>
+        /// Raised after the settings were saved or restored to the defaults, so that the parts of the application that copy a setting can read it again.
+        /// </summary>
+        public static event Action? Saved;
 
         /// <summary>
         /// Interval between aircraft requests.
@@ -430,6 +471,26 @@ namespace AdsbCarMap.Settings
         /// Opacity of the black layer that dims the map tiles.
         /// </summary>
         public static int MapDim => (int)Get(MapDimSetting);
+
+        /// <summary>
+        /// Whether the menu has the "Dev log" item.
+        /// </summary>
+        public static bool ShowDevLog => Get(ShowDevLogSetting) >= 0.5;
+
+        /// <summary>
+        /// Least severe kind of event that is written to the developer log.
+        /// </summary>
+        public static DevLogLevel DevLogMinimumLevel => DevLog.GetMinimumLevel((int)Get(DevLogLevelSetting));
+
+        /// <summary>
+        /// Maximum number of entries kept in the developer log.
+        /// </summary>
+        public static int DevLogMaxEntries => DevLog.GetMaxEntries((int)Get(DevLogMaxEntriesSetting));
+
+        /// <summary>
+        /// Whether identical events of the developer log are merged into one entry.
+        /// </summary>
+        public static bool DevLogDeduplicate => Get(DevLogDeduplicateSetting) >= 0.5;
 
         /// <summary>
         /// Whether the airports are drawn on the map.
@@ -656,6 +717,7 @@ namespace AdsbCarMap.Settings
             }
 
             editor?.Apply();
+            Saved?.Invoke();
         }
 
         /// <summary>
@@ -673,6 +735,8 @@ namespace AdsbCarMap.Settings
             {
                 Values[definition.Key] = definition.DefaultValue;
             }
+
+            Saved?.Invoke();
         }
 
         /// <summary>

@@ -11,5 +11,8 @@
 	<application android:label="ADS-B Car Map" android:icon="@drawable/ic_launcher" android:allowBackup="false">
 		<meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
 		<meta-data android:name="androidx.car.app.minCarApiLevel" android:value="1" />
+		<provider android:name="androidx.core.content.FileProvider" android:authorities="com.blackboltshadow.adsbcarmap.fileprovider" android:exported="false" android:grantUriPermissions="true">
+			<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+		</provider>
 	</application>
 </manifest>

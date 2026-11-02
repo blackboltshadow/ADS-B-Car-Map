@@ -28,6 +28,7 @@
     <Compile Include="..\..\Data\AircraftTypeTable.cs" Link="Linked\AircraftTypeTable.cs" />
     <Compile Include="..\..\Data\MissingTypeEntry.cs" Link="Linked\MissingTypeEntry.cs" />
     <Compile Include="..\..\Data\MissingTypeLog.cs" Link="Linked\MissingTypeLog.cs" />
+    <Compile Include="..\..\Data\DevLog.cs" Link="Linked\DevLog.cs" />
     <Compile Include="..\..\Data\FilterResult.cs" Link="Linked\FilterResult.cs" />
     <Compile Include="..\..\Data\FilterField.cs" Link="Linked\FilterField.cs" />
     <Compile Include="..\..\Data\FilterNode.cs" Link="Linked\FilterNode.cs" />

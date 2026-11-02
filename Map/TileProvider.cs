@@ -1,3 +1,4 @@
+using AdsbCarMap.Services;
 using System.Globalization;
 using Android.Util;
 
@@ -131,7 +132,7 @@ namespace AdsbCarMap.Map
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Log.Warn(LogTag, "Kafelek " + url + " zwrócił kod " + (int)response.StatusCode);
+                    DevLogger.Warn(LogTag, "Serwer kafelków zwrócił kod " + (int)response.StatusCode);
                     return stale;
                 }
 
@@ -147,7 +148,7 @@ namespace AdsbCarMap.Map
             }
             catch (Exception exception) when (exception is HttpRequestException || (exception is OperationCanceledException && !cancellationToken.IsCancellationRequested))
             {
-                Log.Warn(LogTag, "Pobieranie kafelka " + url + " nie powiodło się: " + exception.Message);
+                DevLogger.Warn(LogTag, "Pobieranie kafelka nie powiodło się (" + exception.GetType().Name + "): " + exception.Message);
                 return stale;
             }
         }

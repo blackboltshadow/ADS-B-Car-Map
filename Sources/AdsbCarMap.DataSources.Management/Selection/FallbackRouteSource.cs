@@ -26,16 +26,23 @@ namespace AdsbCarMap.DataSources.Management.Selection
         private readonly Func<bool> fallbackEnabled;
 
         /// <summary>
+        /// Receives the failures of the sources: the kind, a description that is the same for the same event, and the exception if there was one. Null when nobody listens.
+        /// </summary>
+        private readonly Action<SourceEventKind, string, Exception?>? report;
+
+        /// <summary>
         /// Creates the source.
         /// </summary>
         /// <param name="sources">Sources in the order of registration, used for the sources that the order does not name.</param>
         /// <param name="order">Returns the names of the sources in the order of preference; unknown names are ignored and sources that are not named come last.</param>
         /// <param name="fallbackEnabled">Returns whether the other sources may be asked when the first one gives no route.</param>
-        public FallbackRouteSource(IEnumerable<IRateLimitedRouteSource> sources, Func<IReadOnlyList<string>> order, Func<bool> fallbackEnabled)
+        /// <param name="report">Receives the failures of the sources, or null.</param>
+        public FallbackRouteSource(IEnumerable<IRateLimitedRouteSource> sources, Func<IReadOnlyList<string>> order, Func<bool> fallbackEnabled, Action<SourceEventKind, string, Exception?>? report = null)
         {
             registry = new DataSourceRegistry<IRateLimitedRouteSource>(sources);
             this.order = order;
             this.fallbackEnabled = fallbackEnabled;
+            this.report = report;
         }
 
         /// <summary>
@@ -91,10 +98,12 @@ namespace AdsbCarMap.DataSources.Management.Selection
                 catch (RateLimitedException exception)
                 {
                     shortestWait = Shorter(shortestWait, exception.RetryAfter);
+                    report?.Invoke(SourceEventKind.Failure, "Route source " + source.Name + " answered with a limit response (429), paused", null);
                 }
                 catch (Exception exception) when (exception is HttpRequestException || exception is JsonException)
                 {
                     hardFailure = exception;
+                    report?.Invoke(SourceEventKind.Failure, "Route source " + source.Name + " failed (" + exception.GetType().Name + ")", exception);
                 }
             }
 
