@@ -1,12 +1,12 @@
 namespace AdsbCarMap.Data
 {
     /// <summary>
-    /// Punkt śladu samolotu zapamiętany z jednej z wcześniejszych odpowiedzi API.
+    /// Aircraft trail point remembered from one of the earlier API responses.
     /// </summary>
-    /// <param name="Latitude">Szerokość geograficzna.</param>
-    /// <param name="Longitude">Długość geograficzna.</param>
-    /// <param name="AltitudeFeet">Wysokość barometryczna w stopach lub null, gdy nieznana.</param>
-    /// <param name="OnGround">Informacja, czy samolot był na ziemi.</param>
-    /// <param name="TimestampUtc">Moment pomiaru pozycji, w UTC.</param>
+    /// <param name="Latitude">Latitude.</param>
+    /// <param name="Longitude">Longitude.</param>
+    /// <param name="AltitudeFeet">Barometric altitude in feet, or null when unknown.</param>
+    /// <param name="OnGround">Whether the aircraft was on the ground.</param>
+    /// <param name="TimestampUtc">Moment of the position measurement, in UTC.</param>
     public readonly record struct TrailPoint(double Latitude, double Longitude, int? AltitudeFeet, bool OnGround, DateTime TimestampUtc);
 }

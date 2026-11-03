@@ -1,37 +1,37 @@
 namespace AdsbCarMap.Map
 {
     /// <summary>
-    /// Przeliczenia współrzędnych w odwzorowaniu Web Mercator (EPSG:3857) dla kafelków 256 px.
+    /// Coordinate conversions in the Web Mercator projection (EPSG:3857) for 256 px tiles.
     /// </summary>
     public static class WebMercator
     {
         /// <summary>
-        /// Bok kafelka w pikselach.
+        /// Tile side length in pixels.
         /// </summary>
         public const int TileSize = 256;
 
         /// <summary>
-        /// Największa szerokość geograficzna możliwa do przedstawienia w odwzorowaniu.
+        /// Largest latitude that can be represented in the projection.
         /// </summary>
         public const double MaxLatitude = 85.05112878;
 
         /// <summary>
-        /// Zwraca bok całej mapy świata w pikselach dla poziomu przybliżenia.
+        /// Returns the side length of the whole world map in pixels for a zoom level.
         /// </summary>
-        /// <param name="zoom">Poziom przybliżenia.</param>
-        /// <returns>Bok mapy świata w pikselach.</returns>
+        /// <param name="zoom">Zoom level.</param>
+        /// <returns>Side length of the world map in pixels.</returns>
         public static double WorldSize(double zoom)
         {
             return TileSize * Math.Pow(2.0, zoom);
         }
 
         /// <summary>
-        /// Zamienia współrzędne geograficzne na piksele mapy świata.
+        /// Converts geographic coordinates to world map pixels.
         /// </summary>
-        /// <param name="latitude">Szerokość geograficzna.</param>
-        /// <param name="longitude">Długość geograficzna.</param>
-        /// <param name="zoom">Poziom przybliżenia.</param>
-        /// <returns>Pozycja w pikselach liczona od lewego górnego rogu mapy świata.</returns>
+        /// <param name="latitude">Latitude.</param>
+        /// <param name="longitude">Longitude.</param>
+        /// <param name="zoom">Zoom level.</param>
+        /// <returns>Position in pixels measured from the top left corner of the world map.</returns>
         public static (double X, double Y) LatLonToWorldPixel(double latitude, double longitude, double zoom)
         {
             double size = WorldSize(zoom);
@@ -45,12 +45,12 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Zamienia piksele mapy świata na współrzędne geograficzne. Długość nie jest normalizowana.
+        /// Converts world map pixels to geographic coordinates. The longitude is not normalized.
         /// </summary>
-        /// <param name="x">Pozycja w poziomie w pikselach.</param>
-        /// <param name="y">Pozycja w pionie w pikselach.</param>
-        /// <param name="zoom">Poziom przybliżenia.</param>
-        /// <returns>Szerokość i długość geograficzna.</returns>
+        /// <param name="x">Horizontal position in pixels.</param>
+        /// <param name="y">Vertical position in pixels.</param>
+        /// <param name="zoom">Zoom level.</param>
+        /// <returns>Latitude and longitude.</returns>
         public static (double Latitude, double Longitude) WorldPixelToLatLon(double x, double y, double zoom)
         {
             double size = WorldSize(zoom);
@@ -63,16 +63,16 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Rzutuje punkt geograficzny na ekran o podanym środku. Wybiera kopię świata najbliższą środkowi.
+        /// Projects a geographic point onto a screen with the given center. Picks the copy of the world closest to the center.
         /// </summary>
-        /// <param name="latitude">Szerokość geograficzna punktu.</param>
-        /// <param name="longitude">Długość geograficzna punktu.</param>
-        /// <param name="centerLatitude">Szerokość geograficzna środka ekranu.</param>
-        /// <param name="centerLongitude">Długość geograficzna środka ekranu.</param>
-        /// <param name="zoom">Poziom przybliżenia.</param>
-        /// <param name="width">Szerokość ekranu w pikselach.</param>
-        /// <param name="height">Wysokość ekranu w pikselach.</param>
-        /// <returns>Pozycja punktu na ekranie w pikselach.</returns>
+        /// <param name="latitude">Latitude of the point.</param>
+        /// <param name="longitude">Longitude of the point.</param>
+        /// <param name="centerLatitude">Latitude of the screen center.</param>
+        /// <param name="centerLongitude">Longitude of the screen center.</param>
+        /// <param name="zoom">Zoom level.</param>
+        /// <param name="width">Screen width in pixels.</param>
+        /// <param name="height">Screen height in pixels.</param>
+        /// <returns>Position of the point on the screen in pixels.</returns>
         public static (float X, float Y) ProjectToScreen(double latitude, double longitude, double centerLatitude, double centerLongitude, double zoom, int width, int height)
         {
             double size = WorldSize(zoom);
@@ -96,14 +96,14 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Wyznacza kafelki pokrywające ekran o podanym środku.
+        /// Finds the tiles covering a screen with the given center.
         /// </summary>
-        /// <param name="centerLatitude">Szerokość geograficzna środka ekranu.</param>
-        /// <param name="centerLongitude">Długość geograficzna środka ekranu.</param>
-        /// <param name="zoom">Poziom przybliżenia.</param>
-        /// <param name="width">Szerokość ekranu w pikselach.</param>
-        /// <param name="height">Wysokość ekranu w pikselach.</param>
-        /// <returns>Lista kafelków z pozycjami na ekranie.</returns>
+        /// <param name="centerLatitude">Latitude of the screen center.</param>
+        /// <param name="centerLongitude">Longitude of the screen center.</param>
+        /// <param name="zoom">Zoom level.</param>
+        /// <param name="width">Screen width in pixels.</param>
+        /// <param name="height">Screen height in pixels.</param>
+        /// <returns>List of tiles with their screen positions.</returns>
         public static List<VisibleTile> GetVisibleTiles(double centerLatitude, double centerLongitude, int zoom, int width, int height)
         {
             List<VisibleTile> result = new List<VisibleTile>();

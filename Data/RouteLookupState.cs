@@ -1,32 +1,32 @@
 namespace AdsbCarMap.Data
 {
     /// <summary>
-    /// Stan wyszukiwania trasy lotu dla znaku wywoławczego.
+    /// State of the flight route lookup for a callsign.
     /// </summary>
     public enum RouteLookupState
     {
         /// <summary>
-        /// Brak znaku wywoławczego, więc trasy nie da się wyszukać.
+        /// There is no callsign, so the route cannot be looked up.
         /// </summary>
         NotApplicable,
 
         /// <summary>
-        /// Trasa czeka w kolejce albo jest właśnie pobierana.
+        /// The route is queued or being downloaded right now.
         /// </summary>
         Pending,
 
         /// <summary>
-        /// Trasa jest znana.
+        /// The route is known.
         /// </summary>
         Found,
 
         /// <summary>
-        /// Serwer odpowiedział, że nie zna trasy tego lotu.
+        /// The server answered that it does not know the route of this flight.
         /// </summary>
         NotFound,
 
         /// <summary>
-        /// Ostatnie pobranie nie powiodło się, np. z powodu błędu sieci lub limitu zapytań.
+        /// The last download failed, e.g. because of a network error or the request limit.
         /// </summary>
         Failed,
     }

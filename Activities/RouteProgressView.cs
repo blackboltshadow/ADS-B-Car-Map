@@ -5,44 +5,44 @@ using Android.Views;
 namespace AdsbCarMap.Activities
 {
     /// <summary>
-    /// Pasek postępu lotu: linia od lotniska wylotu do lotniska przylotu ze znacznikiem samolotu w miejscu, które już przeleciał.
+    /// Flight progress bar: a line from the departure airport to the arrival airport with an aircraft marker at the point already flown.
     /// </summary>
     public sealed class RouteProgressView : View
     {
         /// <summary>
-        /// Pędzel całej trasy.
+        /// Paint of the whole route.
         /// </summary>
         private readonly Paint trackPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Pędzel przebytej części trasy.
+        /// Paint of the part of the route already flown.
         /// </summary>
         private readonly Paint progressPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Pędzel kółek lotnisk.
+        /// Paint of the airport circles.
         /// </summary>
         private readonly Paint endPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Pędzel znacznika samolotu.
+        /// Paint of the aircraft marker.
         /// </summary>
         private readonly Paint markerPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
-        /// Kształt znacznika samolotu skierowanego w prawo.
+        /// Shape of the aircraft marker pointing right.
         /// </summary>
         private readonly Android.Graphics.Path markerPath = new Android.Graphics.Path();
 
         /// <summary>
-        /// Przebyta część trasy od 0 do 1.
+        /// Fraction of the route already flown, from 0 to 1.
         /// </summary>
         private float progress;
 
         /// <summary>
-        /// Tworzy widok paska postępu.
+        /// Creates the progress bar view.
         /// </summary>
-        /// <param name="context">Kontekst Activity.</param>
+        /// <param name="context">Activity context.</param>
         public RouteProgressView(Context context) : base(context)
         {
             trackPaint.Color = Color.Argb(110, 255, 255, 255);
@@ -59,9 +59,9 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Ustawia przebytą część trasy i odświeża widok.
+        /// Sets the fraction of the route flown and refreshes the view.
         /// </summary>
-        /// <param name="value">Przebyta część trasy, ograniczana do zakresu od 0 do 1.</param>
+        /// <param name="value">Fraction of the route flown, limited to the range from 0 to 1.</param>
         public void SetProgress(float value)
         {
             progress = Math.Clamp(value, 0.0f, 1.0f);
@@ -69,9 +69,9 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Rysuje linię trasy, kółka lotnisk i znacznik samolotu.
+        /// Draws the route line, the airport circles and the aircraft marker.
         /// </summary>
-        /// <param name="canvas">Płótno widoku.</param>
+        /// <param name="canvas">View canvas.</param>
         protected override void OnDraw(Canvas? canvas)
         {
             if (canvas == null)

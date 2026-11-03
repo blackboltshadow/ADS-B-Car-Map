@@ -6,30 +6,30 @@ using Android.Views;
 namespace AdsbCarMap.Map
 {
     /// <summary>
-    /// Widok mapy na telefonie, który rysuje mapę przez ten sam kontroler co Android Auto i obsługuje przesuwanie oraz gest przybliżania.
+    /// Phone map view that draws the map through the same controller as Android Auto and handles panning and the pinch gesture.
     /// </summary>
     public sealed class PhoneMapView : SurfaceView, ISurfaceHolderCallback
     {
         /// <summary>
-        /// Kontroler stanu mapy i rysowania.
+        /// Map state and drawing controller.
         /// </summary>
         private readonly MapController controller;
 
         /// <summary>
-        /// Detektor gestu przesuwania.
+        /// Pan gesture detector.
         /// </summary>
         private readonly GestureDetector gestureDetector;
 
         /// <summary>
-        /// Detektor gestu przybliżania dwoma palcami.
+        /// Two-finger pinch gesture detector.
         /// </summary>
         private readonly ScaleGestureDetector scaleDetector;
 
         /// <summary>
-        /// Tworzy widok powiązany z kontrolerem mapy.
+        /// Creates a view bound to the map controller.
         /// </summary>
-        /// <param name="context">Kontekst Activity.</param>
-        /// <param name="controller">Kontroler mapy.</param>
+        /// <param name="context">Activity context.</param>
+        /// <param name="controller">Map controller.</param>
         public PhoneMapView(Context context, MapController controller) : base(context)
         {
             this.controller = controller;
@@ -39,20 +39,20 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Nie wymaga działania, rysowanie rusza po ustaleniu rozmiaru powierzchni.
+        /// Needs no action, drawing starts once the surface size is known.
         /// </summary>
-        /// <param name="holder">Uchwyt powierzchni.</param>
+        /// <param name="holder">Surface holder.</param>
         public void SurfaceCreated(ISurfaceHolder holder)
         {
         }
 
         /// <summary>
-        /// Uruchamia rysowanie mapy na powierzchni o ustalonym rozmiarze.
+        /// Starts drawing the map on a surface of a known size.
         /// </summary>
-        /// <param name="holder">Uchwyt powierzchni.</param>
-        /// <param name="format">Format powierzchni.</param>
-        /// <param name="width">Szerokość w pikselach.</param>
-        /// <param name="height">Wysokość w pikselach.</param>
+        /// <param name="holder">Surface holder.</param>
+        /// <param name="format">Surface format.</param>
+        /// <param name="width">Width in pixels.</param>
+        /// <param name="height">Height in pixels.</param>
         public void SurfaceChanged(ISurfaceHolder holder, Format format, int width, int height)
         {
             Android.Views.Surface? surface = holder.Surface;
@@ -68,9 +68,9 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Zatrzymuje rysowanie, gdy powierzchnia jest niszczona.
+        /// Stops drawing when the surface is destroyed.
         /// </summary>
-        /// <param name="holder">Uchwyt powierzchni.</param>
+        /// <param name="holder">Surface holder.</param>
         public void SurfaceDestroyed(ISurfaceHolder holder)
         {
             Android.Views.Surface? destroyed = holder.Surface;
@@ -82,10 +82,10 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Przekazuje dotyk do detektorów gestów.
+        /// Passes the touch to the gesture detectors.
         /// </summary>
-        /// <param name="e">Zdarzenie dotyku.</param>
-        /// <returns>Zawsze true, aby otrzymywać kolejne zdarzenia gestu.</returns>
+        /// <param name="e">Touch event.</param>
+        /// <returns>Always true, to keep receiving the following gesture events.</returns>
         public override bool OnTouchEvent(MotionEvent? e)
         {
             if (e == null)
@@ -109,32 +109,32 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Przekazuje gest przesuwania do kontrolera mapy.
+        /// Passes the pan gesture to the map controller.
         /// </summary>
         private sealed class PanListener : GestureDetector.SimpleOnGestureListener
         {
             /// <summary>
-            /// Kontroler stanu mapy.
+            /// Map state controller.
             /// </summary>
             private readonly MapController controller;
 
             /// <summary>
-            /// Tworzy listener powiązany z kontrolerem mapy.
+            /// Creates a listener bound to the map controller.
             /// </summary>
-            /// <param name="controller">Kontroler mapy.</param>
+            /// <param name="controller">Map controller.</param>
             public PanListener(MapController controller)
             {
                 this.controller = controller;
             }
 
             /// <summary>
-            /// Przesuwa mapę o wartość gestu.
+            /// Moves the map by the gesture amount.
             /// </summary>
-            /// <param name="e1">Zdarzenie rozpoczynające gest.</param>
-            /// <param name="e2">Bieżące zdarzenie.</param>
-            /// <param name="distanceX">Przesunięcie w poziomie od poprzedniego zdarzenia.</param>
-            /// <param name="distanceY">Przesunięcie w pionie od poprzedniego zdarzenia.</param>
-            /// <returns>Zawsze true.</returns>
+            /// <param name="e1">Event that started the gesture.</param>
+            /// <param name="e2">Current event.</param>
+            /// <param name="distanceX">Horizontal movement since the previous event.</param>
+            /// <param name="distanceY">Vertical movement since the previous event.</param>
+            /// <returns>Always true.</returns>
             public override bool OnScroll(MotionEvent? e1, MotionEvent e2, float distanceX, float distanceY)
             {
                 controller.Pan(distanceX, distanceY);
@@ -143,10 +143,10 @@ namespace AdsbCarMap.Map
             }
 
             /// <summary>
-            /// Przekazuje dotknięcie do kontrolera, który zaznacza samolot w pobliżu palca.
+            /// Passes the tap to the controller, which selects the aircraft near the finger.
             /// </summary>
-            /// <param name="e">Zdarzenie dotknięcia.</param>
-            /// <returns>Zawsze true.</returns>
+            /// <param name="e">Tap event.</param>
+            /// <returns>Always true.</returns>
             public override bool OnSingleTapUp(MotionEvent e)
             {
                 controller.Tap(e.GetX(), e.GetY());
@@ -155,13 +155,13 @@ namespace AdsbCarMap.Map
             }
 
             /// <summary>
-            /// Uruchamia bezwładne przesuwanie mapy po szybkim przeciągnięciu.
+            /// Starts the inertial map movement after a quick drag.
             /// </summary>
-            /// <param name="e1">Zdarzenie rozpoczynające gest.</param>
-            /// <param name="e2">Zdarzenie kończące gest.</param>
-            /// <param name="velocityX">Prędkość w poziomie w pikselach na sekundę.</param>
-            /// <param name="velocityY">Prędkość w pionie w pikselach na sekundę.</param>
-            /// <returns>Zawsze true.</returns>
+            /// <param name="e1">Event that started the gesture.</param>
+            /// <param name="e2">Event that ended the gesture.</param>
+            /// <param name="velocityX">Horizontal velocity in pixels per second.</param>
+            /// <param name="velocityY">Vertical velocity in pixels per second.</param>
+            /// <returns>Always true.</returns>
             public override bool OnFling(MotionEvent? e1, MotionEvent e2, float velocityX, float velocityY)
             {
                 controller.Fling(velocityX, velocityY);
@@ -171,29 +171,29 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Przekazuje gest przybliżania do kontrolera mapy.
+        /// Passes the pinch gesture to the map controller.
         /// </summary>
         private sealed class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener
         {
             /// <summary>
-            /// Kontroler stanu mapy.
+            /// Map state controller.
             /// </summary>
             private readonly MapController controller;
 
             /// <summary>
-            /// Tworzy listener powiązany z kontrolerem mapy.
+            /// Creates a listener bound to the map controller.
             /// </summary>
-            /// <param name="controller">Kontroler mapy.</param>
+            /// <param name="controller">Map controller.</param>
             public ScaleListener(MapController controller)
             {
                 this.controller = controller;
             }
 
             /// <summary>
-            /// Zmienia zoom zgodnie ze skalą gestu.
+            /// Changes the zoom according to the gesture scale.
             /// </summary>
-            /// <param name="detector">Detektor gestu.</param>
-            /// <returns>Zawsze true.</returns>
+            /// <param name="detector">Gesture detector.</param>
+            /// <returns>Always true.</returns>
             public override bool OnScale(ScaleGestureDetector detector)
             {
                 controller.Scale(detector.ScaleFactor);

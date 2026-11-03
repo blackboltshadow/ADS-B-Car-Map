@@ -1,17 +1,17 @@
 namespace AdsbCarMap.Data
 {
     /// <summary>
-    /// Obliczenia odległości i kierunku między punktami na kuli ziemskiej.
+    /// Distance and bearing calculations between points on the globe.
     /// </summary>
     public static class GeoMath
     {
         /// <summary>
-        /// Średni promień Ziemi w kilometrach.
+        /// Mean radius of the Earth in kilometers.
         /// </summary>
         private const double EarthRadiusKilometers = 6371.0088;
 
         /// <summary>
-        /// Nazwy 16 kierunków świata co 22,5 stopnia, od północy w prawo.
+        /// Names of the 16 compass directions every 22.5 degrees, clockwise from north.
         /// </summary>
         private static readonly string[] CompassPoints = new string[]
         {
@@ -19,13 +19,13 @@ namespace AdsbCarMap.Data
         };
 
         /// <summary>
-        /// Liczy odległość po kuli ziemskiej między dwoma punktami wzorem haversine.
+        /// Calculates the great-circle distance between two points with the haversine formula.
         /// </summary>
-        /// <param name="latitude1">Szerokość geograficzna pierwszego punktu.</param>
-        /// <param name="longitude1">Długość geograficzna pierwszego punktu.</param>
-        /// <param name="latitude2">Szerokość geograficzna drugiego punktu.</param>
-        /// <param name="longitude2">Długość geograficzna drugiego punktu.</param>
-        /// <returns>Odległość w kilometrach.</returns>
+        /// <param name="latitude1">Latitude of the first point.</param>
+        /// <param name="longitude1">Longitude of the first point.</param>
+        /// <param name="latitude2">Latitude of the second point.</param>
+        /// <param name="longitude2">Longitude of the second point.</param>
+        /// <returns>Distance in kilometers.</returns>
         public static double DistanceKilometers(double latitude1, double longitude1, double latitude2, double longitude2)
         {
             double phi1 = ToRadians(latitude1);
@@ -40,13 +40,13 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Liczy początkowy kurs z pierwszego punktu na drugi.
+        /// Calculates the initial bearing from the first point to the second.
         /// </summary>
-        /// <param name="latitude1">Szerokość geograficzna punktu początkowego.</param>
-        /// <param name="longitude1">Długość geograficzna punktu początkowego.</param>
-        /// <param name="latitude2">Szerokość geograficzna punktu docelowego.</param>
-        /// <param name="longitude2">Długość geograficzna punktu docelowego.</param>
-        /// <returns>Kurs w stopniach od 0 do 360, liczony od północy w prawo.</returns>
+        /// <param name="latitude1">Latitude of the start point.</param>
+        /// <param name="longitude1">Longitude of the start point.</param>
+        /// <param name="latitude2">Latitude of the destination point.</param>
+        /// <param name="longitude2">Longitude of the destination point.</param>
+        /// <returns>Bearing in degrees from 0 to 360, measured clockwise from north.</returns>
         public static double BearingDegrees(double latitude1, double longitude1, double latitude2, double longitude2)
         {
             double phi1 = ToRadians(latitude1);
@@ -60,10 +60,10 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Zamienia kurs na nazwę kierunku świata, np. 47 stopni na "NE".
+        /// Converts a bearing to a compass direction name, e.g. 47 degrees to "NE".
         /// </summary>
-        /// <param name="degrees">Kurs w stopniach.</param>
-        /// <returns>Skrót kierunku świata z 16 możliwych.</returns>
+        /// <param name="degrees">Bearing in degrees.</param>
+        /// <returns>Abbreviation of one of the 16 compass directions.</returns>
         public static string CompassPoint(double degrees)
         {
             int index = (int)Math.Round(((degrees % 360.0) + 360.0) % 360.0 / 22.5) % CompassPoints.Length;
@@ -72,20 +72,20 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Zamienia stopnie na radiany.
+        /// Converts degrees to radians.
         /// </summary>
-        /// <param name="degrees">Kąt w stopniach.</param>
-        /// <returns>Kąt w radianach.</returns>
+        /// <param name="degrees">Angle in degrees.</param>
+        /// <returns>Angle in radians.</returns>
         private static double ToRadians(double degrees)
         {
             return degrees * Math.PI / 180.0;
         }
 
         /// <summary>
-        /// Zamienia radiany na stopnie.
+        /// Converts radians to degrees.
         /// </summary>
-        /// <param name="radians">Kąt w radianach.</param>
-        /// <returns>Kąt w stopniach.</returns>
+        /// <param name="radians">Angle in radians.</param>
+        /// <returns>Angle in degrees.</returns>
         private static double ToDegrees(double radians)
         {
             return radians * 180.0 / Math.PI;

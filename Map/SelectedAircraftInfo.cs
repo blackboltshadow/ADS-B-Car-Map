@@ -4,17 +4,17 @@ using AdsbCarMap.Data;
 namespace AdsbCarMap.Map
 {
     /// <summary>
-    /// Dane głównego zaznaczonego samolotu i pozycji użytkownika, z których składa się karta samolotu.
+    /// Data of the primary selected aircraft and of the user position that the aircraft card is built from.
     /// </summary>
-    /// <param name="Hex">Adres ICAO samolotu.</param>
-    /// <param name="Aircraft">Ostatnie dane samolotu lub null, gdy nie ma go w ostatniej odpowiedzi serwera, np. wyleciał poza zasięg.</param>
-    /// <param name="Latitude">Szacowana bieżąca szerokość geograficzna samolotu. Bez znaczenia, gdy brak danych samolotu.</param>
-    /// <param name="Longitude">Szacowana bieżąca długość geograficzna samolotu. Bez znaczenia, gdy brak danych samolotu.</param>
-    /// <param name="AgeSeconds">Wiek ostatniej odpowiedzi serwera w sekundach.</param>
-    /// <param name="HasUser">Informacja, czy znana jest pozycja użytkownika.</param>
-    /// <param name="UserLatitude">Szerokość geograficzna użytkownika.</param>
-    /// <param name="UserLongitude">Długość geograficzna użytkownika.</param>
-    /// <param name="SelectedCount">Liczba wszystkich zaznaczonych samolotów.</param>
+    /// <param name="Hex">ICAO address of the aircraft.</param>
+    /// <param name="Aircraft">Latest aircraft data, or null when it is not in the last server response, e.g. it flew out of range.</param>
+    /// <param name="Latitude">Estimated current latitude of the aircraft. Meaningless when there is no aircraft data.</param>
+    /// <param name="Longitude">Estimated current longitude of the aircraft. Meaningless when there is no aircraft data.</param>
+    /// <param name="AgeSeconds">Age of the last server response in seconds.</param>
+    /// <param name="HasUser">Whether the user position is known.</param>
+    /// <param name="UserLatitude">Latitude of the user.</param>
+    /// <param name="UserLongitude">Longitude of the user.</param>
+    /// <param name="SelectedCount">Number of all selected aircraft.</param>
     public sealed record SelectedAircraftInfo(
         string Hex,
         Aircraft? Aircraft,

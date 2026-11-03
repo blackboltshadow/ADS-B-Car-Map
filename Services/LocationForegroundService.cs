@@ -9,48 +9,48 @@ using Android.Util;
 namespace AdsbCarMap.Services
 {
     /// <summary>
-    /// Usługa pierwszoplanowa typu location, która utrzymuje dostęp do pozycji, gdy na telefonie nie ma widocznego ekranu aplikacji.
+    /// Foreground service of the location type that keeps position access alive when no application screen is visible on the phone.
     /// </summary>
     [Service(Exported = false, ForegroundServiceType = ForegroundService.TypeLocation)]
     public class LocationForegroundService : Service
     {
         /// <summary>
-        /// Tag używany w logach Androida.
+        /// Tag used in Android logs.
         /// </summary>
         private const string LogTag = "AdsbCarMap";
 
         /// <summary>
-        /// Identyfikator kanału powiadomień usługi.
+        /// Identifier of the service notification channel.
         /// </summary>
         private const string ChannelId = "location_tracking";
 
         /// <summary>
-        /// Identyfikator powiadomienia usługi pierwszoplanowej.
+        /// Identifier of the foreground service notification.
         /// </summary>
         private const int NotificationId = 1001;
 
         /// <summary>
-        /// Blokada chroniąca licznik użytkowników usługi.
+        /// Lock protecting the service user counter.
         /// </summary>
         private static readonly object ClientsLock = new object();
 
         /// <summary>
-        /// Liczba odbiorników pozycji, które korzystają z usługi, np. mapa telefonu i mapa Android Auto.
+        /// Number of position receivers using the service, e.g. the phone map and the Android Auto map.
         /// </summary>
         private static int clientCount;
 
         /// <summary>
-        /// Informacja, że system uruchamia usługę, ale ta jeszcze nie przeszła na pierwszy plan. Zatrzymanie usługi w tym czasie kończy się wyjątkiem systemu.
+        /// Whether the system is starting the service but it has not moved to the foreground yet. Stopping the service in that time ends with a system exception.
         /// </summary>
         private static bool startPending;
 
         /// <summary>
-        /// Informacja, że ostatni użytkownik zakończył korzystanie, zanim usługa przeszła na pierwszy plan, więc usługa ma się zatrzymać zaraz po przejściu.
+        /// Whether the last user finished before the service moved to the foreground, so the service must stop right after the move.
         /// </summary>
         private static bool stopWhenStarted;
 
         /// <summary>
-        /// Zgłasza kolejnego użytkownika i uruchamia usługę pierwszoplanową, jeśli jest pierwszy. Gdy poprzednie uruchomienie jeszcze trwa, anuluje odroczone zatrzymanie. Błąd uruchomienia jest logowany i nie przerywa działania aplikacji.
+        /// Registers another user and starts the foreground service if it is the first. When the previous start is still in progress, cancels the deferred stop. A start failure is logged and does not interrupt the application.
         /// </summary>
         public static void Start()
         {
@@ -100,7 +100,7 @@ namespace AdsbCarMap.Services
         }
 
         /// <summary>
-        /// Zgłasza zakończenie korzystania z usługi i zatrzymuje ją, gdy nie ma już innych użytkowników. Jeśli usługa jeszcze nie przeszła na pierwszy plan, zatrzymanie jest odraczane do tej chwili.
+        /// Reports the end of using the service and stops it when there are no other users. If the service has not moved to the foreground yet, the stop is deferred until then.
         /// </summary>
         public static void Stop()
         {
@@ -133,22 +133,22 @@ namespace AdsbCarMap.Services
         }
 
         /// <summary>
-        /// Usługa nie obsługuje wiązania.
+        /// The service does not support binding.
         /// </summary>
-        /// <param name="intent">Intencja wiązania.</param>
-        /// <returns>Zawsze null.</returns>
+        /// <param name="intent">Binding intent.</param>
+        /// <returns>Always null.</returns>
         public override IBinder? OnBind(Intent? intent)
         {
             return null;
         }
 
         /// <summary>
-        /// Przenosi usługę na pierwszy plan z powiadomieniem o śledzeniu pozycji.
+        /// Moves the service to the foreground with a position tracking notification.
         /// </summary>
-        /// <param name="intent">Intencja uruchamiająca usługę.</param>
-        /// <param name="flags">Flagi uruchomienia.</param>
-        /// <param name="startId">Identyfikator uruchomienia.</param>
-        /// <returns>Tryb bez ponownego uruchamiania po zabiciu procesu.</returns>
+        /// <param name="intent">Intent that started the service.</param>
+        /// <param name="flags">Start flags.</param>
+        /// <param name="startId">Start identifier.</param>
+        /// <returns>Mode without restarting after the process is killed.</returns>
         public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
         {
             Log.Info(LogTag, "LocationForegroundService.OnStartCommand");
@@ -193,7 +193,7 @@ namespace AdsbCarMap.Services
         }
 
         /// <summary>
-        /// Zeruje znacznik trwającego uruchomienia, aby zatrzymanie usługi nie było odraczane w nieskończoność po jej zniszczeniu.
+        /// Clears the in-progress start flag so that stopping the service is not deferred forever after it is destroyed.
         /// </summary>
         public override void OnDestroy()
         {
@@ -206,9 +206,9 @@ namespace AdsbCarMap.Services
         }
 
         /// <summary>
-        /// Tworzy kanał powiadomień, jeśli system go wymaga, i buduje powiadomienie usługi.
+        /// Creates the notification channel if the system requires it and builds the service notification.
         /// </summary>
-        /// <returns>Stałe powiadomienie otwierające ekran telefonu po dotknięciu.</returns>
+        /// <returns>Persistent notification that opens the phone screen when tapped.</returns>
         private Notification BuildNotification()
         {
             Notification.Builder builder;

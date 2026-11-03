@@ -1,10 +1,10 @@
 namespace AdsbCarMap.Map
 {
     /// <summary>
-    /// Kafelek widoczny na ekranie wraz z pozycją jego lewego górnego rogu.
+    /// Tile visible on the screen together with the position of its top left corner.
     /// </summary>
-    /// <param name="Key">Identyfikator kafelka.</param>
-    /// <param name="ScreenX">Pozycja lewej krawędzi na ekranie w pikselach.</param>
-    /// <param name="ScreenY">Pozycja górnej krawędzi na ekranie w pikselach.</param>
+    /// <param name="Key">Tile identifier.</param>
+    /// <param name="ScreenX">Position of the left edge on the screen in pixels.</param>
+    /// <param name="ScreenY">Position of the top edge on the screen in pixels.</param>
     public readonly record struct VisibleTile(TileKey Key, float ScreenX, float ScreenY);
 }

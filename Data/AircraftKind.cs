@@ -1,72 +1,72 @@
 namespace AdsbCarMap.Data
 {
     /// <summary>
-    /// Rodzaj statku powietrznego lub obiektu, od którego zależy kształt ikony na mapie.
+    /// Kind of aircraft or object that determines the shape of the icon on the map.
     /// </summary>
     public enum AircraftKind
     {
         /// <summary>
-        /// Nie da się ustalić rodzaju, rysowana jest ogólna strzałka.
+        /// The kind cannot be determined, a generic arrow is drawn.
         /// </summary>
         Unknown,
 
         /// <summary>
-        /// Odrzutowy samolot pasażerski średniej wielkości.
+        /// Medium-sized passenger jet.
         /// </summary>
         Airliner,
 
         /// <summary>
-        /// Duży samolot szerokokadłubowy lub czterosilnikowy.
+        /// Large wide-body or four-engine aircraft.
         /// </summary>
         Heavy,
 
         /// <summary>
-        /// Mały odrzutowiec, np. biznesowy lub regionalny.
+        /// Small jet, e.g. business or regional.
         /// </summary>
         SmallJet,
 
         /// <summary>
-        /// Samolot turbośmigłowy z prostym skrzydłem, np. regionalny lub transportowy.
+        /// Turboprop aircraft with a straight wing, e.g. regional or transport.
         /// </summary>
         Turboprop,
 
         /// <summary>
-        /// Lekki samolot tłokowy, np. awionetka.
+        /// Light piston aircraft, e.g. a small private plane.
         /// </summary>
         LightPlane,
 
         /// <summary>
-        /// Śmigłowiec.
+        /// Helicopter.
         /// </summary>
         Helicopter,
 
         /// <summary>
-        /// Wojskowy samolot bojowy lub szkolno-bojowy.
+        /// Military fighter or trainer aircraft.
         /// </summary>
         Fighter,
 
         /// <summary>
-        /// Wojskowy samolot transportowy lub tankowiec.
+        /// Military transport aircraft or tanker.
         /// </summary>
         MilitaryTransport,
 
         /// <summary>
-        /// Szybowiec.
+        /// Glider.
         /// </summary>
         Glider,
 
         /// <summary>
-        /// Balon.
+        /// Balloon.
         /// </summary>
         Balloon,
 
         /// <summary>
-        /// Bezzałogowy statek powietrzny.
+        /// Unmanned aircraft.
         /// </summary>
         Drone,
 
         /// <summary>
-        /// Pojazd lub obiekt naziemny, np. wieża albo pojazd lotniskowy.
+        /// Ground vehicle or object, e.g. a tower or an airport vehicle.
         /// </summary>
         Ground,
     }

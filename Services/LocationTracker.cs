@@ -8,53 +8,53 @@ using Android.Util;
 namespace AdsbCarMap.Services
 {
     /// <summary>
-    /// Odbiera aktualizacje pozycji z GPS i sieci oraz przekazuje je przez delegat.
+    /// Receives position updates from GPS and the network and passes them on through a delegate.
     /// </summary>
     public sealed class LocationTracker : Java.Lang.Object, ILocationListener
     {
         /// <summary>
-        /// Tag używany w logach Androida.
+        /// Tag used in Android logs.
         /// </summary>
         private const string LogTag = "AdsbCarMap";
 
         /// <summary>
-        /// Minimalny odstęp czasu między aktualizacjami w milisekundach.
+        /// Minimum time between updates in milliseconds.
         /// </summary>
         private const long MinTimeMilliseconds = 1000;
 
         /// <summary>
-        /// Minimalna zmiana pozycji w metrach wymagana do aktualizacji.
+        /// Minimum position change in meters required for an update.
         /// </summary>
         private const float MinDistanceMeters = 0.0f;
 
         /// <summary>
-        /// Delegat wywoływany po otrzymaniu nowej pozycji, z szerokością i długością geograficzną.
+        /// Delegate called when a new position arrives, with the latitude and longitude.
         /// </summary>
         private readonly System.Action<double, double> onLocationChanged;
 
         /// <summary>
-        /// Menedżer lokalizacji systemu. Null, dopóki śledzenie nie zostanie uruchomione.
+        /// System location manager. Null until tracking is started.
         /// </summary>
         private LocationManager? locationManager;
 
         /// <summary>
-        /// Informacja, czy aktualizacje są aktualnie włączone.
+        /// Whether updates are currently enabled.
         /// </summary>
         private bool isStarted;
 
         /// <summary>
-        /// Tworzy tracker przekazujący pozycje do podanego delegata.
+        /// Creates a tracker that passes positions to the given delegate.
         /// </summary>
-        /// <param name="onLocationChanged">Delegat wywoływany po otrzymaniu pozycji.</param>
+        /// <param name="onLocationChanged">Delegate called when a position arrives.</param>
         public LocationTracker(System.Action<double, double> onLocationChanged)
         {
             this.onLocationChanged = onLocationChanged;
         }
 
         /// <summary>
-        /// Sprawdza, czy aplikacja ma uprawnienie do dokładnej lub przybliżonej lokalizacji.
+        /// Checks whether the application has the permission for precise or approximate location.
         /// </summary>
-        /// <returns>True, gdy przyznano co najmniej jedno z uprawnień lokalizacji.</returns>
+        /// <returns>True when at least one of the location permissions is granted.</returns>
         public static bool HasPermission()
         {
             Context context = Android.App.Application.Context;
@@ -66,9 +66,9 @@ namespace AdsbCarMap.Services
         }
 
         /// <summary>
-        /// Uruchamia usługę pierwszoplanową lokalizacji, włącza aktualizacje pozycji ze wszystkich włączonych dostawców i zgłasza ostatnią znaną pozycję.
+        /// Starts the foreground location service, enables position updates from all enabled providers and reports the last known position.
         /// </summary>
-        /// <returns>True, gdy aktualizacje działają. False, gdy brakuje uprawnienia lub menedżera lokalizacji.</returns>
+        /// <returns>True when updates are running. False when the permission or the location manager is missing.</returns>
         public bool Start()
         {
             if (isStarted)
@@ -126,7 +126,7 @@ namespace AdsbCarMap.Services
         }
 
         /// <summary>
-        /// Wyłącza aktualizacje pozycji i zatrzymuje usługę pierwszoplanową lokalizacji.
+        /// Disables position updates and stops the foreground location service.
         /// </summary>
         public void Stop()
         {
@@ -141,36 +141,36 @@ namespace AdsbCarMap.Services
         }
 
         /// <summary>
-        /// Przekazuje nową pozycję do delegata.
+        /// Passes the new position to the delegate.
         /// </summary>
-        /// <param name="location">Nowa pozycja urządzenia.</param>
+        /// <param name="location">New device position.</param>
         public void OnLocationChanged(Location location)
         {
             onLocationChanged(location.Latitude, location.Longitude);
         }
 
         /// <summary>
-        /// Obsługuje wyłączenie dostawcy lokalizacji. W PoC jest ignorowane.
+        /// Handles a location provider being disabled. Ignored in the proof of concept.
         /// </summary>
-        /// <param name="provider">Nazwa dostawcy.</param>
+        /// <param name="provider">Provider name.</param>
         public void OnProviderDisabled(string provider)
         {
         }
 
         /// <summary>
-        /// Obsługuje włączenie dostawcy lokalizacji. W PoC jest ignorowane.
+        /// Handles a location provider being enabled. Ignored in the proof of concept.
         /// </summary>
-        /// <param name="provider">Nazwa dostawcy.</param>
+        /// <param name="provider">Provider name.</param>
         public void OnProviderEnabled(string provider)
         {
         }
 
         /// <summary>
-        /// Obsługuje zmianę statusu dostawcy. Metoda przestarzała, wymagana przez starsze wersje Androida.
+        /// Handles a provider status change. Deprecated method, required by older Android versions.
         /// </summary>
-        /// <param name="provider">Nazwa dostawcy.</param>
-        /// <param name="status">Nowy status dostawcy.</param>
-        /// <param name="extras">Dodatkowe dane.</param>
+        /// <param name="provider">Provider name.</param>
+        /// <param name="status">New provider status.</param>
+        /// <param name="extras">Additional data.</param>
         public void OnStatusChanged(string? provider, Availability status, Bundle? extras)
         {
         }
