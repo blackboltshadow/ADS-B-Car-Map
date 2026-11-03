@@ -6,7 +6,7 @@ using AdsbCarMap.Settings;
 namespace AdsbCarMap.Services
 {
     /// <summary>
-    /// Checks the alerts without the map. While it is switched on, it keeps the location service with its permanent notification running, downloads the aircraft around the areas of the alerts at a fixed interval and passes them to <see cref="AlertMonitor"/>. It needs the application to be started once after the device boots.
+    /// Checks the alerts without the map. While it is switched on, it keeps the location service with its permanent notification running, downloads the aircraft around the areas of the alerts at a fixed interval and passes them to <see cref="AlertMonitor"/>. After the device boots it is started by <see cref="BootReceiver"/>, unless the user switched that off.
     /// </summary>
     public static class AlertBackgroundRunner
     {
@@ -81,7 +81,7 @@ namespace AdsbCarMap.Services
             lock (SyncRoot)
             {
                 AlertRuleStore store = AppServices.Alerts;
-                bool wanted = store.IsBackgroundEnabled && store.IsEnabled && store.GetActiveRules().Count > 0;
+                bool wanted = AlertBackgroundPolicy.ShouldRun(store.IsBackgroundEnabled, store.IsEnabled, store.GetActiveRules().Count);
 
                 if (!wanted)
                 {

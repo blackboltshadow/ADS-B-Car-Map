@@ -127,6 +127,16 @@ namespace AdsbCarMap.Services
         }
 
         /// <summary>
+        /// Checks whether the application may show notifications. Before Android 13 the permission does not exist.
+        /// </summary>
+        /// <returns>True when the notifications are allowed or the permission is not needed.</returns>
+        public static bool HasNotificationPermission()
+        {
+            return Build.VERSION.SdkInt < BuildVersionCodes.Tiramisu
+                || Application.Context.CheckSelfPermission(Android.Manifest.Permission.PostNotifications) == Android.Content.PM.Permission.Granted;
+        }
+
+        /// <summary>
         /// Shows the notification about a match when the notification permission is granted.
         /// </summary>
         /// <param name="match">Match to report.</param>
@@ -134,8 +144,7 @@ namespace AdsbCarMap.Services
         {
             Context context = Application.Context;
 
-            if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
-                && context.CheckSelfPermission(Android.Manifest.Permission.PostNotifications) != Android.Content.PM.Permission.Granted)
+            if (!HasNotificationPermission())
             {
                 return;
             }

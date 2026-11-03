@@ -19,6 +19,16 @@ namespace AdsbCarMap.Activities
     public class AlertsActivity : Activity
     {
         /// <summary>
+        /// Code of the request for the background location permission.
+        /// </summary>
+        private const int BackgroundLocationRequestCode = 4011;
+
+        /// <summary>
+        /// Code of the request for the notification permission.
+        /// </summary>
+        private const int NotificationRequestCode = 4012;
+
+        /// <summary>
         /// Switch of all alerts.
         /// </summary>
         private Switch? masterSwitch;
@@ -250,6 +260,11 @@ namespace AdsbCarMap.Activities
                 if (!updatingSwitch)
                 {
                     AppServices.Alerts.SetBackgroundEnabled(args.IsChecked);
+
+                    if (args.IsChecked)
+                    {
+                        OfferNotifications();
+                    }
                 }
             };
             header.AddView(backgroundSwitch);
@@ -259,6 +274,87 @@ namespace AdsbCarMap.Activities
             backgroundStatus.SetTextColor(Color.Rgb(150, 200, 255));
             backgroundStatus.SetPadding(0, Dp(2), 0, 0);
             header.AddView(backgroundStatus);
+        }
+
+        /// <summary>
+        /// Explains that alerts need the notification permission and asks for it, then moves on to the background location. Skipped when the permission is already granted or not needed.
+        /// </summary>
+        private void OfferNotifications()
+        {
+            if (AlertMonitor.HasNotificationPermission())
+            {
+                OfferBackgroundLocation();
+
+                return;
+            }
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
+            builder.SetTitle(Loc.T("Powiadomienia"));
+            builder.SetMessage(Loc.T("Alerty pokazują się jako powiadomienia, a tryb w tle działa jako usługa ze stałym powiadomieniem. Bez zgody na powiadomienia Android nie pokaże alertu, nawet gdy samolot spełni warunki."));
+            builder.SetPositiveButton(Loc.T("Dalej"), (sender, args) => RequestPermissions(new string[] { Android.Manifest.Permission.PostNotifications }, NotificationRequestCode));
+            builder.SetNegativeButton(Loc.T("Nie teraz"), (sender, args) => OfferBackgroundLocation());
+            builder.Show();
+        }
+
+        /// <summary>
+        /// Opens the notification settings of the application, where the permission can be allowed after Android stopped asking.
+        /// </summary>
+        private void OpenNotificationSettings()
+        {
+            Intent intent = new Intent(Android.Provider.Settings.ActionAppNotificationSettings);
+            intent.PutExtra(Android.Provider.Settings.ExtraAppPackage, PackageName);
+            StartActivity(intent);
+        }
+
+        /// <summary>
+        /// Explains why the background location is useful and asks for it. Skipped when it is not needed, already granted, or the foreground location is missing (the map asks for that one first).
+        /// </summary>
+        private void OfferBackgroundLocation()
+        {
+            if (Build.VERSION.SdkInt < BuildVersionCodes.Q || LocationTracker.HasBackgroundPermission() || !LocationTracker.HasPermission())
+            {
+                return;
+            }
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
+            builder.SetTitle(Loc.T("Lokalizacja w tle"));
+            builder.SetMessage(Loc.T("Żeby alerty wokół Twojej pozycji działały po restarcie telefonu, zanim otworzysz aplikację, Android musi pozwolić na lokalizację także w tle. Na następnym ekranie wybierz „Zawsze zezwalaj”. Bez tego tryb w tle nadal działa, ale po restarcie alerty wokół pozycji GPS czekają na otwarcie aplikacji."));
+            builder.SetPositiveButton(Loc.T("Dalej"), (sender, args) => RequestPermissions(new string[] { Android.Manifest.Permission.AccessBackgroundLocation }, BackgroundLocationRequestCode));
+            builder.SetNegativeButton(Loc.T("Nie teraz"), (sender, args) => { });
+            builder.Show();
+        }
+
+        /// <summary>
+        /// Refreshes the state text after the answer about the background location.
+        /// </summary>
+        /// <param name="requestCode">Code of the request.</param>
+        /// <param name="permissions">Requested permissions.</param>
+        /// <param name="grantResults">Request results.</param>
+        public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Android.Content.PM.Permission[] grantResults)
+        {
+            base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+
+            if (requestCode == NotificationRequestCode)
+            {
+                RenderBackgroundSection();
+
+                if (AlertMonitor.HasNotificationPermission())
+                {
+                    OfferBackgroundLocation();
+                }
+                else if (!ShouldShowRequestPermissionRationale(Android.Manifest.Permission.PostNotifications))
+                {
+                    OpenNotificationSettings();
+                }
+                else
+                {
+                    OfferBackgroundLocation();
+                }
+            }
+            else if (requestCode == BackgroundLocationRequestCode)
+            {
+                RenderBackgroundSection();
+            }
         }
 
         /// <summary>
@@ -280,6 +376,16 @@ namespace AdsbCarMap.Activities
             if (store.IsBackgroundEnabled && store.Rules.Count(rule => rule.IsEnabled) > AppSettings.AlertMaxBackground)
             {
                 text += Loc.T("\nW tle sprawdzane jest tylko pierwszych ") + AppSettings.AlertMaxBackground + Loc.T(" aktywnych alertów (limit w Ustawieniach → Alerty).");
+            }
+
+            if (store.IsEnabled && !AlertMonitor.HasNotificationPermission())
+            {
+                text += Loc.T("\nBrak zgody na powiadomienia: alerty nie będą się pokazywać (Ustawienia systemu → Aplikacje → powiadomienia).");
+            }
+
+            if (store.IsBackgroundEnabled && AppSettings.AlertStartOnBoot && !LocationTracker.HasBackgroundPermission())
+            {
+                text += Loc.T("\nBrak zgody na lokalizację w tle: po restarcie telefonu alerty wokół pozycji GPS mogą czekać na otwarcie aplikacji.");
             }
 
             backgroundStatus.Text = text;

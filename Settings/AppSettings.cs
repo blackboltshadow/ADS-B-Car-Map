@@ -350,6 +350,11 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition AlertMaxBackgroundSetting = SettingDefinition.CreateSlider("alert_max_background", "Maksymalna liczba alertów w tle", 5.0, 1.0, 20.0, 1.0, "", "Ile aktywnych alertów (licząc od góry listy) sprawdza tryb w tle. Każdy dodatkowy alert w innym miejscu to kolejne zapytanie do serwera w każdym sprawdzeniu; alerty leżące blisko siebie dzielą jedno zapytanie. Aktywne alerty ponad limit nie są sprawdzane, dopóki tryb w tle jest włączony.");
 
         /// <summary>
+        /// Switch that starts the background checking of the alerts after the device boots or the application is updated.
+        /// </summary>
+        public static readonly SettingDefinition AlertStartOnBootSetting = SettingDefinition.CreateSwitch("alert_start_on_boot", "Uruchamiaj tryb w tle po restarcie telefonu", true, "Gdy tryb w tle alertów jest włączony, usługa rusza sama po ponownym uruchomieniu telefonu i po aktualizacji aplikacji, bez otwierania aplikacji. Wyłączenie przywraca dawne zachowanie: tryb w tle rusza dopiero po otwarciu aplikacji. Producenci telefonów mogą blokować taki start, jeśli aplikacja nie ma zgody na autostart albo ma włączoną optymalizację baterii. Alerty wokół mojej pozycji GPS czekają po restarcie na pierwszą pozycję, a system może ograniczyć dostęp do lokalizacji aplikacji uruchomionej w tle.");
+
+        /// <summary>
         /// All settings in display order.
         /// </summary>
         public static readonly IReadOnlyList<SettingDefinition> All = new List<SettingDefinition>
@@ -412,6 +417,7 @@ namespace AdsbCarMap.Settings
             PrivacyLogSetting,
             AlertIntervalSetting,
             AlertMaxBackgroundSetting,
+            AlertStartOnBootSetting,
         };
 
         /// <summary>
@@ -463,6 +469,7 @@ namespace AdsbCarMap.Settings
         {
             AlertIntervalSetting,
             AlertMaxBackgroundSetting,
+            AlertStartOnBootSetting,
         };
 
         /// <summary>
@@ -640,6 +647,11 @@ namespace AdsbCarMap.Settings
         /// Number of alerts checked by the background mode.
         /// </summary>
         public static int AlertMaxBackground => (int)Math.Round(Get(AlertMaxBackgroundSetting));
+
+        /// <summary>
+        /// Whether the background checking of the alerts starts after the device boots or the application is updated.
+        /// </summary>
+        public static bool AlertStartOnBoot => Get(AlertStartOnBootSetting) >= 0.5;
 
         /// <summary>
         /// Whether identical events of the developer log are merged into one entry.

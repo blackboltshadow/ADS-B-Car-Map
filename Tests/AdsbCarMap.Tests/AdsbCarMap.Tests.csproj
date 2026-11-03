@@ -34,6 +34,7 @@
     <Compile Include="..\..\Data\AlertText.cs" Link="Linked\AlertText.cs" />
     <Compile Include="..\..\Data\AlertCircle.cs" Link="Linked\AlertCircle.cs" />
     <Compile Include="..\..\Data\AlertQueryPlanner.cs" Link="Linked\AlertQueryPlanner.cs" />
+    <Compile Include="..\..\Data\AlertBackgroundPolicy.cs" Link="Linked\AlertBackgroundPolicy.cs" />
     <Compile Include="..\..\Data\AircraftKind.cs" Link="Linked\AircraftKind.cs" />
     <Compile Include="..\..\Data\AircraftClassifier.cs" Link="Linked\AircraftClassifier.cs" />
     <Compile Include="../../Data/AircraftKindExtensions.cs" Link="Linked/AircraftKindExtensions.cs" />

@@ -66,6 +66,20 @@ namespace AdsbCarMap.Services
         }
 
         /// <summary>
+        /// Checks whether the application may read the location while it runs in the background, e.g. after being started by the device boot. Before Android 10 the permission does not exist and the location is available anyway.
+        /// </summary>
+        /// <returns>True when the background location is allowed or not needed.</returns>
+        public static bool HasBackgroundPermission()
+        {
+            if (Build.VERSION.SdkInt < BuildVersionCodes.Q)
+            {
+                return true;
+            }
+
+            return Android.App.Application.Context.CheckSelfPermission(Android.Manifest.Permission.AccessBackgroundLocation) == Permission.Granted;
+        }
+
+        /// <summary>
         /// Starts the foreground location service, enables position updates from all enabled providers and reports the last known position.
         /// </summary>
         /// <returns>True when updates are running. False when the permission or the location manager is missing.</returns>
