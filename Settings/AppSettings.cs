@@ -4,6 +4,7 @@ using AdsbCarMap.Data;
 using AdsbCarMap.DataSources.Adsbdb;
 using AdsbCarMap.DataSources.AdsbLol;
 using AdsbCarMap.DataSources.Hexdb;
+using AdsbCarMap.DataSources.AdsbFi;
 using AdsbCarMap.DataSources.AirplanesLive;
 using AdsbCarMap.DataSources.Management.Privacy;
 using AdsbCarMap.DataSources.Management.Selection;
@@ -54,7 +55,7 @@ namespace AdsbCarMap.Settings
         /// <summary>
         /// Names of the aircraft sources in the order in which the application registers them.
         /// </summary>
-        private static readonly IReadOnlyList<string> DataSourceNames = new List<string> { AdsbLolClient.SourceName, AirplanesLiveClient.SourceName };
+        private static readonly IReadOnlyList<string> DataSourceNames = new List<string> { AdsbLolClient.SourceName, AirplanesLiveClient.SourceName, AdsbFiClient.SourceName };
 
         /// <summary>
         /// All orders of the aircraft sources that the user can choose from; the stored value is the index in this list. The settings screen shows them as a list that is dragged, not as a drop-down.
@@ -64,7 +65,7 @@ namespace AdsbCarMap.Settings
         /// <summary>
         /// Order in which the aircraft sources are asked: the first one is the main source, the next ones are asked when the previous one gives no data.
         /// </summary>
-        public static readonly SettingDefinition DataSourceSetting = SettingDefinition.CreateChoice("data_source", "Kolejność źródeł samolotów", 0, "Kolejność, w jakiej aplikacja pyta serwisy o pozycje samolotów. Pierwszy serwis jest głównym źródłem, a kolejne są pytane tylko wtedy, gdy poprzedni nie zwraca danych (przy włączonym zapasowym źródle). Oba serwisy (adsb.lol i airplanes.live) mają ten sam format danych i służą do użytku osobistego, niekomercyjnego. Uwaga: airplanes.live odrzuca na razie zapytania tej aplikacji (kod 403) i prosi o kontakt e-mailowy, więc do czasu uzgodnienia głównym źródłem powinno być adsb.lol. Zmiana działa od następnego odświeżenia mapy.", DataSourceOrders.Select(SourceOrder.Describe).ToArray());
+        public static readonly SettingDefinition DataSourceSetting = SettingDefinition.CreateChoice("data_source", "Kolejność źródeł samolotów", 0, "Kolejność, w jakiej aplikacja pyta serwisy o pozycje samolotów. Pierwszy serwis jest głównym źródłem, a kolejne są pytane tylko wtedy, gdy poprzedni nie zwraca danych (przy włączonym zapasowym źródle). Serwisy adsb.lol, airplanes.live i adsb.fi mają ten sam format danych i służą do użytku osobistego, niekomercyjnego (adsb.fi dopuszcza zapytania co najwyżej raz na sekundę i wymaga atrybucji). Uwaga: airplanes.live odrzuca na razie zapytania tej aplikacji (kod 403) i prosi o kontakt e-mailowy, więc do czasu uzgodnienia głównym źródłem powinno być adsb.lol. Zmiana działa od następnego odświeżenia mapy.", DataSourceOrders.Select(SourceOrder.Describe).ToArray());
 
         /// <summary>
         /// Whether the next sources are asked when the previous one gives no data.
@@ -350,6 +351,21 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition AlertMaxBackgroundSetting = SettingDefinition.CreateSlider("alert_max_background", "Maksymalna liczba alertów w tle", 5.0, 1.0, 20.0, 1.0, "", "Ile aktywnych alertów (licząc od góry listy) sprawdza tryb w tle. Każdy dodatkowy alert w innym miejscu to kolejne zapytanie do serwera w każdym sprawdzeniu; alerty leżące blisko siebie dzielą jedno zapytanie. Aktywne alerty ponad limit nie są sprawdzane, dopóki tryb w tle jest włączony.");
 
         /// <summary>
+        /// Switch that silences the "appearance" notifications for the aircraft present in the area at the first check of an alert.
+        /// </summary>
+        public static readonly SettingDefinition AlertSkipInitialAppearanceSetting = SettingDefinition.CreateSwitch("alert_skip_initial", "Pomijaj samoloty już obecne przy starcie alertu", false, "Gdy włączone, samoloty, które w chwili pierwszego sprawdzenia alertu (po starcie aplikacji, trybu w tle albo po włączeniu alertu) już znajdują się w obszarze, nie wywołują powiadomienia „pojawienie się”. Powiadomienia dostają dopiero samoloty, które pojawią się lub wlecą później. Przydatne po restarcie telefonu lub aplikacji, żeby nie dostać lawiny powiadomień o samolotach, które i tak już tam były. Nie dotyczy zdarzenia „wlot”.");
+
+        /// <summary>
+        /// Switch that also shows the alert notifications on the Android Auto screen.
+        /// </summary>
+        public static readonly SettingDefinition AlertCarNotificationsSetting = SettingDefinition.CreateSwitch("alert_car_notifications", "Powiadomienia alertów w Android Auto", true, "Gdy włączone, powiadomienie o alercie pokazuje się także na ekranie samochodu, jeśli telefon jest połączony z Android Auto. Powiadomienie w samochodzie ma tytuł i treść jak na telefonie, ale dotknięcie go nie otwiera mapy. Wyłączenie zostawia powiadomienia tylko na telefonie. Android Auto może ukrywać powiadomienia podczas jazdy zgodnie z własnymi ustawieniami (na telefonie: Ustawienia Android Auto → Powiadomienia).");
+
+        /// <summary>
+        /// Number of aircraft of one alert in one check from which they are reported with a single notification.
+        /// </summary>
+        public static readonly SettingDefinition AlertGroupThresholdSetting = SettingDefinition.CreateSlider("alert_group_threshold", "Grupuj powiadomienia od liczby samolotów", 3.0, 2.0, 10.0, 1.0, "", "Gdy jeden alert zadziała dla tylu samolotów naraz (w jednym sprawdzeniu) albo więcej, aplikacja pokazuje jedno zbiorcze powiadomienie z listą znaków wywoławczych zamiast osobnego powiadomienia dla każdego samolotu. Mniejsza liczba oznacza częstsze grupowanie, a wartość 10 grupuje dopiero duże ilości. Grupowanie przydaje się po restarcie telefonu albo po dłuższej przerwie, gdy do obszaru trafia od razu wiele samolotów. Wszystkie samoloty zostają zapisane w historii alertów.");
+
+        /// <summary>
         /// Switch that starts the background checking of the alerts after the device boots or the application is updated.
         /// </summary>
         public static readonly SettingDefinition AlertStartOnBootSetting = SettingDefinition.CreateSwitch("alert_start_on_boot", "Uruchamiaj tryb w tle po restarcie telefonu", true, "Gdy tryb w tle alertów jest włączony, usługa rusza sama po ponownym uruchomieniu telefonu i po aktualizacji aplikacji, bez otwierania aplikacji. Wyłączenie przywraca dawne zachowanie: tryb w tle rusza dopiero po otwarciu aplikacji. Producenci telefonów mogą blokować taki start, jeśli aplikacja nie ma zgody na autostart albo ma włączoną optymalizację baterii. Alerty wokół mojej pozycji GPS czekają po restarcie na pierwszą pozycję, a system może ograniczyć dostęp do lokalizacji aplikacji uruchomionej w tle.");
@@ -418,6 +434,9 @@ namespace AdsbCarMap.Settings
             AlertIntervalSetting,
             AlertMaxBackgroundSetting,
             AlertStartOnBootSetting,
+            AlertSkipInitialAppearanceSetting,
+            AlertCarNotificationsSetting,
+            AlertGroupThresholdSetting,
         };
 
         /// <summary>
@@ -470,6 +489,9 @@ namespace AdsbCarMap.Settings
             AlertIntervalSetting,
             AlertMaxBackgroundSetting,
             AlertStartOnBootSetting,
+            AlertSkipInitialAppearanceSetting,
+            AlertCarNotificationsSetting,
+            AlertGroupThresholdSetting,
         };
 
         /// <summary>
@@ -652,6 +674,21 @@ namespace AdsbCarMap.Settings
         /// Whether the background checking of the alerts starts after the device boots or the application is updated.
         /// </summary>
         public static bool AlertStartOnBoot => Get(AlertStartOnBootSetting) >= 0.5;
+
+        /// <summary>
+        /// Whether the alert notifications are also shown on the Android Auto screen.
+        /// </summary>
+        public static bool AlertCarNotifications => Get(AlertCarNotificationsSetting) >= 0.5;
+
+        /// <summary>
+        /// Number of aircraft of one alert in one check from which they are reported with a single notification.
+        /// </summary>
+        public static int AlertGroupThreshold => (int)Math.Round(Get(AlertGroupThresholdSetting));
+
+        /// <summary>
+        /// Whether the aircraft already in the area at the first check of an alert are not reported as appearing.
+        /// </summary>
+        public static bool AlertSkipInitialAppearance => Get(AlertSkipInitialAppearanceSetting) >= 0.5;
 
         /// <summary>
         /// Whether identical events of the developer log are merged into one entry.

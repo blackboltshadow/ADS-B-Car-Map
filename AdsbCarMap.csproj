@@ -48,6 +48,7 @@
     <ProjectReference Include="Sources\Adsbdb\AdsbCarMap.DataSources.Adsbdb\AdsbCarMap.DataSources.Adsbdb.csproj" />
     <ProjectReference Include="Sources\Hexdb\AdsbCarMap.DataSources.Hexdb\AdsbCarMap.DataSources.Hexdb.csproj" />
     <ProjectReference Include="Sources\AirplanesLive\AdsbCarMap.DataSources.AirplanesLive\AdsbCarMap.DataSources.AirplanesLive.csproj" />
+    <ProjectReference Include="Sources\AdsbFi\AdsbCarMap.DataSources.AdsbFi\AdsbCarMap.DataSources.AdsbFi.csproj" />
   </ItemGroup>
 
   <!-- The Car App library reads car-app-api.level from the package root at runtime. Without it Android Auto fails with "Car API level file car-app-api.level not found" (GET_APP_VERSION timeout). The file from the library jar is lost in some incremental builds, so the same file (content 7) is added to the package explicitly. -->

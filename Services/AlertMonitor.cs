@@ -6,6 +6,8 @@ using Android.App;
 using Android.Content;
 using Android.OS;
 using Android.Runtime;
+using AndroidX.Car.App.Notification;
+using AndroidX.Core.App;
 
 namespace AdsbCarMap.Services
 {
@@ -25,9 +27,49 @@ namespace AdsbCarMap.Services
         private const string ChannelId = "aircraft_alerts";
 
         /// <summary>
+        /// Identifier of the notification channel of the alerts with the default importance (sound, no banner).
+        /// </summary>
+        private const string ChannelIdDefault = "aircraft_alerts_default";
+
+        /// <summary>
+        /// Identifier of the notification channel of the quiet alerts (no sound, no banner).
+        /// </summary>
+        private const string ChannelIdLow = "aircraft_alerts_low";
+
+        /// <summary>
+        /// Value mixed into the request code of the mute button so that it differs from the request code of the notification.
+        /// </summary>
+        private const int MuteRequestCodeMask = 0x40000000;
+
+        /// <summary>
+        /// Name of the preferences file with the silenced alerts.
+        /// </summary>
+        private const string MutePreferencesName = "alert_mutes";
+
+        /// <summary>
+        /// Key of the silenced alerts in the preferences.
+        /// </summary>
+        private const string MutePreferencesKey = "list";
+
+        /// <summary>
+        /// Lock protecting the list of the silenced alerts.
+        /// </summary>
+        private static readonly object MuteSyncRoot = new object();
+
+        /// <summary>
+        /// Alerts that are silenced, read from the preferences when first needed.
+        /// </summary>
+        private static AlertMuteList? muteList;
+
+        /// <summary>
         /// Name of the intent extra with the ICAO address of the aircraft to show after a tap on a notification.
         /// </summary>
         public const string FocusHexExtra = "alert_focus_hex";
+
+        /// <summary>
+        /// Name of the intent extra with the ICAO addresses of all aircraft of a grouped notification, to show together after a tap on it.
+        /// </summary>
+        public const string FocusHexesExtra = "alert_focus_hexes";
 
         /// <summary>
         /// Lock protecting the engine.
@@ -86,12 +128,15 @@ namespace AdsbCarMap.Services
 
                 lock (SyncRoot)
                 {
-                    matches = Engine.Evaluate(rules, aircraft, myPosition, FindAirport, (string? callsign) => AppServices.Routes.Peek(callsign), DateTime.UtcNow);
+                    Engine.SkipInitialAppearance = AppSettings.AlertSkipInitialAppearance;
+                    matches = Engine.Evaluate(rules, aircraft, myPosition, FindAirport, (string? callsign) => AppServices.Routes.Peek(callsign), DateTime.UtcNow, DateTime.Now);
                 }
 
-                foreach (AlertMatch match in matches)
+                matches.RemoveAll((AlertMatch match) => IsMuted(match.Rule.Id));
+
+                if (matches.Count > 0)
                 {
-                    Notify(match);
+                    Report(matches);
                 }
             }
             catch (Exception exception)
@@ -137,10 +182,118 @@ namespace AdsbCarMap.Services
         }
 
         /// <summary>
-        /// Shows the notification about a match when the notification permission is granted.
+        /// Silences an alert for a time, for example after the "mute" button of its notification.
         /// </summary>
-        /// <param name="match">Match to report.</param>
-        private static void Notify(AlertMatch match)
+        /// <param name="ruleId">Identifier of the rule.</param>
+        /// <param name="duration">How long the alert stays silent.</param>
+        public static void MuteRule(string ruleId, TimeSpan duration)
+        {
+            lock (MuteSyncRoot)
+            {
+                AlertMuteList list = GetMuteList();
+                list.Prune(DateTime.UtcNow);
+                list.Mute(ruleId, DateTime.UtcNow + duration);
+                SaveMuteList(list);
+            }
+        }
+
+        /// <summary>
+        /// Tells until when an alert is silenced.
+        /// </summary>
+        /// <param name="ruleId">Identifier of the rule.</param>
+        /// <returns>The end of the silence in local time or null when the alert is not silenced.</returns>
+        public static DateTime? GetMutedUntilLocal(string ruleId)
+        {
+            lock (MuteSyncRoot)
+            {
+                return GetMuteList().GetMutedUntil(ruleId, DateTime.UtcNow)?.ToLocalTime();
+            }
+        }
+
+        /// <summary>
+        /// Checks whether an alert is silenced now.
+        /// </summary>
+        /// <param name="ruleId">Identifier of the rule.</param>
+        /// <returns>True when the alert is silenced.</returns>
+        private static bool IsMuted(string ruleId)
+        {
+            lock (MuteSyncRoot)
+            {
+                return GetMuteList().IsMuted(ruleId, DateTime.UtcNow);
+            }
+        }
+
+        /// <summary>
+        /// Gives the list of the silenced alerts, reading it from the preferences the first time.
+        /// </summary>
+        /// <returns>The list. Call it only with <see cref="MuteSyncRoot"/> held.</returns>
+        private static AlertMuteList GetMuteList()
+        {
+            if (muteList == null)
+            {
+                string? saved = Application.Context.GetSharedPreferences(MutePreferencesName, FileCreationMode.Private)?.GetString(MutePreferencesKey, null);
+                muteList = AlertMuteList.Parse(saved);
+            }
+
+            return muteList;
+        }
+
+        /// <summary>
+        /// Saves the list of the silenced alerts.
+        /// </summary>
+        /// <param name="list">List to save.</param>
+        private static void SaveMuteList(AlertMuteList list)
+        {
+            ISharedPreferencesEditor? editor = Application.Context.GetSharedPreferences(MutePreferencesName, FileCreationMode.Private)?.Edit();
+            editor?.PutString(MutePreferencesKey, list.Format());
+            editor?.Apply();
+        }
+
+        /// <summary>
+        /// Records the matches in the history, then shows the notifications: aircraft of one rule that fired together in numbers over the threshold are reported with one notification.
+        /// </summary>
+        /// <param name="matches">Matches that fired and are not silenced.</param>
+        private static void Report(List<AlertMatch> matches)
+        {
+            string text = string.Empty;
+
+            foreach (AlertMatch match in matches)
+            {
+                text = AlertText.Body(match, AppSettings.Units);
+                AlertHistoryStore.Add(new AlertHistoryEntry(DateTime.UtcNow, match.Rule.Name, match.Aircraft.Hex, match.Aircraft.Callsign?.Trim(), match.Trigger, text));
+            }
+
+            foreach (AlertNotice notice in AlertGrouper.Group(matches, AppSettings.AlertGroupThreshold))
+            {
+                Notify(notice);
+            }
+        }
+
+        /// <summary>
+        /// Gives the identifier of the notification channel for an importance and creates the channel.
+        /// </summary>
+        /// <param name="manager">Notification manager.</param>
+        /// <param name="importance">Importance of the alert.</param>
+        /// <returns>Identifier of the channel.</returns>
+        private static string EnsureChannel(NotificationManager manager, AlertImportance importance)
+        {
+            string id = importance == AlertImportance.Low ? ChannelIdLow : importance == AlertImportance.Default ? ChannelIdDefault : ChannelId;
+
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
+            {
+                string name = importance == AlertImportance.Low ? Loc.T("Alerty o samolotach (ciche)") : importance == AlertImportance.Default ? Loc.T("Alerty o samolotach (zwykłe)") : Loc.T("Alerty o samolotach");
+                NotificationImportance level = importance == AlertImportance.Low ? NotificationImportance.Low : importance == AlertImportance.Default ? NotificationImportance.Default : NotificationImportance.High;
+                manager.CreateNotificationChannel(new NotificationChannel(id, name, level));
+            }
+
+            return id;
+        }
+
+        /// <summary>
+        /// Shows a notification about a match or about a group of matches when the notification permission is granted. It has the buttons "Pokaż na mapie" and "Wycisz na 1 h".
+        /// </summary>
+        /// <param name="notice">Notice to show.</param>
+        private static void Notify(AlertNotice notice)
         {
             Context context = Application.Context;
 
@@ -156,32 +309,56 @@ namespace AdsbCarMap.Services
                 return;
             }
 
-            Notification.Builder builder;
+            AlertMatch first = notice.Matches[0];
+            AlertImportance importance = notice.Rule.Importance;
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, EnsureChannel(manager, importance));
+            string title = notice.IsGroup ? AlertText.GroupTitle(notice) : AlertText.Title(first);
+            string body = notice.IsGroup ? AlertText.GroupBody(notice) : AlertText.Body(first, AppSettings.Units);
 
-            if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
-            {
-                NotificationChannel channel = new NotificationChannel(ChannelId, Loc.T("Alerty o samolotach"), NotificationImportance.High);
-                manager.CreateNotificationChannel(channel);
-                builder = new Notification.Builder(context, ChannelId);
-            }
-            else
-            {
-                builder = new Notification.Builder(context);
-            }
-
-            int notificationId = HashCode.Combine(match.Rule.Id, match.Aircraft.Hex) & 0x7FFFFFFF;
+            int notificationId = (notice.IsGroup ? HashCode.Combine(notice.Rule.Id, "group") : HashCode.Combine(notice.Rule.Id, first.Aircraft.Hex)) & 0x7FFFFFFF;
             Intent intent = new Intent(context, typeof(Activities.MainActivity));
             intent.SetFlags(ActivityFlags.NewTask | ActivityFlags.ClearTop | ActivityFlags.SingleTop);
-            intent.PutExtra(FocusHexExtra, match.Aircraft.Hex);
+            intent.PutExtra(FocusHexExtra, first.Aircraft.Hex);
+
+            if (notice.IsGroup)
+            {
+                intent.PutExtra(FocusHexesExtra, notice.Matches.Select((AlertMatch match) => match.Aircraft.Hex).ToArray());
+            }
             PendingIntent? contentIntent = PendingIntent.GetActivity(context, notificationId, intent, PendingIntentFlags.Immutable | PendingIntentFlags.UpdateCurrent);
+
+            Intent muteIntent = new Intent(context, typeof(AlertActionReceiver));
+            muteIntent.SetAction(AlertActionReceiver.ActionMute);
+            muteIntent.PutExtra(AlertActionReceiver.RuleIdExtra, notice.Rule.Id);
+            muteIntent.PutExtra(AlertActionReceiver.NotificationIdExtra, notificationId);
+            PendingIntent? mutePendingIntent = PendingIntent.GetBroadcast(context, notificationId ^ MuteRequestCodeMask, muteIntent, PendingIntentFlags.Immutable | PendingIntentFlags.UpdateCurrent);
 
             builder
                 .SetSmallIcon(Resource.Drawable.ic_alert)
-                .SetContentTitle(AlertText.Title(match))
-                .SetContentText(AlertText.Body(match, AppSettings.Units))
+                .SetContentTitle(title)
+                .SetContentText(body)
                 .SetAutoCancel(true)
-                .SetCategory(Notification.CategoryEvent)
-                .SetContentIntent(contentIntent);
+                .SetCategory(NotificationCompat.CategoryEvent)
+                .SetPriority(importance == AlertImportance.High ? NotificationCompat.PriorityHigh : importance == AlertImportance.Default ? NotificationCompat.PriorityDefault : NotificationCompat.PriorityLow)
+                .SetContentIntent(contentIntent)
+                .AddAction(Resource.Drawable.ic_visibility, Loc.T("Pokaż na mapie"), contentIntent)
+                .AddAction(Resource.Drawable.ic_alert, Loc.T("Wycisz na 1 h"), mutePendingIntent);
+
+            if (notice.IsGroup)
+            {
+                builder.SetStyle(new NotificationCompat.BigTextStyle().BigText(body));
+            }
+
+            if (AppSettings.AlertCarNotifications)
+            {
+                int carImportance = importance == AlertImportance.High ? NotificationManagerCompat.ImportanceHigh : importance == AlertImportance.Default ? NotificationManagerCompat.ImportanceDefault : NotificationManagerCompat.ImportanceLow;
+
+                builder.Extend(new CarAppExtender.Builder()
+                    .SetContentTitle(title)
+                    .SetContentText(body)
+                    .SetSmallIcon(Resource.Drawable.ic_alert)
+                    .SetImportance(carImportance)
+                    .Build());
+            }
 
             manager.Notify(notificationId, builder.Build());
         }

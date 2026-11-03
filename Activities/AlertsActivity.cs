@@ -136,6 +136,11 @@ namespace AdsbCarMap.Activities
             addButton.Click += (sender, args) => OpenEditor(null);
             header.AddView(addButton);
 
+            Button historyButton = new Button(this);
+            historyButton.Text = Loc.T("Historia alertów");
+            historyButton.Click += (sender, args) => StartActivity(new Intent(this, typeof(AlertHistoryActivity)));
+            header.AddView(historyButton);
+
             BuildBackgroundSection(header);
 
             TextView hint = new TextView(this);
@@ -407,7 +412,11 @@ namespace AdsbCarMap.Activities
                 filter = found == null ? Loc.T("Filtr usunięty, alert nieaktywny") : Loc.T("Filtr: ") + found.Name;
             }
 
-            return AlertText.DescribeArea(rule.Area, AppSettings.DistanceUnit) + "\n" + filter + "\n" + AlertText.DescribeEvents(rule);
+            string schedule = AlertText.DescribeSchedule(rule.Schedule);
+            DateTime? mutedUntil = AlertMonitor.GetMutedUntilLocal(rule.Id);
+            string muted = mutedUntil == null ? string.Empty : "\n" + Loc.T("Wyciszony do ") + mutedUntil.Value.ToString("HH:mm");
+
+            return AlertText.DescribeArea(rule.Area, AppSettings.DistanceUnit) + "\n" + filter + "\n" + AlertText.DescribeEvents(rule) + (schedule.Length == 0 ? string.Empty : "\n" + schedule) + muted;
         }
 
         /// <summary>

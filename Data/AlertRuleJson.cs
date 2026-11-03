@@ -41,6 +41,21 @@ namespace AdsbCarMap.Data
                         writer.WriteString("airport", rule.Area.AirportIcao);
                     }
 
+                    if (rule.Area.Vertices != null)
+                    {
+                        writer.WriteStartArray("vertices");
+
+                        foreach (GeoPoint vertex in rule.Area.Vertices)
+                        {
+                            writer.WriteStartArray();
+                            writer.WriteNumberValue(vertex.Latitude);
+                            writer.WriteNumberValue(vertex.Longitude);
+                            writer.WriteEndArray();
+                        }
+
+                        writer.WriteEndArray();
+                    }
+
                     if (rule.ConditionFilterId != null)
                     {
                         writer.WriteString("filter", rule.ConditionFilterId);
@@ -49,6 +64,23 @@ namespace AdsbCarMap.Data
                     writer.WriteBoolean("entry", rule.NotifyOnEntry);
                     writer.WriteBoolean("appearance", rule.NotifyOnAppearance);
                     writer.WriteNumber("cooldown", rule.CooldownMinutes);
+
+                    if (rule.Importance != AlertImportance.High)
+                    {
+                        writer.WriteString("importance", rule.Importance.ToString());
+                    }
+
+                    if (!rule.Schedule.IsAlways)
+                    {
+                        writer.WriteNumber("days", rule.Schedule.ActiveDays);
+
+                        if (rule.Schedule.QuietStartMinute != null && rule.Schedule.QuietEndMinute != null)
+                        {
+                            writer.WriteNumber("quietFrom", rule.Schedule.QuietStartMinute.Value);
+                            writer.WriteNumber("quietTo", rule.Schedule.QuietEndMinute.Value);
+                        }
+                    }
+
                     writer.WriteEndObject();
                 }
 
@@ -115,7 +147,12 @@ namespace AdsbCarMap.Data
             string? areaText = ReadString(element, "area");
             double? radius = ReadNumber(element, "radius");
 
-            if (string.IsNullOrEmpty(id) || areaText == null || radius == null || radius.Value <= 0.0 || !Enum.TryParse(areaText, out AlertAreaKind kind))
+            if (string.IsNullOrEmpty(id) || areaText == null || !Enum.TryParse(areaText, out AlertAreaKind kind))
+            {
+                return null;
+            }
+
+            if (kind != AlertAreaKind.Polygon && (radius == null || radius.Value <= 0.0))
             {
                 return null;
             }
@@ -141,7 +178,13 @@ namespace AdsbCarMap.Data
                 return null;
             }
 
-            AlertArea area = new AlertArea(kind, radius.Value, center, airport);
+            AlertArea? area = kind == AlertAreaKind.Polygon ? ParsePolygon(element) : new AlertArea(kind, radius!.Value, center, airport);
+
+            if (area == null)
+            {
+                return null;
+            }
+
             double? cooldown = ReadNumber(element, "cooldown");
 
             return new AlertRule(
@@ -153,7 +196,63 @@ namespace AdsbCarMap.Data
                 ReadBoolean(element, "entry", true),
                 ReadBoolean(element, "appearance", true),
                 cooldown == null ? 30 : (int)cooldown.Value,
-                ReadString(element, "filter"));
+                ReadString(element, "filter"),
+                ParseSchedule(element),
+                Enum.TryParse(ReadString(element, "importance"), out AlertImportance importance) ? importance : AlertImportance.High);
+        }
+
+        /// <summary>
+        /// Reads the polygon of a rule.
+        /// </summary>
+        /// <param name="element">Rule element.</param>
+        /// <returns>The area or null when the vertices are missing, too few, too many or invalid.</returns>
+        private static AlertArea? ParsePolygon(JsonElement element)
+        {
+            if (!element.TryGetProperty("vertices", out JsonElement list) || list.ValueKind != JsonValueKind.Array)
+            {
+                return null;
+            }
+
+            List<GeoPoint> vertices = new List<GeoPoint>();
+
+            foreach (JsonElement pair in list.EnumerateArray())
+            {
+                if (pair.ValueKind != JsonValueKind.Array || pair.GetArrayLength() != 2)
+                {
+                    return null;
+                }
+
+                JsonElement latitude = pair[0];
+                JsonElement longitude = pair[1];
+
+                if (latitude.ValueKind != JsonValueKind.Number || longitude.ValueKind != JsonValueKind.Number)
+                {
+                    return null;
+                }
+
+                vertices.Add(new GeoPoint(latitude.GetDouble(), longitude.GetDouble()));
+            }
+
+            if (vertices.Count < AlertArea.MinimumVertices || vertices.Count > AlertArea.MaximumVertices || !AlertArea.IsSimple(vertices))
+            {
+                return null;
+            }
+
+            return AlertArea.CreatePolygon(vertices);
+        }
+
+        /// <summary>
+        /// Reads the schedule of a rule.
+        /// </summary>
+        /// <param name="element">Rule element.</param>
+        /// <returns>The schedule, without any restriction when the rule has none.</returns>
+        private static AlertSchedule ParseSchedule(JsonElement element)
+        {
+            double? days = ReadNumber(element, "days");
+            double? from = ReadNumber(element, "quietFrom");
+            double? to = ReadNumber(element, "quietTo");
+
+            return new AlertSchedule(days == null ? AlertSchedule.AllDays : (int)days.Value, from == null ? null : (int)from.Value, to == null ? null : (int)to.Value);
         }
 
         /// <summary>

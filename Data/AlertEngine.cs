@@ -40,6 +40,11 @@ namespace AdsbCarMap.Data
         private readonly Dictionary<string, Dictionary<string, AircraftState>> _states = new Dictionary<string, Dictionary<string, AircraftState>>();
 
         /// <summary>
+        /// Whether the aircraft that are already in the area at the first check of a rule are only remembered and not reported as appearing.
+        /// </summary>
+        public bool SkipInitialAppearance { get; set; }
+
+        /// <summary>
         /// Checks the current aircraft against the rules and returns the ones that should raise a notification now.
         /// </summary>
         /// <param name="rules">All rules; disabled rules and rules whose center cannot be determined are skipped.</param>
@@ -48,6 +53,7 @@ namespace AdsbCarMap.Data
         /// <param name="airportLookup">Returns the position of an airport by its ICAO code or null when it is not known.</param>
         /// <param name="routeLookup">Returns the route of a callsign or null when it is not known yet.</param>
         /// <param name="now">Current time.</param>
+        /// <param name="localNow">Local time of the user used for the schedules of the rules; when null, <paramref name="now"/> is used.</param>
         /// <returns>Aircraft that triggered a rule, at most one match per rule and aircraft.</returns>
         public List<AlertMatch> Evaluate(
             IReadOnlyList<AlertRule> rules,
@@ -55,7 +61,8 @@ namespace AdsbCarMap.Data
             GeoPoint? myPosition,
             Func<string, GeoPoint?> airportLookup,
             Func<string?, FlightRoute?> routeLookup,
-            DateTime now)
+            DateTime now,
+            DateTime? localNow = null)
         {
             List<AlertMatch> matches = new List<AlertMatch>();
             HashSet<string> ruleIds = new HashSet<string>();
@@ -77,7 +84,7 @@ namespace AdsbCarMap.Data
                     continue;
                 }
 
-                EvaluateRule(rule, center, aircraft, routeLookup, now, matches);
+                EvaluateRule(rule, center, aircraft, routeLookup, now, rule.Schedule.IsActive(localNow ?? now), matches);
             }
 
             List<string> staleRules = new List<string>();
@@ -150,11 +157,15 @@ namespace AdsbCarMap.Data
         /// <param name="aircraft">Aircraft from the latest download.</param>
         /// <param name="routeLookup">Returns the route of a callsign or null when it is not known yet.</param>
         /// <param name="now">Current time.</param>
+        /// <param name="scheduleActive">Whether the schedule of the rule allows notifications now; when false the aircraft are only tracked.</param>
         /// <param name="matches">List receiving the aircraft that fired.</param>
-        private void EvaluateRule(AlertRule rule, GeoPoint center, IReadOnlyList<Aircraft> aircraft, Func<string?, FlightRoute?> routeLookup, DateTime now, List<AlertMatch> matches)
+        private void EvaluateRule(AlertRule rule, GeoPoint center, IReadOnlyList<Aircraft> aircraft, Func<string?, FlightRoute?> routeLookup, DateTime now, bool scheduleActive, List<AlertMatch> matches)
         {
+            bool firstCheck = false;
+
             if (!_states.TryGetValue(rule.Id, out Dictionary<string, AircraftState>? states))
             {
+                firstCheck = true;
                 states = new Dictionary<string, AircraftState>();
                 _states[rule.Id] = states;
             }
@@ -182,10 +193,10 @@ namespace AdsbCarMap.Data
                 if (matching && !state.WasMatching)
                 {
                     AlertTrigger trigger = known && !state.WasInside ? AlertTrigger.Entered : AlertTrigger.Appeared;
-                    bool wanted = trigger == AlertTrigger.Entered ? rule.NotifyOnEntry : rule.NotifyOnAppearance;
+                    bool wanted = trigger == AlertTrigger.Entered ? rule.NotifyOnEntry : rule.NotifyOnAppearance && !(firstCheck && SkipInitialAppearance);
                     bool cooledDown = state.LastNotified == null || now - state.LastNotified.Value >= cooldown;
 
-                    if (wanted && cooledDown)
+                    if (wanted && cooledDown && scheduleActive)
                     {
                         state.LastNotified = now;
                         matches.Add(new AlertMatch(rule, item, trigger, GeoMath.DistanceKilometers(center.Latitude, center.Longitude, item.Latitude, item.Longitude)));
@@ -234,7 +245,7 @@ namespace AdsbCarMap.Data
         /// <returns>True when the aircraft is inside.</returns>
         private static bool IsInside(AlertArea area, GeoPoint center, Aircraft aircraft)
         {
-            return GeoMath.DistanceKilometers(center.Latitude, center.Longitude, aircraft.Latitude, aircraft.Longitude) <= area.RadiusKilometers;
+            return area.Contains(center, aircraft.Latitude, aircraft.Longitude);
         }
 
         /// <summary>

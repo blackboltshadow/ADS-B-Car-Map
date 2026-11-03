@@ -59,6 +59,49 @@ namespace AdsbCarMap.Services
         public static event Action<string>? AirportFocusRequested;
 
         /// <summary>
+        /// ICAO addresses of the aircraft from the last request to show a group.
+        /// </summary>
+        private static IReadOnlyList<string>? pendingGroupHexes;
+
+        /// <summary>
+        /// Moment of the last request to show a group of aircraft, in UTC.
+        /// </summary>
+        private static DateTime pendingGroupUtc = DateTime.MinValue;
+
+        /// <summary>
+        /// Event raised when several aircraft are to be shown together, for example after a tap on the notification of an alert. The argument is the list of ICAO addresses.
+        /// </summary>
+        public static event Action<IReadOnlyList<string>>? GroupFocusRequested;
+
+        /// <summary>
+        /// Asks the active maps to select several aircraft in the multi-select mode and show them all. The request is also remembered for a short time for a map that starts a moment later.
+        /// </summary>
+        /// <param name="hexes">ICAO addresses of the aircraft.</param>
+        public static void RequestGroupFocus(IReadOnlyList<string> hexes)
+        {
+            lock (SyncRoot)
+            {
+                pendingGroupHexes = hexes;
+                pendingGroupUtc = DateTime.UtcNow;
+                pendingFocusHex = null;
+            }
+
+            GroupFocusRequested?.Invoke(hexes);
+        }
+
+        /// <summary>
+        /// Returns the aircraft of a recent request to show a group that no active map may have received.
+        /// </summary>
+        /// <returns>ICAO addresses, or null when there is no recent request.</returns>
+        public static IReadOnlyList<string>? GetPendingGroupFocus()
+        {
+            lock (SyncRoot)
+            {
+                return DateTime.UtcNow - pendingGroupUtc <= PendingFocusLifetime ? pendingGroupHexes : null;
+            }
+        }
+
+        /// <summary>
         /// ICAO code of the airport from the last request to show.
         /// </summary>
         private static string? pendingAirportIcao;
@@ -137,6 +180,7 @@ namespace AdsbCarMap.Services
             {
                 pendingFocusHex = hex;
                 pendingFocusUtc = DateTime.UtcNow;
+                pendingGroupHexes = null;
             }
 
             FocusRequested?.Invoke(hex);

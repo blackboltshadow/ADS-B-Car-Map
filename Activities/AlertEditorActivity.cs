@@ -50,6 +50,26 @@ namespace AdsbCarMap.Activities
         private const int DefaultCooldown = 30;
 
         /// <summary>
+        /// Start of the quiet hours offered when the user switches them on, as minutes of the day (22:00).
+        /// </summary>
+        private const int DefaultQuietFromMinute = 22 * 60;
+
+        /// <summary>
+        /// End of the quiet hours offered when the user switches them on, as minutes of the day (06:00).
+        /// </summary>
+        private const int DefaultQuietToMinute = 6 * 60;
+
+        /// <summary>
+        /// Notification kinds in the order of the list.
+        /// </summary>
+        private static readonly AlertImportance[] ImportanceLevels = new AlertImportance[] { AlertImportance.High, AlertImportance.Default, AlertImportance.Low };
+
+        /// <summary>
+        /// Days of the week in the order in which the checkboxes are shown.
+        /// </summary>
+        private static readonly DayOfWeek[] ScheduleDays = new DayOfWeek[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday };
+
+        /// <summary>
         /// Identifier of the edited rule, or a new identifier when a rule is being created.
         /// </summary>
         private string ruleId = string.Empty;
@@ -113,6 +133,56 @@ namespace AdsbCarMap.Activities
         /// Container of the circle controls.
         /// </summary>
         private LinearLayout? circlePanel;
+
+        /// <summary>
+        /// List of the notification kinds, in the order of <see cref="ImportanceLevels"/>.
+        /// </summary>
+        private Spinner? importanceSpinner;
+
+        /// <summary>
+        /// Container of the polygon controls.
+        /// </summary>
+        private LinearLayout? polygonPanel;
+
+        /// <summary>
+        /// Text describing the drawn polygon.
+        /// </summary>
+        private TextView? polygonText;
+
+        /// <summary>
+        /// Vertices of the drawn polygon or rectangle, empty when nothing was drawn yet.
+        /// </summary>
+        private List<GeoPoint> polygonVertices = new List<GeoPoint>();
+
+        /// <summary>
+        /// Checkboxes of the days of the week on which the alert may notify, in the order of <see cref="ScheduleDays"/>.
+        /// </summary>
+        private readonly List<CheckBox> dayBoxes = new List<CheckBox>();
+
+        /// <summary>
+        /// Checkbox that switches the quiet hours on.
+        /// </summary>
+        private CheckBox? quietBox;
+
+        /// <summary>
+        /// Button that chooses the start of the quiet hours.
+        /// </summary>
+        private Button? quietFromButton;
+
+        /// <summary>
+        /// Button that chooses the end of the quiet hours.
+        /// </summary>
+        private Button? quietToButton;
+
+        /// <summary>
+        /// Start of the quiet hours as minutes of the day.
+        /// </summary>
+        private int quietFromMinute = DefaultQuietFromMinute;
+
+        /// <summary>
+        /// End of the quiet hours as minutes of the day.
+        /// </summary>
+        private int quietToMinute = DefaultQuietToMinute;
 
         /// <summary>
         /// List of the filters.
@@ -225,10 +295,11 @@ namespace AdsbCarMap.Activities
             areaGroup.AddView(CreateRadio(Loc.T("Wokół mojej pozycji (GPS)"), 1));
             areaGroup.AddView(CreateRadio(Loc.T("Wokół lotniska"), 2));
             areaGroup.AddView(CreateRadio(Loc.T("Okrąg o wybranym środku"), 3));
+            areaGroup.AddView(CreateRadio(Loc.T("Wielokąt lub prostokąt narysowany na mapie"), 4));
             areaGroup.Check(1);
             areaGroup.CheckedChange += (sender, args) =>
             {
-                areaKind = args.CheckedId == 2 ? AlertAreaKind.AroundAirport : args.CheckedId == 3 ? AlertAreaKind.Circle : AlertAreaKind.AroundMe;
+                areaKind = args.CheckedId == 2 ? AlertAreaKind.AroundAirport : args.CheckedId == 3 ? AlertAreaKind.Circle : args.CheckedId == 4 ? AlertAreaKind.Polygon : AlertAreaKind.AroundMe;
                 UpdateAreaPanels();
             };
             form.AddView(areaGroup);
@@ -276,7 +347,22 @@ namespace AdsbCarMap.Activities
                 }
             };
             circlePanel.AddView(myPositionButton);
+            Button pickCenterButton = new Button(this);
+            pickCenterButton.Text = Loc.T("Wybierz środek na mapie");
+            pickCenterButton.Click += (sender, args) => PickCenterOnMap();
+            circlePanel.AddView(pickCenterButton);
             form.AddView(circlePanel);
+
+            polygonPanel = new LinearLayout(this);
+            polygonPanel.Orientation = Orientation.Vertical;
+            polygonText = new TextView(this);
+            polygonText.SetPadding(0, Dp(4), 0, Dp(4));
+            polygonPanel.AddView(polygonText);
+            Button drawButton = new Button(this);
+            drawButton.Text = Loc.T("Narysuj na mapie");
+            drawButton.Click += (sender, args) => DrawOnMap();
+            polygonPanel.AddView(drawButton);
+            form.AddView(polygonPanel);
 
             radiusText = new TextView(this);
             radiusText.SetPadding(0, Dp(8), 0, 0);
@@ -316,6 +402,54 @@ namespace AdsbCarMap.Activities
             cooldownField.InputType = Android.Text.InputTypes.ClassNumber;
             cooldownField.SetSingleLine(true);
             form.AddView(cooldownField);
+
+            AddLabel(form, Loc.T("Rodzaj powiadomienia"));
+            importanceSpinner = new Spinner(this);
+            List<string> importanceNames = new List<string>();
+
+            foreach (AlertImportance level in ImportanceLevels)
+            {
+                importanceNames.Add(AlertText.DescribeImportance(level));
+            }
+
+            ArrayAdapter<string> importanceAdapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, importanceNames);
+            importanceAdapter.SetDropDownViewResource(Android.Resource.Layout.SimpleSpinnerDropDownItem);
+            importanceSpinner.Adapter = importanceAdapter;
+            form.AddView(importanceSpinner);
+
+            AddLabel(form, Loc.T("Harmonogram"));
+            LinearLayout daysRow = new LinearLayout(this);
+            daysRow.Orientation = Orientation.Horizontal;
+
+            foreach (DayOfWeek day in ScheduleDays)
+            {
+                CheckBox dayBox = new CheckBox(this);
+                dayBox.Text = AlertText.ShortDayName(day);
+                dayBox.Checked = true;
+                dayBoxes.Add(dayBox);
+                daysRow.AddView(dayBox, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+            }
+
+            form.AddView(daysRow);
+            quietBox = new CheckBox(this);
+            quietBox.Text = Loc.T("godziny ciszy (bez powiadomień)");
+            quietBox.CheckedChange += (sender, args) => UpdateQuietButtons();
+            form.AddView(quietBox);
+            LinearLayout quietRow = new LinearLayout(this);
+            quietRow.Orientation = Orientation.Horizontal;
+            quietFromButton = new Button(this);
+            quietFromButton.Click += (sender, args) => PickQuietTime(true);
+            quietRow.AddView(quietFromButton, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+            quietToButton = new Button(this);
+            quietToButton.Click += (sender, args) => PickQuietTime(false);
+            quietRow.AddView(quietToButton, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+            form.AddView(quietRow);
+            TextView scheduleHint = new TextView(this);
+            scheduleHint.Text = Loc.T("Poza wybranymi dniami i w godzinach ciszy alert nie wysyła powiadomień. Samoloty nadal są śledzone, więc po końcu ciszy nie dostaniesz powiadomień o tych, które już tam były.");
+            scheduleHint.TextSize = 12f;
+            scheduleHint.SetPadding(0, Dp(2), 0, 0);
+            form.AddView(scheduleHint);
+            UpdateQuietButtons();
 
             Button testButton = new Button(this);
             testButton.Text = Loc.T("Sprawdź, ile samolotów pasuje teraz");
@@ -363,8 +497,29 @@ namespace AdsbCarMap.Activities
             appearanceBox!.Checked = rule.NotifyOnAppearance;
             cooldownField!.Text = rule.CooldownMinutes.ToString(CultureInfo.InvariantCulture);
 
+            if (rule.Area.Vertices != null)
+            {
+                polygonVertices = new List<GeoPoint>(rule.Area.Vertices);
+            }
+
+            importanceSpinner!.SetSelection(Math.Max(0, Array.IndexOf(ImportanceLevels, rule.Importance)));
+
+            for (int i = 0; i < ScheduleDays.Length; i++)
+            {
+                dayBoxes[i].Checked = rule.Schedule.IsDayActive(ScheduleDays[i]);
+            }
+
+            if (rule.Schedule.QuietStartMinute is int quietStart && rule.Schedule.QuietEndMinute is int quietEnd)
+            {
+                quietFromMinute = quietStart;
+                quietToMinute = quietEnd;
+                quietBox!.Checked = true;
+            }
+
+            UpdateQuietButtons();
+
             RadioGroup? group = FindRadioGroup();
-            group?.Check(areaKind == AlertAreaKind.AroundAirport ? 2 : areaKind == AlertAreaKind.Circle ? 3 : 1);
+            group?.Check(areaKind == AlertAreaKind.AroundAirport ? 2 : areaKind == AlertAreaKind.Circle ? 3 : areaKind == AlertAreaKind.Polygon ? 4 : 1);
         }
 
         /// <summary>
@@ -428,6 +583,174 @@ namespace AdsbCarMap.Activities
             {
                 circlePanel.Visibility = areaKind == AlertAreaKind.Circle ? ViewStates.Visible : ViewStates.Gone;
             }
+
+            ViewStates radiusVisibility = areaKind == AlertAreaKind.Polygon ? ViewStates.Gone : ViewStates.Visible;
+
+            if (polygonPanel != null)
+            {
+                polygonPanel.Visibility = areaKind == AlertAreaKind.Polygon ? ViewStates.Visible : ViewStates.Gone;
+            }
+
+            if (radiusText != null && radiusBar != null)
+            {
+                radiusText.Visibility = radiusVisibility;
+                radiusBar.Visibility = radiusVisibility;
+            }
+
+            UpdatePolygonText();
+        }
+
+        /// <summary>
+        /// Shows how many vertices the polygon has, or that nothing was drawn yet.
+        /// </summary>
+        private void UpdatePolygonText()
+        {
+            if (polygonText == null)
+            {
+                return;
+            }
+
+            polygonText.Text = polygonVertices.Count < AlertArea.MinimumVertices
+                ? Loc.T("Obszar nie jest jeszcze narysowany.")
+                : AlertText.DescribeArea(AlertArea.CreatePolygon(polygonVertices), distanceUnit);
+        }
+
+        /// <summary>
+        /// Opens the map on which the center of the circle is tapped.
+        /// </summary>
+        private void PickCenterOnMap()
+        {
+            Intent intent = new Intent(this, typeof(AreaPickerActivity));
+            intent.PutExtra(AreaPickerActivity.ModeExtra, AreaPickerActivity.ModeCenter);
+            intent.PutExtra(AreaPickerActivity.RadiusExtra, UnitFormatter.UnitToKilometers(radiusBar!.Progress + MinimumRadius, distanceUnit));
+
+            double? latitude = ParseCoordinate(latitudeField!.Text, 90.0);
+            double? longitude = ParseCoordinate(longitudeField!.Text, 180.0);
+
+            if (latitude != null && longitude != null)
+            {
+                intent.PutExtra(AreaPickerActivity.LatitudeExtra, latitude.Value);
+                intent.PutExtra(AreaPickerActivity.LongitudeExtra, longitude.Value);
+            }
+
+            StartActivityForResult(intent, AreaPickerActivity.RequestCode);
+        }
+
+        /// <summary>
+        /// Opens the map on which the polygon or the rectangle is drawn.
+        /// </summary>
+        private void DrawOnMap()
+        {
+            Intent intent = new Intent(this, typeof(AreaPickerActivity));
+            intent.PutExtra(AreaPickerActivity.ModeExtra, AreaPickerActivity.ModePolygon);
+            intent.PutExtra(AreaPickerActivity.VerticesExtra, AreaPickerActivity.FlattenVertices(polygonVertices));
+            StartActivityForResult(intent, AreaPickerActivity.RequestCode);
+        }
+
+        /// <summary>
+        /// Takes the center or the vertices chosen on the map.
+        /// </summary>
+        /// <param name="requestCode">Code of the request.</param>
+        /// <param name="resultCode">Result of the map screen.</param>
+        /// <param name="data">Chosen center or vertices.</param>
+        protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
+        {
+            base.OnActivityResult(requestCode, resultCode, data);
+
+            if (requestCode != AreaPickerActivity.RequestCode || resultCode != Result.Ok || data == null)
+            {
+                return;
+            }
+
+            double[]? flat = data.GetDoubleArrayExtra(AreaPickerActivity.VerticesExtra);
+
+            if (flat != null)
+            {
+                polygonVertices = AreaPickerActivity.ReadVertices(flat);
+                UpdatePolygonText();
+
+                return;
+            }
+
+            double latitude = data.GetDoubleExtra(AreaPickerActivity.LatitudeExtra, double.NaN);
+            double longitude = data.GetDoubleExtra(AreaPickerActivity.LongitudeExtra, double.NaN);
+
+            if (!double.IsNaN(latitude) && !double.IsNaN(longitude))
+            {
+                FillCoordinates(latitude, longitude);
+            }
+        }
+
+        /// <summary>
+        /// Shows the quiet hours on their buttons and enables the buttons only when the quiet hours are switched on.
+        /// </summary>
+        private void UpdateQuietButtons()
+        {
+            if (quietFromButton == null || quietToButton == null || quietBox == null)
+            {
+                return;
+            }
+
+            quietFromButton.Text = Loc.T("od ") + AlertSchedule.FormatMinute(quietFromMinute);
+            quietToButton.Text = Loc.T("do ") + AlertSchedule.FormatMinute(quietToMinute);
+            quietFromButton.Enabled = quietBox.Checked;
+            quietToButton.Enabled = quietBox.Checked;
+        }
+
+        /// <summary>
+        /// Asks for the start or the end of the quiet hours.
+        /// </summary>
+        /// <param name="isStart">True for the start, false for the end.</param>
+        private void PickQuietTime(bool isStart)
+        {
+            int current = isStart ? quietFromMinute : quietToMinute;
+            TimePickerDialog dialog = new TimePickerDialog(this, (sender, args) =>
+            {
+                int minute = args.HourOfDay * 60 + args.Minute;
+
+                if (isStart)
+                {
+                    quietFromMinute = minute;
+                }
+                else
+                {
+                    quietToMinute = minute;
+                }
+
+                UpdateQuietButtons();
+            }, current / 60, current % 60, true);
+            dialog.Show();
+        }
+
+        /// <summary>
+        /// Builds the schedule from the checkboxes and the quiet hours.
+        /// </summary>
+        /// <returns>The schedule, or null when the quiet hours start and end at the same time.</returns>
+        private AlertSchedule? BuildSchedule()
+        {
+            int days = 0;
+
+            for (int i = 0; i < ScheduleDays.Length; i++)
+            {
+                if (dayBoxes[i].Checked)
+                {
+                    days |= 1 << (int)ScheduleDays[i];
+                }
+            }
+
+            if (quietBox!.Checked)
+            {
+                if (quietFromMinute == quietToMinute)
+                {
+                    Toast.MakeText(this, Loc.T("Godziny ciszy muszą się różnić (początek i koniec)"), ToastLength.Long)?.Show();
+
+                    return null;
+                }
+
+                return new AlertSchedule(days, quietFromMinute, quietToMinute);
+            }
+
+            return new AlertSchedule(days, null, null);
         }
 
         /// <summary>
@@ -565,6 +888,24 @@ namespace AdsbCarMap.Activities
 
                 area = new AlertArea(AlertAreaKind.AroundAirport, radius, null, airport.Icao);
             }
+            else if (areaKind == AlertAreaKind.Polygon)
+            {
+                if (polygonVertices.Count < AlertArea.MinimumVertices)
+                {
+                    Toast.MakeText(this, Loc.T("Narysuj obszar na mapie"), ToastLength.Long)?.Show();
+
+                    return null;
+                }
+
+                if (!AlertArea.IsSimple(polygonVertices))
+                {
+                    Toast.MakeText(this, Loc.T("Boki wielokąta nie mogą się przecinać ani stykać"), ToastLength.Long)?.Show();
+
+                    return null;
+                }
+
+                area = AlertArea.CreatePolygon(polygonVertices);
+            }
             else
             {
                 double? latitude = ParseCoordinate(latitudeField!.Text, 90.0);
@@ -594,7 +935,14 @@ namespace AdsbCarMap.Activities
                 name = AlertText.DescribeArea(area, distanceUnit);
             }
 
-            return new AlertRule(ruleId, name, ruleEnabled, area, null, entryBox!.Checked, appearanceBox!.Checked, cooldown, filterId);
+            AlertSchedule? schedule = BuildSchedule();
+
+            if (schedule == null)
+            {
+                return null;
+            }
+
+            return new AlertRule(ruleId, name, ruleEnabled, area, null, entryBox!.Checked, appearanceBox!.Checked, cooldown, filterId, schedule, ImportanceLevels[Math.Clamp(importanceSpinner!.SelectedItemPosition, 0, ImportanceLevels.Length - 1)]);
         }
 
         /// <summary>

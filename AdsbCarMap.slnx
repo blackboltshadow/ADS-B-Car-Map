@@ -11,6 +11,10 @@
     <Project Path="Sources/AirplanesLive/AdsbCarMap.DataSources.AirplanesLive/AdsbCarMap.DataSources.AirplanesLive.csproj" />
     <Project Path="Sources/AirplanesLive/AdsbCarMap.DataSources.AirplanesLive.Tests/AdsbCarMap.DataSources.AirplanesLive.Tests.csproj" />
   </Folder>
+  <Folder Name="/Sources/AdsbFi/">
+    <Project Path="Sources/AdsbFi/AdsbCarMap.DataSources.AdsbFi/AdsbCarMap.DataSources.AdsbFi.csproj" />
+    <Project Path="Sources/AdsbFi/AdsbCarMap.DataSources.AdsbFi.Tests/AdsbCarMap.DataSources.AdsbFi.Tests.csproj" />
+  </Folder>
   <Folder Name="/Sources/Adsbdb/">
     <Project Path="Sources/Adsbdb/AdsbCarMap.DataSources.Adsbdb/AdsbCarMap.DataSources.Adsbdb.csproj" />
     <Project Path="Sources/Adsbdb/AdsbCarMap.DataSources.Adsbdb.Tests/AdsbCarMap.DataSources.Adsbdb.Tests.csproj" />

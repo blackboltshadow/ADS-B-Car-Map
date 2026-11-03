@@ -350,5 +350,110 @@ namespace AdsbCarMap.Tests
 
             Assert.Equal(0, AlertEngine.CountMatching(rule, new List<Aircraft> { CreateAircraft("A1", 0.1) }, null, Airports, NoRoutes));
         }
+
+        /// <summary>
+        /// Creates an aircraft at the given position.
+        /// </summary>
+        /// <param name="hex">ICAO address.</param>
+        /// <param name="latitude">Latitude.</param>
+        /// <param name="longitude">Longitude.</param>
+        /// <returns>The aircraft.</returns>
+        private static Aircraft CreateAircraftAt(string hex, double latitude, double longitude)
+        {
+            return new Aircraft(hex, "TEST1", latitude, longitude, 30000, false, 400.0, 90.0, 0.0, "B738", null, "A3", false);
+        }
+
+        /// <summary>
+        /// With the option on, the aircraft already in the area at the first check are not reported as appearing, but the ones that come later are.
+        /// </summary>
+        [Fact]
+        public void SkipInitialAppearance_SilencesOnlyTheFirstCheck()
+        {
+            AlertEngine engine = new AlertEngine { SkipInitialAppearance = true };
+            AlertRule rule = CreateRule(entry: false);
+
+            Assert.Empty(Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 0.1) }, 0));
+            Assert.Empty(Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 0.1) }, 1));
+
+            List<AlertMatch> later = Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 0.1), CreateAircraft("A2", 0.2) }, 2);
+
+            Assert.Single(later);
+            Assert.Equal("A2", later[0].Aircraft.Hex);
+        }
+
+        /// <summary>
+        /// Without the option the first check reports the aircraft that are already in the area.
+        /// </summary>
+        [Fact]
+        public void SkipInitialAppearance_Off_ReportsFirstCheck()
+        {
+            Assert.Single(Run(new AlertEngine(), CreateRule(entry: false), new List<Aircraft> { CreateAircraft("A1", 0.1) }));
+        }
+
+        /// <summary>
+        /// Outside of the days and hours of the schedule the rule stays silent, and the aircraft that stay in the area are not reported when the schedule opens.
+        /// </summary>
+        [Fact]
+        public void Schedule_Inactive_SilencesAndOpeningDoesNotReplay()
+        {
+            AlertSchedule schedule = new AlertSchedule(AlertSchedule.AllDays, 22 * 60, 6 * 60);
+            AlertRule rule = new AlertRule("r1", "Rule", true, new AlertArea(AlertAreaKind.Circle, 50.0, Center), null, true, true, 30, null, schedule);
+            AlertEngine engine = new AlertEngine();
+            List<AlertRule> rules = new List<AlertRule> { rule };
+            List<Aircraft> aircraft = new List<Aircraft> { CreateAircraft("A1", 0.1) };
+
+            Assert.Empty(engine.Evaluate(rules, aircraft, null, Airports, NoRoutes, Start, new DateTime(2026, 11, 3, 23, 0, 0)));
+            Assert.Empty(engine.Evaluate(rules, aircraft, null, Airports, NoRoutes, Start.AddHours(8), new DateTime(2026, 11, 4, 7, 0, 0)));
+            Assert.Single(engine.Evaluate(rules, new List<Aircraft> { CreateAircraft("A1", 0.1), CreateAircraft("A2", 0.2) }, null, Airports, NoRoutes, Start.AddHours(9), new DateTime(2026, 11, 4, 8, 0, 0)));
+        }
+
+        /// <summary>
+        /// A polygon reports only the aircraft inside its outline, not those inside its bounding circle.
+        /// </summary>
+        [Fact]
+        public void Polygon_ReportsOnlyInsideTheOutline()
+        {
+            AlertArea triangle = AlertArea.CreatePolygon(new List<GeoPoint> { new GeoPoint(51.0, 20.0), new GeoPoint(51.0, 22.0), new GeoPoint(53.0, 21.0) });
+            AlertRule rule = new AlertRule("r1", "Triangle", true, triangle, null, true, true, 30);
+            List<Aircraft> aircraft = new List<Aircraft> { CreateAircraftAt("IN", 51.5, 21.0), CreateAircraftAt("OUT", 52.8, 20.0), CreateAircraftAt("FAR", 60.0, 21.0) };
+
+            List<AlertMatch> matches = new AlertEngine().Evaluate(new List<AlertRule> { rule }, aircraft, null, Airports, NoRoutes, Start);
+
+            Assert.Single(matches);
+            Assert.Equal("IN", matches[0].Aircraft.Hex);
+            Assert.Equal(1, AlertEngine.CountMatching(rule, aircraft, null, Airports, NoRoutes));
+        }
+
+        /// <summary>
+        /// The bounding circle of a polygon reaches every vertex and is centered in the bounding box.
+        /// </summary>
+        [Fact]
+        public void CreatePolygon_BoundingCircleCoversVertices()
+        {
+            List<GeoPoint> vertices = new List<GeoPoint> { new GeoPoint(51.0, 20.0), new GeoPoint(51.0, 22.0), new GeoPoint(53.0, 21.0) };
+            AlertArea area = AlertArea.CreatePolygon(vertices);
+
+            Assert.Equal(52.0, area.Center!.Latitude);
+            Assert.Equal(21.0, area.Center!.Longitude);
+
+            foreach (GeoPoint vertex in vertices)
+            {
+                Assert.True(GeoMath.DistanceKilometers(area.Center.Latitude, area.Center.Longitude, vertex.Latitude, vertex.Longitude) <= area.RadiusKilometers + 1e-9);
+            }
+        }
+
+        /// <summary>
+        /// A rectangle is a polygon with four vertices from two opposite corners.
+        /// </summary>
+        [Fact]
+        public void CreateRectangle_HasFourVerticesAndContainsItsMiddle()
+        {
+            AlertArea area = AlertArea.CreateRectangle(new GeoPoint(51.0, 20.0), new GeoPoint(53.0, 22.0));
+
+            Assert.Equal(AlertAreaKind.Polygon, area.Kind);
+            Assert.Equal(4, area.Vertices!.Count);
+            Assert.True(area.Contains(area.Center!, 52.0, 21.0));
+            Assert.False(area.Contains(area.Center!, 54.0, 21.0));
+        }
     }
 }

@@ -19,5 +19,10 @@ namespace AdsbCarMap.Data
         /// Circle with a fixed center chosen on the map.
         /// </summary>
         Circle,
+
+        /// <summary>
+        /// Polygon (or rectangle) with the vertices drawn on the map.
+        /// </summary>
+        Polygon,
     }
 }

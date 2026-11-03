@@ -1,5 +1,6 @@
 using AdsbCarMap.DataSources.Adsbdb;
 using AdsbCarMap.DataSources.AdsbLol;
+using AdsbCarMap.DataSources.AdsbFi;
 using AdsbCarMap.DataSources.AirplanesLive;
 using AdsbCarMap.DataSources.Hexdb;
 using AdsbCarMap.DataSources.Interfaces;
@@ -48,6 +49,7 @@ namespace AdsbCarMap.Data
 
             HttpClient adsbLolHttp = createHttpClient(AdsbLolClient.DefaultBaseAddress);
             HttpClient airplanesLiveHttp = createHttpClient(AirplanesLiveClient.DefaultBaseAddress);
+            HttpClient adsbFiHttp = createHttpClient(AdsbFiClient.DefaultBaseAddress);
             HttpClient adsbdbHttp = createHttpClient(AdsbdbClient.DefaultBaseAddress);
             HttpClient hexdbHttp = createHttpClient(HexdbClient.DefaultBaseAddress);
 
@@ -55,7 +57,7 @@ namespace AdsbCarMap.Data
             AircraftMemory = CreateMemory<AircraftDetails>(flightCacheDirectory, "aircraft-details.json", AircraftNotFoundMaxAge, settings.FlightInfoMaxAge);
 
             AircraftSources = new FallbackAircraftSource(
-                new List<IRateLimitedAircraftSource> { new RateLimitedAircraftSource(new AdsbLolClient(adsbLolHttp)), new RateLimitedAircraftSource(new AirplanesLiveClient(airplanesLiveHttp)) },
+                new List<IRateLimitedAircraftSource> { new RateLimitedAircraftSource(new AdsbLolClient(adsbLolHttp)), new RateLimitedAircraftSource(new AirplanesLiveClient(airplanesLiveHttp)), new RateLimitedAircraftSource(new AdsbFiClient(adsbFiHttp)) },
                 settings.AircraftOrder,
                 settings.FallbackEnabled,
                 settings.Report);

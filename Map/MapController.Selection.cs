@@ -98,6 +98,111 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Handles the request to show several aircraft together, for example after a tap on the notification of an alert about many aircraft: selects them all in the multi-select mode (on the phone), without isolating, and moves the map so that they all fit on the screen.
+        /// </summary>
+        /// <param name="hexes">ICAO addresses of the aircraft; the first one becomes the primary selection.</param>
+        private void FocusAircraftGroup(IReadOnlyList<string> hexes)
+        {
+            if (hexes.Count == 0)
+            {
+                return;
+            }
+
+            (IReadOnlyList<Aircraft> Aircraft, DateTime TimestampUtc) shared = LiveTraffic.GetSnapshot();
+            bool found;
+
+            lock (stateLock)
+            {
+                List<Aircraft> merged = new List<Aircraft>(latestAircraft);
+
+                foreach (string hex in hexes)
+                {
+                    if (!merged.Any(item => item.Hex == hex))
+                    {
+                        Aircraft? missing = shared.Aircraft.FirstOrDefault(item => item.Hex == hex);
+
+                        if (missing != null)
+                        {
+                            merged.Add(missing);
+                        }
+                    }
+                }
+
+                latestAircraft = merged;
+
+                List<string> present = hexes.Where(hex => merged.Any(item => item.Hex == hex)).ToList();
+                found = present.Count > 0;
+
+                if (found)
+                {
+                    double elapsedSeconds = (DateTime.UtcNow - latestAircraftTimestampUtc).TotalSeconds;
+                    List<(double Latitude, double Longitude)> positions = new List<(double Latitude, double Longitude)>();
+
+                    foreach (string hex in present)
+                    {
+                        positions.Add(MapMath.Extrapolate(merged.First(item => item.Hex == hex), elapsedSeconds));
+                    }
+
+                    double minimumLatitude = positions.Min(position => position.Latitude);
+                    double maximumLatitude = positions.Max(position => position.Latitude);
+                    double minimumLongitude = positions.Min(position => position.Longitude);
+                    double maximumLongitude = positions.Max(position => position.Longitude);
+
+                    flingVelocityX = 0.0;
+                    flingVelocityY = 0.0;
+                    centerLatitude = (minimumLatitude + maximumLatitude) / 2.0;
+                    centerLongitude = (minimumLongitude + maximumLongitude) / 2.0;
+                    zoomTarget = FindZoomThatFits(minimumLatitude, maximumLatitude, minimumLongitude, maximumLongitude);
+                    followedHex = null;
+                    followLocation = false;
+                    selectedHexes = new HashSet<string>(present);
+                    primaryHex = present[0];
+                    selectedAirport = null;
+                    isolateSelected = false;
+                    multiSelect = !ShowSelectionPopup;
+                }
+            }
+
+            if (!found)
+            {
+                return;
+            }
+
+            dataLoop.Wake();
+            NotifySelectionChanged();
+            PublishFollow();
+        }
+
+        /// <summary>
+        /// Finds the highest zoom at which a box of the Earth fits on the screen with a margin.
+        /// </summary>
+        /// <param name="minimumLatitude">Southern edge.</param>
+        /// <param name="maximumLatitude">Northern edge.</param>
+        /// <param name="minimumLongitude">Western edge.</param>
+        /// <param name="maximumLongitude">Eastern edge.</param>
+        /// <returns>The zoom within the limits of the settings. Call it only with the state lock held.</returns>
+        private double FindZoomThatFits(double minimumLatitude, double maximumLatitude, double minimumLongitude, double maximumLongitude)
+        {
+            double minimumZoom = AppSettings.MinZoom;
+            double maximumZoom = Math.Min(AppSettings.MaxZoom, GroupMaximumZoom);
+            double availableWidth = Math.Max(1, surfaceWidth) * GroupScreenFraction;
+            double availableHeight = Math.Max(1, surfaceHeight) * GroupScreenFraction;
+
+            for (double candidate = maximumZoom; candidate > minimumZoom; candidate -= GroupZoomStep)
+            {
+                (double westX, double northY) = WebMercator.LatLonToWorldPixel(maximumLatitude, minimumLongitude, candidate);
+                (double eastX, double southY) = WebMercator.LatLonToWorldPixel(minimumLatitude, maximumLongitude, candidate);
+
+                if (Math.Abs(eastX - westX) <= availableWidth && Math.Abs(southY - northY) <= availableHeight)
+                {
+                    return candidate;
+                }
+            }
+
+            return minimumZoom;
+        }
+
+        /// <summary>
         /// Publishes the selection and the filters to the other map and raises <see cref="SelectionChanged"/>.
         /// </summary>
         private void NotifySelectionChanged()

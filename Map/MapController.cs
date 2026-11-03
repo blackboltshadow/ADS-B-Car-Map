@@ -97,6 +97,21 @@ namespace AdsbCarMap.Map
         private const double AirportFocusZoom = 11.0;
 
         /// <summary>
+        /// Highest zoom used to fit a group of aircraft on the screen.
+        /// </summary>
+        private const double GroupMaximumZoom = 12.0;
+
+        /// <summary>
+        /// Part of the screen size that a group of aircraft may take up.
+        /// </summary>
+        private const double GroupScreenFraction = 0.7;
+
+        /// <summary>
+        /// Step of the zoom in which the fit of a group of aircraft is searched.
+        /// </summary>
+        private const double GroupZoomStep = 0.25;
+
+        /// <summary>
         /// Time the loading indicator stays visible after the download ends, so that a short download is still noticeable.
         /// </summary>
         private static readonly TimeSpan LoadingIndicatorMinimumVisible = TimeSpan.FromMilliseconds(800);
@@ -506,6 +521,7 @@ namespace AdsbCarMap.Map
             cancellation = source;
             locationTracker.Start();
             LiveTraffic.FocusRequested += FocusAircraft;
+            LiveTraffic.GroupFocusRequested += FocusAircraftGroup;
             LiveTraffic.AirportFocusRequested += FocusAirport;
             selectionState.Changed += OnSharedSelectionChanged;
             selectionState.FollowChanged += OnSharedFollowChanged;
@@ -527,6 +543,13 @@ namespace AdsbCarMap.Map
                 FocusAircraft(pendingFocus);
             }
 
+            IReadOnlyList<string>? pendingGroup = LiveTraffic.GetPendingGroupFocus();
+
+            if (pendingGroup != null && pendingFocus == null)
+            {
+                FocusAircraftGroup(pendingGroup);
+            }
+
             string? pendingAirport = LiveTraffic.GetPendingAirportFocus();
 
             if (pendingAirport != null && pendingFocus == null)
@@ -539,7 +562,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Restores the remembered map center, zoom and follow mode if no map has done it yet in this process.
+        /// Restores the remembered map center and zoom if no map has done it yet in this process. The map always starts following the GPS position, the remembered center is only shown until the first fix.
         /// </summary>
         private void RestoreView()
         {
@@ -562,7 +585,7 @@ namespace AdsbCarMap.Map
                 centerLongitude = remembered.Longitude;
                 zoom = remembered.Zoom;
                 zoomTarget = remembered.Zoom;
-                followLocation = remembered.FollowLocation;
+                followLocation = true;
             }
         }
 
@@ -596,6 +619,7 @@ namespace AdsbCarMap.Map
             source?.Cancel();
             locationTracker.Stop();
             LiveTraffic.FocusRequested -= FocusAircraft;
+            LiveTraffic.GroupFocusRequested -= FocusAircraftGroup;
             LiveTraffic.AirportFocusRequested -= FocusAirport;
             selectionState.Changed -= OnSharedSelectionChanged;
             selectionState.FollowChanged -= OnSharedFollowChanged;

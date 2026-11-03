@@ -14,6 +14,7 @@
     <ProjectReference Include="../../Sources/AdsbCarMap.DataSources.Management/AdsbCarMap.DataSources.Management.csproj" />
     <ProjectReference Include="../../Sources/AdsbLol/AdsbCarMap.DataSources.AdsbLol/AdsbCarMap.DataSources.AdsbLol.csproj" />
     <ProjectReference Include="../../Sources/AirplanesLive/AdsbCarMap.DataSources.AirplanesLive/AdsbCarMap.DataSources.AirplanesLive.csproj" />
+    <ProjectReference Include="../../Sources/AdsbFi/AdsbCarMap.DataSources.AdsbFi/AdsbCarMap.DataSources.AdsbFi.csproj" />
     <ProjectReference Include="../../Sources/Adsbdb/AdsbCarMap.DataSources.Adsbdb/AdsbCarMap.DataSources.Adsbdb.csproj" />
     <ProjectReference Include="../../Sources/Hexdb/AdsbCarMap.DataSources.Hexdb/AdsbCarMap.DataSources.Hexdb.csproj" />
   </ItemGroup>
@@ -27,6 +28,11 @@
     <Compile Include="..\..\Data\AlertAreaKind.cs" Link="Linked\AlertAreaKind.cs" />
     <Compile Include="..\..\Data\AlertTrigger.cs" Link="Linked\AlertTrigger.cs" />
     <Compile Include="..\..\Data\AlertArea.cs" Link="Linked\AlertArea.cs" />
+    <Compile Include="..\..\Data\AlertSchedule.cs" Link="Linked\AlertSchedule.cs" />
+    <Compile Include="..\..\Data\AlertImportance.cs" Link="Linked\AlertImportance.cs" />
+    <Compile Include="..\..\Data\AlertGrouper.cs" Link="Linked\AlertGrouper.cs" />
+    <Compile Include="..\..\Data\AlertMuteList.cs" Link="Linked\AlertMuteList.cs" />
+    <Compile Include="..\..\Data\AlertHistory.cs" Link="Linked\AlertHistory.cs" />
     <Compile Include="..\..\Data\AlertRule.cs" Link="Linked\AlertRule.cs" />
     <Compile Include="..\..\Data\AlertMatch.cs" Link="Linked\AlertMatch.cs" />
     <Compile Include="..\..\Data\AlertEngine.cs" Link="Linked\AlertEngine.cs" />

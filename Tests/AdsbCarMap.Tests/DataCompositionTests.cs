@@ -129,12 +129,13 @@ namespace AdsbCarMap.Tests
 
             IReadOnlyList<SourceState> states = composition.GetSourceStates();
 
-            Assert.Equal(5, states.Count);
+            Assert.Equal(6, states.Count);
             Assert.Equal("airplanes.live", states[0].Name);
             Assert.Equal(403, states[0].Status.LastFailure?.StatusCode);
             Assert.Null(states[1].Status.LastFailure);
-            Assert.Equal("hexdb.io", states[2].Name);
-            Assert.Equal("Trasy", states[2].Group);
+            Assert.Equal("adsb.fi", states[2].Name);
+            Assert.Equal("hexdb.io", states[3].Name);
+            Assert.Equal("Trasy", states[3].Group);
             Assert.DoesNotContain(states, state => state.IsLastUsed);
         }
 
@@ -198,6 +199,11 @@ namespace AdsbCarMap.Tests
 
             Assert.Equal(new List<string> { "api.adsb.lol" }, first.Hosts);
             Assert.Equal(new List<string> { "api.airplanes.live" }, second.Hosts);
+
+            RecordingHandler third = new RecordingHandler(HttpStatusCode.OK, "{\"aircraft\":[]}");
+            await Create(third, new List<string> { "adsb.fi", "adsb.lol" }, new List<string>()).AircraftSources.GetAircraftAsync(52.0, 21.0, 50.0, CancellationToken.None);
+
+            Assert.Equal(new List<string> { "opendata.adsb.fi" }, third.Hosts);
         }
 
         /// <summary>

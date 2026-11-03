@@ -241,7 +241,7 @@ namespace AdsbCarMap.Services
 
                 foreach (Aircraft item in aircraft)
                 {
-                    if (GeoMath.DistanceKilometers(center.Latitude, center.Longitude, item.Latitude, item.Longitude) <= rule.Area.RadiusKilometers)
+                    if (rule.Area.Contains(center, item.Latitude, item.Longitude))
                     {
                         AppServices.Routes.Get(item.Callsign);
                     }

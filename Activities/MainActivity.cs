@@ -221,11 +221,18 @@ namespace AdsbCarMap.Activities
         /// <param name="intent">Intent that started or resumed the activity.</param>
         private static void HandleAlertIntent(Intent? intent)
         {
+            string[]? hexes = intent?.GetStringArrayExtra(AlertMonitor.FocusHexesExtra);
             string? hex = intent?.GetStringExtra(AlertMonitor.FocusHexExtra);
 
-            if (!string.IsNullOrEmpty(hex))
+            intent?.RemoveExtra(AlertMonitor.FocusHexExtra);
+            intent?.RemoveExtra(AlertMonitor.FocusHexesExtra);
+
+            if (hexes != null && hexes.Length > 1)
             {
-                intent?.RemoveExtra(AlertMonitor.FocusHexExtra);
+                LiveTraffic.RequestGroupFocus(hexes);
+            }
+            else if (!string.IsNullOrEmpty(hex))
+            {
                 LiveTraffic.RequestFocus(hex);
             }
         }

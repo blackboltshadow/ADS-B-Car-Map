@@ -14,7 +14,7 @@ Stan na 2026-11-02. Notatka zbiera, jakie źródła danych istnieją, które wyb
 |---|---|---|---|---|---|
 | adsb.lol | brak | nie sprawdzono, backoff po 429 | otwarte dane | ADS-B Exchange v2 | **jest** (domyślne) |
 | airplanes.live (`api.airplanes.live/v2`) | brak klucza, ale **zapytania bez uzgodnienia są odrzucane (403)** | nie podano, promień do 250 NM | użytek osobisty niekomercyjny lub wewnętrzny firmowy; dostęp wymaga kontaktu e-mailowego | ADS-B Exchange v2 | **dodane w kodzie, ale nieużyteczne do czasu uzyskania zgody** (patrz niżej) |
-| adsb.fi (`opendata.adsb.fi/api`) | brak | 1 zapytanie/s, promień do 250 NM | tylko osobisty niekomercyjny | ADS-B Exchange v2 | następne w kolejce |
+| adsb.fi (`opendata.adsb.fi/api/v3`) | brak | 1 zapytanie/s, promień do 250 NM | tylko osobisty niekomercyjny, wymaga atrybucji | ADS-B Exchange v2 | **jest** (trzecie w domyślnej kolejności; pole `desc` daje pełną nazwę typu) |
 | ADSB One | brak | 1 zapytanie/s | nie podano | ADS-B Exchange v2 | pomijamy: repozytorium zarchiwizowano 29.04.2026, usługa przeszła pod airplanes.live |
 | FlyItalyADSB | darmowy klucz | 30 zapytań/min, 300 tys./miesiąc, 500 km | użytek komercyjny dozwolony, atrybucja CC BY-SA 4.0 | ADS-B Exchange v2 | opcjonalnie, dopiero przy dystrybucji komercyjnej (klucz trzeba trzymać poza repozytorium) |
 | OpenSky Network | konto OAuth2 | kredyty dzienne: 400 anonimowo, 4000 z kontem | pisemna licencja do zastosowań komercyjnych | własny | odrzucone: niski limit, inny format, nie potwierdzono typu i rejestracji w odpowiedzi |
@@ -46,7 +46,7 @@ Wnioski:
 - Przy dystrybucji niekomercyjnej (np. publiczne repozytorium i sideload) obowiązuje atrybucja z adsb.fi; dla pozostałych nie ma jawnego wymogu, ale ekran „O aplikacji” już je wymienia.
 - Zapytania aplikacji idą z telefonów użytkowników, a nie z jednego serwera, więc limity (adsb.fi: 1 zapytanie/s) dotyczą każdego użytkownika osobno; tym ważniejsze jest, że `BackoffRateLimiter` nie ponawia zapytań po 4xx.
 - **Nie sprawdzono**: `adsb.lol/sponsor`, `adsb.lol/about`, strony `adsb.fi` (403 dla automatycznego pobrania), licencji źródeł danych hexdb.io, treści `api.adsb.lol/docs`. Do ręcznego przejrzenia w przeglądarce.
-- Ścieżka punktu w adsb.fi to `/v3/lat/{lat}/lon/{lon}/dist/{nm}` (do 250 NM) w bazie `https://opendata.adsb.fi/api/`; wariant `/v2/lat/.../lon/.../dist/...` jest oznaczony jako przestarzały i zwraca inny format niż pozostałe punkty v2. Przy dodawaniu źródła użyć v3 i sprawdzić format na żywym zapytaniu.
+- Ścieżka punktu w adsb.fi to `/v3/lat/{lat}/lon/{lon}/dist/{nm}` (do 250 NM) w bazie `https://opendata.adsb.fi/api/`; wariant `/v2/lat/.../lon/.../dist/...` jest oznaczony jako przestarzały i zwraca inny format niż pozostałe punkty v2. Sprawdzone na żywo 2026-11-03: `v3/lat/…` zwraca listę w kluczu `ac` (jak adsb.lol), a `v3/hex/…` odpowiada 400, więc zapytanie po hex idzie przez `v2/hex/{hex}` (też z kluczem `ac`). `AdsbFiClient` używa tych dwóch ścieżek.
 
 ## Źródła tras lotów i danych samolotu (sprawdzone 2026-11-02 żywymi zapytaniami)
 
@@ -67,12 +67,12 @@ Warstwy i zależności (tylko w jedną stronę):
 Core (AdsbCarMap.DataSources)             tylko kontrakt, bez logiki; nie zna nikogo
    ▲                 ▲
 Źródła               Zarządca (Management)
-(AdsbLol, AirplanesLive, Adsbdb, Hexdb)  źródła i zarządca znają tylko Core, nie znają siebie
+(AdsbLol, AirplanesLive, AdsbFi, Adsbdb, Hexdb)  źródła i zarządca znają tylko Core, nie znają siebie
    ▲                 ▲
    └──────── Aplikacja (AppServices składa całość) ────────┘
 ```
 
-1. **Źródło jest w pełni niezależne.** Każde źródło ma własny model rekordu API, własny parser i własne mapowanie na modele Core. Nie wie nic o innych źródłach ani o zarządcy. Źródło tylko pobiera dane: przy 429 zgłasza `RateLimitedException` z wartością `Retry-After`, ale niczego nie wstrzymuje. Kosztem jest powielony parser w adsb.lol i airplanes.live (oba w formacie ADS-B Exchange v2). Wybraliśmy to świadomie, żeby zmiana jednego serwisu nie dotykała drugiego i żeby dodanie źródła nie wymagało wspólnej biblioteki.
+1. **Źródło jest w pełni niezależne.** Każde źródło ma własny model rekordu API, własny parser i własne mapowanie na modele Core. Nie wie nic o innych źródłach ani o zarządcy. Źródło tylko pobiera dane: przy 429 zgłasza `RateLimitedException` z wartością `Retry-After`, ale niczego nie wstrzymuje. Kosztem jest powielony parser w adsb.lol, airplanes.live i adsb.fi (wszystkie w formacie ADS-B Exchange v2). Wybraliśmy to świadomie, żeby zmiana jednego serwisu nie dotykała drugiego i żeby dodanie źródła nie wymagało wspólnej biblioteki.
 2. **Core to wyłącznie kontrakt.** Interfejsy `IDataSource`, `IAircraftSource`, `IRouteSource` i modele `Aircraft`, `FlightRoute`, `RateLimitedException`. Źródła „dopasowują się do zarządcy”, implementując te interfejsy.
 3. **Cała logika jest w zarządcy** (`AdsbCarMap.DataSources.Management`): backoff po 429 (`BackoffRateLimiter`, dekorator `RateLimitedAircraftSource`), stan limitów (`RateLimitStatus`), rejestr (`DataSourceRegistry`) i zapas (`FallbackAircraftSource`). Zarządca zna tylko Core.
 4. **Kolejność źródeł wybiera użytkownik** (Ustawienia → Zaawansowane → Źródło danych): na ekranie to lista przeciągana za uchwyt ≡ (wiersz na górze to główne źródło, pod nim zapasowe w kolejności zapytań), zapisana jako indeks na liście wszystkich kolejności (dla dwóch źródeł dwie, dla trzech sześć), więc ustawienie przechodzi przez zwykły zapis, historię i przywracanie domyślnych. Na liście są tylko źródła pozycji samolotów. adsbdb (trasy) ma osobną kartę „Źródła tras” z jednym wpisem, bo nie dostarcza pozycji i nie może zastępować pozostałych; własną kolejność dostanie z drugim źródłem tras. Zmiana działa od następnego odświeżenia, bez restartu.
@@ -87,6 +87,7 @@ Sources\
   AdsbCarMap.DataSources.Management\      RateLimiting\, Selection\, Privacy\
   AdsbLol\       AdsbCarMap.DataSources.AdsbLol        + .Tests
   AirplanesLive\ AdsbCarMap.DataSources.AirplanesLive  + .Tests
+  AdsbFi\        AdsbCarMap.DataSources.AdsbFi         + .Tests
   Adsbdb\        AdsbCarMap.DataSources.Adsbdb         + .Tests   (trasy lotów i dane samolotu)
   Hexdb\         AdsbCarMap.DataSources.Hexdb          + .Tests   (trasy lotów i dane samolotu)
 Tests\
@@ -114,7 +115,7 @@ Pozycje samolotów zmieniają się co kilka sekund, więc ich nie zapamiętujemy
 
 ## Przyloty i odloty lotniska (rozpoznanie z 2026-11-03, na przyszłość)
 
-Obecne źródła (adsb.lol, airplanes.live, adsbdb, hexdb) nie dają listy lotów lotniska: pozycje są chwilowe, trasy odpowiadają tylko na pytanie „jaka trasa dla tego znaku wywoławczego”. Dane z wyszukiwania w sieci, warunki trzeba sprawdzić na oficjalnych stronach przed użyciem.
+Obecne źródła (adsb.lol, airplanes.live, adsb.fi, adsbdb, hexdb) nie dają listy lotów lotniska: pozycje są chwilowe, trasy odpowiadają tylko na pytanie „jaka trasa dla tego znaku wywoławczego”. Dane z wyszukiwania w sieci, warunki trzeba sprawdzić na oficjalnych stronach przed użyciem.
 
 **Wariant A: lista „na żywo” z istniejących danych (zalecany na początek, bez kluczy).** Samoloty w promieniu wokół lotniska (`AppServices.Adsb`), trasa każdego z `AppServices.Routes` (`RouteCache`); przylot = lotnisko jest celem, odlot = jest początkiem. Ograniczenia: tylko loty w zasięgu odbiorników (bez planowanych i niewystartowanych), jedno zapytanie o trasę na znak wywoławczy (limity i 429), trasy bywają błędne lub puste (general aviation, wojskowe). Miejsce w UI: karta lotniska na telefonie, w samochodzie prosty popup z najbliższymi przylotami.
 
@@ -133,7 +134,6 @@ Obecne źródła (adsb.lol, airplanes.live, adsbdb, hexdb) nie dają listy lotó
 
 ## Czego jeszcze brakuje
 
-- adsb.fi (ścieżka punktu do sprawdzenia na żywym zapytaniu, limit 1 zapytanie/s).
 - Pokazanie użytkownikowi, które źródło aktualnie odpowiada (`LastUsedSourceName` jest gotowe, brakuje miejsca w UI).
 - Pokazanie użytkownikowi, które źródło tras odpowiedziało.
 - Licencje: warunki adsb.lol, hexdb.io i adsb.fi sprawdzone 2026-11-03 (sekcja „Warunki użycia”); zostaje airplanes.live po uzgodnieniu, ręczne przejrzenie stron niedostępnych automatycznie oraz decyzja przed udostępnieniem poza własny użytek (napisać do hexdb.io, ewentualnie przejść na FlyItalyADSB lub umowę z dostawcą).

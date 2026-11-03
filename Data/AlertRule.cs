@@ -17,8 +17,12 @@ namespace AdsbCarMap.Data
         /// <param name="notifyOnAppearance">Whether to notify when an aircraft shows up already inside the area.</param>
         /// <param name="cooldownMinutes">Minimum time between two notifications about the same aircraft.</param>
         /// <param name="conditionFilterId">Identifier of the saved filter that provides the condition, or null when the condition is not taken from a filter.</param>
-        public AlertRule(string id, string name, bool isEnabled, AlertArea area, FilterNode? condition, bool notifyOnEntry, bool notifyOnAppearance, int cooldownMinutes, string? conditionFilterId = null)
+        /// <param name="schedule">Days and quiet hours in which the rule may notify, or null for no restriction.</param>
+        /// <param name="importance">How loudly the notifications of the rule are shown.</param>
+        public AlertRule(string id, string name, bool isEnabled, AlertArea area, FilterNode? condition, bool notifyOnEntry, bool notifyOnAppearance, int cooldownMinutes, string? conditionFilterId = null, AlertSchedule? schedule = null, AlertImportance importance = AlertImportance.High)
         {
+            Schedule = schedule ?? AlertSchedule.Always;
+            Importance = importance;
             ConditionFilterId = conditionFilterId;
             Id = id;
             Name = name;
@@ -76,13 +80,23 @@ namespace AdsbCarMap.Data
         public int CooldownMinutes { get; }
 
         /// <summary>
+        /// Days and quiet hours in which the rule may notify.
+        /// </summary>
+        public AlertSchedule Schedule { get; }
+
+        /// <summary>
+        /// How loudly the notifications of the rule are shown.
+        /// </summary>
+        public AlertImportance Importance { get; }
+
+        /// <summary>
         /// Creates a copy of the rule with another condition.
         /// </summary>
         /// <param name="condition">New condition or null.</param>
         /// <returns>The copy.</returns>
         public AlertRule WithCondition(FilterNode? condition)
         {
-            return new AlertRule(Id, Name, IsEnabled, Area, condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId);
+            return new AlertRule(Id, Name, IsEnabled, Area, condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance);
         }
 
         /// <summary>
@@ -92,7 +106,7 @@ namespace AdsbCarMap.Data
         /// <returns>The copy.</returns>
         public AlertRule WithEnabled(bool enabled)
         {
-            return new AlertRule(Id, Name, enabled, Area, Condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId);
+            return new AlertRule(Id, Name, enabled, Area, Condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance);
         }
     }
 }

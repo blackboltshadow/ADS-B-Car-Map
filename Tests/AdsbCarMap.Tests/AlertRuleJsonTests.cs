@@ -54,6 +54,62 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// A polygon and a schedule survive a round trip, and a rule without a schedule stays unrestricted.
+        /// </summary>
+        [Fact]
+        public void RoundTrip_KeepsPolygonAndSchedule()
+        {
+            AlertArea polygon = AlertArea.CreatePolygon(new List<GeoPoint> { new GeoPoint(51.0, 20.0), new GeoPoint(51.0, 22.0), new GeoPoint(53.0, 21.0) });
+            AlertSchedule schedule = new AlertSchedule(0x3E, 22 * 60, 6 * 60);
+            List<AlertRule> rules = new List<AlertRule>
+            {
+                new AlertRule("p", "Poly", true, polygon, null, true, true, 30, null, schedule),
+                CreateRule(new AlertArea(AlertAreaKind.AroundMe, 30.0)),
+            };
+
+            List<AlertRule> parsed = AlertRuleJson.Parse(AlertRuleJson.Serialize(rules));
+
+            Assert.Equal(2, parsed.Count);
+            Assert.Equal(AlertAreaKind.Polygon, parsed[0].Area.Kind);
+            Assert.Equal(3, parsed[0].Area.Vertices!.Count);
+            Assert.Equal(53.0, parsed[0].Area.Vertices![2].Latitude);
+            Assert.Equal(polygon.RadiusKilometers, parsed[0].Area.RadiusKilometers, 6);
+            Assert.Equal(0x3E, parsed[0].Schedule.ActiveDays);
+            Assert.Equal(22 * 60, parsed[0].Schedule.QuietStartMinute);
+            Assert.Equal(6 * 60, parsed[0].Schedule.QuietEndMinute);
+            Assert.True(parsed[1].Schedule.IsAlways);
+        }
+
+        /// <summary>
+        /// A polygon with too few vertices or damaged vertices is dropped.
+        /// </summary>
+        [Theory]
+        [InlineData("[{\"id\":\"a\",\"area\":\"Polygon\"}]")]
+        [InlineData("[{\"id\":\"a\",\"area\":\"Polygon\",\"vertices\":[[1,2],[3,4]]}]")]
+        [InlineData("[{\"id\":\"a\",\"area\":\"Polygon\",\"vertices\":[[1,2],[3,4],[5]]}]")]
+        [InlineData("[{\"id\":\"a\",\"area\":\"Polygon\",\"vertices\":[[1,2],[3,4],[\"x\",6]]}]")]
+        public void Parse_InvalidPolygon_IsDropped(string json)
+        {
+            Assert.Empty(AlertRuleJson.Parse(json));
+        }
+
+        /// <summary>
+        /// The polygon, the rectangle and the schedule are described in Polish.
+        /// </summary>
+        [Fact]
+        public void DescribePolygonRectangleAndSchedule()
+        {
+            AlertArea rectangle = AlertArea.CreateRectangle(new GeoPoint(51.0, 20.0), new GeoPoint(51.5, 20.5));
+            AlertArea triangle = AlertArea.CreatePolygon(new List<GeoPoint> { new GeoPoint(51.0, 20.0), new GeoPoint(51.0, 20.1), new GeoPoint(51.1, 20.0) });
+
+            Assert.StartsWith("Prostokąt, ", AlertText.DescribeArea(rectangle, DistanceUnit.Kilometers));
+            Assert.StartsWith("Wielokąt (3 wierzchołków), ", AlertText.DescribeArea(triangle, DistanceUnit.Kilometers));
+            Assert.Equal(string.Empty, AlertText.DescribeSchedule(AlertSchedule.Always));
+            Assert.Equal("pn, wt · godziny ciszy 22:00–06:00", AlertText.DescribeSchedule(new AlertSchedule((1 << (int)DayOfWeek.Monday) | (1 << (int)DayOfWeek.Tuesday), 22 * 60, 6 * 60)));
+            Assert.Equal("żaden dzień", AlertText.DescribeSchedule(new AlertSchedule(0, null, null)));
+        }
+
+        /// <summary>
         /// Missing or damaged text gives an empty list.
         /// </summary>
         [Theory]
