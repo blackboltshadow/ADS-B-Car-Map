@@ -82,10 +82,32 @@ namespace AdsbCarMap.Map
         public void Draw(Canvas canvas, AircraftKind kind, float x, float y, float rotation, Color color, float density, float iconScale, float outlineWidth, float shadowStrength, float cockpitStrength)
         {
             (AndroidPath Path, float Scale) shape = shapes.Get(kind);
-            float scale = density * shape.Scale * iconScale;
-            float strokeWidth = 2.0f * outlineWidth / (shape.Scale * iconScale);
 
-            if (shadowStrength > 0.0f && kind != AircraftKind.Ground)
+            DrawShape(canvas, shape.Path, shape.Scale, shapes.GetCanopy(kind), x, y, rotation, color, density, iconScale, outlineWidth, kind == AircraftKind.Ground ? 0.0f : shadowStrength, cockpitStrength);
+        }
+
+        /// <summary>
+        /// Draws any icon shape in the same style as the aircraft icons: a drop shadow, a dark outline, the fill and an accent.
+        /// </summary>
+        /// <param name="canvas">Canvas to draw on.</param>
+        /// <param name="path">Shape pointing north, in density-independent units around the origin.</param>
+        /// <param name="shapeScale">Scale of the shape relative to the base size.</param>
+        /// <param name="canopy">Accent shape in the same coordinates, or null for none.</param>
+        /// <param name="x">Horizontal position of the icon center in pixels.</param>
+        /// <param name="y">Vertical position of the icon center in pixels.</param>
+        /// <param name="rotation">Heading in degrees clockwise from the top.</param>
+        /// <param name="color">Fill color.</param>
+        /// <param name="density">Screen density factor.</param>
+        /// <param name="iconScale">Icon size as a multiple of the default size.</param>
+        /// <param name="outlineWidth">Outline width in dp on each side, 0 for none.</param>
+        /// <param name="shadowStrength">Shadow strength from 0 (none) to 1.</param>
+        /// <param name="cockpitStrength">Accent strength from 0 (none) to 1.</param>
+        public void DrawShape(Canvas canvas, AndroidPath path, float shapeScale, AndroidPath? canopy, float x, float y, float rotation, Color color, float density, float iconScale, float outlineWidth, float shadowStrength, float cockpitStrength)
+        {
+            float scale = density * shapeScale * iconScale;
+            float strokeWidth = 2.0f * outlineWidth / (shapeScale * iconScale);
+
+            if (shadowStrength > 0.0f)
             {
                 float offset = ShadowOffsetDp * density * iconScale * shadowStrength;
 
@@ -96,7 +118,7 @@ namespace AdsbCarMap.Map
                 canvas.Translate(x + offset, y + offset);
                 canvas.Rotate(rotation);
                 canvas.Scale(scale, scale);
-                canvas.DrawPath(shape.Path, shadowPaint);
+                canvas.DrawPath(path, shadowPaint);
                 canvas.Restore();
             }
 
@@ -110,12 +132,10 @@ namespace AdsbCarMap.Map
             if (outlineWidth > 0.0f)
             {
                 outlinePaint.StrokeWidth = strokeWidth;
-                canvas.DrawPath(shape.Path, outlinePaint);
+                canvas.DrawPath(path, outlinePaint);
             }
 
-            canvas.DrawPath(shape.Path, fillPaint);
-
-            AndroidPath? canopy = shapes.GetCanopy(kind);
+            canvas.DrawPath(path, fillPaint);
 
             if (cockpitStrength > 0.0f && canopy != null)
             {

@@ -267,6 +267,16 @@ namespace AdsbCarMap.Map
         private IReadOnlyList<(Airport Airport, float X, float Y)> airportHits = Array.Empty<(Airport Airport, float X, float Y)>();
 
         /// <summary>
+        /// Draws the airborne threats.
+        /// </summary>
+        private readonly ThreatLayer threatLayer = new ThreatLayer();
+
+        /// <summary>
+        /// Threats drawn in the last frame with the positions of their markers, used to recognize taps.
+        /// </summary>
+        private IReadOnlyList<(Threat Threat, float X, float Y)> threatHits = Array.Empty<(Threat Threat, float X, float Y)>();
+
+        /// <summary>
         /// Whether taps on aircraft add them to the selection.
         /// </summary>
         private bool multiSelect;
@@ -425,6 +435,16 @@ namespace AdsbCarMap.Map
         /// Whether the selected aircraft always get a label, even when the labels of all aircraft are hidden. Used on the car screen, which has no aircraft card.
         /// </summary>
         public bool LabelSelectedAircraft { get; set; }
+
+        /// <summary>
+        /// Whether the map may draw the layer with the airborne threats, when the user switched it on in the settings. Only the phone map sets it; the car screen never shows the layer.
+        /// </summary>
+        public bool ThreatsAllowed { get; set; }
+
+        /// <summary>
+        /// Event raised, on the thread that handled the tap, when the user taps a threat.
+        /// </summary>
+        public event System.Action<Threat>? ThreatTapped;
 
         /// <summary>
         /// Whether a popup with the data of the primary selected aircraft is drawn on the map. Used on the car screen, which has no aircraft card.

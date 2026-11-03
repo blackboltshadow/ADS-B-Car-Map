@@ -160,7 +160,7 @@ namespace AdsbCarMap.Settings
         /// <summary>
         /// Which categories of airports are shown, as a bit mask of AirportCategory.
         /// </summary>
-        public static readonly SettingDefinition AirportTypesSetting = SettingDefinition.CreateMultiChoice("airport_types", "Rodzaje lotnisk na mapie", (int)(AirportCategory.Large | AirportCategory.Medium | AirportCategory.Military), "Zaznacz, jakie lotniska mają być widoczne. Duże, średnie i małe to lotniska cywilne, wojskowe (czerwone) to lotniska wojskowe każdej wielkości, a helipady to lądowiska dla śmigłowców, których są dziesiątki tysięcy. Zakres zoomu, w którym lotniska są widoczne, jest wspólny dla wszystkich rodzajów i ustawia się go osobną kontrolką niżej. Gdy małych lotnisk albo helipadów w widoku jest dużo, pokazuje się najbliższe środka ekranu, a etykiety mniej ważnych są pomijane, żeby się nie nakładały. Helipady są też szukane w wyszukiwarce tylko wtedy, gdy są zaznaczone.", "Duże", "Średnie", "Małe", "Wojskowe", "Helipady");
+        public static readonly SettingDefinition AirportTypesSetting = SettingDefinition.CreateMultiChoice("airport_types", "Rodzaje lotnisk na mapie", (int)(AirportCategory.Large | AirportCategory.Medium), "Zaznacz, jakie lotniska mają być widoczne. Duże, średnie i małe to lotniska cywilne, wojskowe (czerwone) to lotniska wojskowe każdej wielkości, a helipady to lądowiska dla śmigłowców, których są dziesiątki tysięcy. Zakres zoomu, w którym lotniska są widoczne, jest wspólny dla wszystkich rodzajów i ustawia się go osobną kontrolką niżej. Gdy małych lotnisk albo helipadów w widoku jest dużo, pokazuje się najbliższe środka ekranu, a etykiety mniej ważnych są pomijane, żeby się nie nakładały. Helipady są też szukane w wyszukiwarce tylko wtedy, gdy są zaznaczone.", "Duże", "Średnie", "Małe", "Wojskowe", "Helipady");
 
         /// <summary>
         /// Switch that limits the small airports on the map to those with a paved runway of at least 800 m. Available only while the small airports are switched on.
@@ -250,7 +250,7 @@ namespace AdsbCarMap.Settings
         /// <summary>
         /// Language of the user interface (phone and Android Auto); the stored value is the index of the language in <see cref="Loc.LanguageNames"/>.
         /// </summary>
-        public static readonly SettingDefinition LanguageSetting = SettingDefinition.CreateChoice("language", "Język / Language", 0, "Język interfejsu aplikacji, na telefonie i w Android Auto. Zmiana działa od razu. Teksty, które przychodzą z zewnątrz (nazwy lotnisk, linii i typów samolotów), zostają w oryginalnym języku.", Loc.LanguageNames.ToArray());
+        public static readonly SettingDefinition LanguageSetting = SettingDefinition.CreateChoice("language", "Język aplikacji", 0, "Język interfejsu aplikacji, na telefonie i w Android Auto. Zmiana działa od razu. Teksty, które przychodzą z zewnątrz (nazwy lotnisk, linii i typów samolotów), zostają w oryginalnym języku.", Loc.LanguageNames.ToArray());
 
         /// <summary>
         /// Settings of the language section. They share one card on the settings screen.
@@ -314,6 +314,26 @@ namespace AdsbCarMap.Settings
         /// How precisely the position of the map is sent to the aircraft servers; the stored value is the index in <see cref="PrivacyGridKilometers"/>.
         /// </summary>
         public static readonly SettingDefinition PrivacyPrecisionSetting = SettingDefinition.CreateChoice("privacy_precision", "Dokładność wysyłanego położenia", 1, "Serwer samolotów dostaje od aplikacji środek widocznego obszaru i promień. Przy śledzeniu GPS środek to Twoje dokładne położenie. Ta opcja przyciąga środek do siatki o wybranym rozmiarze, więc serwer widzi tylko okolicę, a nie dokładne miejsce. Wynik zależy tylko od położenia, więc wielu zapytań nie da się uśrednić do dokładnego punktu. Aplikacja powiększa promień o możliwe przesunięcie, dzięki czemu widoczny obszar jest nadal w całości pokryty, a mapa wygląda tak samo. Im większa siatka, tym większa odpowiedź serwera. Nie ukrywa to adresu IP ani obszaru, z którego pobierane są kafelki mapy, ani tego, o który lot pytasz.", "Dokładne", "Około 1 km", "Około 5 km", "Około 10 km", "Około 25 km");
+
+        /// <summary>
+        /// Switch of the layer with the airborne threats from NEPTUN. Phone only.
+        /// </summary>
+        public static readonly SettingDefinition ShowThreatsSetting = SettingDefinition.CreateSwitch("show_threats", "Warstwa zagrożeń (NEPTUN)", false, "Pokazuje na mapie telefonu drony, rakiety i inne zagrożenia powietrzne zgłaszane przez serwis NEPTUN (neptun.in.ua), z kierunkiem lotu, śladem i kołem niepewności położenia. Warstwa jest domyślnie wyłączona i tylko na telefonie, nie ma jej w Android Auto. Gdy jest wyłączona, aplikacja nie łączy się z serwisem. Dane pochodzą z otwartych i zewnętrznych źródeł (m.in. kanałów Telegram), mogą być nieścisłe, niepełne lub spóźnione i nie są oficjalnym systemem ostrzegania: zawsze kieruj się oficjalnymi sygnałami alarmu przeciwlotniczego. Pozycje „tylko obwód” i obserwacje bez zagrożenia dla ludności są oznaczone inaczej niż alarmy. Przycisk z ikoną ostrzeżenia na mapie włącza i wyłącza tę samą warstwę.");
+
+        /// <summary>
+        /// Size of the threat icons as a multiple of the default size.
+        /// </summary>
+        public static readonly SettingDefinition ThreatIconScaleSetting = SettingDefinition.CreateSlider("threat_icon_scale", "Rozmiar ikon zagrożeń", 1.2, 0.6, 2.5, 0.1, string.Empty, "Rozmiar ikon dronów, rakiet i innych zagrożeń na mapie telefonu, niezależny od rozmiaru ikon samolotów. Podgląd u góry karty pokazuje wszystkie rodzaje zagrożeń z bieżącymi ustawieniami.");
+
+        /// <summary>
+        /// Width of the dark outline of the threat icons in dp.
+        /// </summary>
+        public static readonly SettingDefinition ThreatOutlineWidthSetting = SettingDefinition.CreateSlider("threat_outline_dp", "Obwódka zagrożeń", 1.2, 0.0, 6.0, 0.1, " dp", "Szerokość ciemnej obwódki wokół ikony zagrożenia, w dp z każdej strony. Wartość 0 wyłącza obwódkę. Cień i akcent ikon są wspólne z ikonami samolotów (sekcja Samoloty).");
+
+        /// <summary>
+        /// How the application obtains the threats; the stored value is the index of the transport.
+        /// </summary>
+        public static readonly SettingDefinition ThreatTransportSetting = SettingDefinition.CreateChoice("threat_transport", "Sposób pobierania zagrożeń", 0, "WebSocket z zapasowym pobieraniem (domyślnie): aplikacja trzyma jedno stałe połączenie ze strumieniem NEPTUN, a gdy ono nie działa, pobiera listę co 5 s i co jakiś czas próbuje połączyć się ponownie. Tylko WebSocket: po błędzie czeka (1, 2, 4… do 60 s) i łączy się ponownie, bez pobierania listy. Tylko pobieranie (REST): lista jest pobierana co 5 s, bez stałego połączenia. Zmiana działa od następnego kroku, bez wyłączania warstwy.", "WebSocket z zapasowym pobieraniem", "Tylko WebSocket", "Tylko pobieranie (REST)");
 
         /// <summary>
         /// Switch that makes the privacy settings of the Dev section replace the choice of the user.
@@ -425,6 +445,10 @@ namespace AdsbCarMap.Settings
             DevLogLevelSetting,
             DevLogMaxEntriesSetting,
             DevLogDeduplicateSetting,
+            ShowThreatsSetting,
+            ThreatIconScaleSetting,
+            ThreatOutlineWidthSetting,
+            ThreatTransportSetting,
             PrivacyPrecisionSetting,
             PrivacyDevOverrideSetting,
             PrivacyCustomGridSetting,
@@ -468,6 +492,31 @@ namespace AdsbCarMap.Settings
             PrivacyRadiusStepSetting,
             PrivacyExpandRadiusSetting,
             PrivacyLogSetting,
+        };
+
+        /// <summary>
+        /// Settings of the threat layer that the user sees. They share one card on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> ThreatSettings = new List<SettingDefinition>
+        {
+            ShowThreatsSetting,
+        };
+
+        /// <summary>
+        /// Settings of the look of the threat icons. They share one card on the settings screen, which starts with a preview of the icons.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> ThreatIconSettings = new List<SettingDefinition>
+        {
+            ThreatIconScaleSetting,
+            ThreatOutlineWidthSetting,
+        };
+
+        /// <summary>
+        /// Settings of the way of obtaining the threats. They share one card in the advanced section of the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> ThreatTransportSettings = new List<SettingDefinition>
+        {
+            ThreatTransportSetting,
         };
 
         /// <summary>
@@ -644,6 +693,26 @@ namespace AdsbCarMap.Settings
         /// Opacity of the black layer that dims the map tiles.
         /// </summary>
         public static int MapDim => (int)Get(MapDimSetting);
+
+        /// <summary>
+        /// Whether the layer with the threats is shown on the phone map.
+        /// </summary>
+        public static bool ShowThreats => Get(ShowThreatsSetting) >= 0.5;
+
+        /// <summary>
+        /// Size of the threat icons as a multiple of the default size.
+        /// </summary>
+        public static float ThreatIconScale => (float)Get(ThreatIconScaleSetting);
+
+        /// <summary>
+        /// Width of the dark outline of the threat icons in dp.
+        /// </summary>
+        public static float ThreatOutlineWidth => (float)Get(ThreatOutlineWidthSetting);
+
+        /// <summary>
+        /// Index of the way of obtaining the threats: 0 stream with the download as a fallback, 1 stream only, 2 download only.
+        /// </summary>
+        public static int ThreatTransportIndex => (int)Get(ThreatTransportSetting);
 
         /// <summary>
         /// Whether the menu has the "Dev log" item.

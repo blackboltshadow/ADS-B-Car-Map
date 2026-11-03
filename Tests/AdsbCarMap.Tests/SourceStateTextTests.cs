@@ -1,5 +1,7 @@
 using AdsbCarMap.Data;
+using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.RateLimiting;
+using AdsbCarMap.DataSources.Models;
 using Xunit;
 
 namespace AdsbCarMap.Tests
@@ -58,6 +60,50 @@ namespace AdsbCarMap.Tests
             string text = SourceStateText.Format(states, Now);
 
             Assert.Equal("Samoloty:\n• a — dostępne\n• b — dostępne\n\nTrasy:\n• c — dostępne", text);
+        }
+
+        /// <summary>
+        /// A working threat feed is described with its state, the way of obtaining the data and the age of the last update.
+        /// </summary>
+        [Fact]
+        public void FormatThreatFeed_Streaming()
+        {
+            string text = SourceStateText.FormatThreatFeed(true, ThreatFeedState.Streaming, 0, 12, Now.AddSeconds(-5), null, Now);
+
+            Assert.Equal("Zagrożenia:\n• NEPTUN — połączone (WebSocket), zagrożeń: 12\n   tryb: WebSocket z zapasowym pobieraniem\n   ostatnia aktualizacja: 5 s temu", text);
+        }
+
+        /// <summary>
+        /// The last failure is shown with its age, also when the layer is switched off or the feed is stopped.
+        /// </summary>
+        [Fact]
+        public void FormatThreatFeed_ShowsLastFailure()
+        {
+            ThreatFeedFailure failure = new ThreatFeedFailure("Połączenie nie powiodło się: brak sieci", Now.AddMinutes(-3));
+
+            Assert.EndsWith("ostatni błąd: Połączenie nie powiodło się: brak sieci, 3 min temu", SourceStateText.FormatThreatFeed(true, ThreatFeedState.Offline, 1, 0, null, failure, Now));
+            Assert.Contains("warstwa wyłączona", SourceStateText.FormatThreatFeed(false, ThreatFeedState.Stopped, 2, 0, null, failure, Now));
+        }
+
+        /// <summary>
+        /// Every state of the feed and every way of obtaining the data has its own description.
+        /// </summary>
+        [Fact]
+        public void DescribeThreatFeed_EveryStateAndTransport()
+        {
+            List<string> states = new List<string>();
+
+            foreach (ThreatFeedState state in Enum.GetValues<ThreatFeedState>())
+            {
+                states.Add(SourceStateText.DescribeThreatFeed(true, state, 3));
+            }
+
+            Assert.Equal(states.Count, states.Distinct().Count());
+            Assert.Equal("wstrzymane, mapa jest w tle", SourceStateText.DescribeThreatFeed(true, ThreatFeedState.Stopped, 0));
+            Assert.Equal("pobieranie co 5 s (REST), zagrożeń: 3", SourceStateText.DescribeThreatFeed(true, ThreatFeedState.Polling, 3));
+            Assert.Equal("tylko WebSocket", SourceStateText.DescribeThreatTransport(1));
+            Assert.Equal("tylko pobieranie (REST)", SourceStateText.DescribeThreatTransport(2));
+            Assert.Equal("WebSocket z zapasowym pobieraniem", SourceStateText.DescribeThreatTransport(0));
         }
 
         /// <summary>

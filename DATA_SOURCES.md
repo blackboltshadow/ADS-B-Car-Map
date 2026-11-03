@@ -90,6 +90,7 @@ Sources\
   AdsbFi\        AdsbCarMap.DataSources.AdsbFi         + .Tests
   Adsbdb\        AdsbCarMap.DataSources.Adsbdb         + .Tests   (trasy lotów i dane samolotu)
   Hexdb\         AdsbCarMap.DataSources.Hexdb          + .Tests   (trasy lotów i dane samolotu)
+  Neptun\        AdsbCarMap.DataSources.Neptun         + .Tests   (zagrożenia powietrzne: IThreatFeed, WebSocket i REST)
 Tests\
   AdsbCarMap.Tests\                       testy aplikacji
   AdsbCarMap.DataSources.Management.Tests\ testy limitera, dekoratora, rejestru i zapasu
@@ -131,6 +132,30 @@ Obecne źródła (adsb.lol, airplanes.live, adsb.fi, adsbdb, hexdb) nie dają li
 **Do sprawdzenia przed decyzją:** kategoria kosztu FIDS w AeroDataBox ([aerodatabox.com/pricing](https://aerodatabox.com/pricing)); czy FlightAware Personal daje dostęp do endpointów lotniskowych (potrzebny testowy klucz); aktualny limit darmowego AviationStack.
 
 **Decyzja robocza:** najpierw wariant A, potem ewentualnie AeroDataBox jako opcjonalne źródło rozkładu.
+
+## Zagrożenia powietrzne: NEPTUN (rozpoznanie z 2026-11-03)
+
+Serwis [neptun.in.ua](https://neptun.in.ua/developers) udostępnia otwarte API bez klucza o zagrożeniach powietrznych nad Ukrainą (drony, rakiety, KAB). To nie jest źródło ADS-B: dane pochodzą z „otwartych i zewnętrznych źródeł”, m.in. kanałów Telegram, więc są zgłoszeniami, nie pomiarami.
+
+| Co | Adres | Uwagi |
+|---|---|---|
+| Lista zagrożeń | `GET https://neptun.in.ua/api/v1/threats` | JSON `{epoch, seq, serverTime, threats[]}`; nagłówek `cache-control: public, max-age=5`, CORS `*`; prośba serwisu: nie częściej niż co 5 s |
+| Alarmy rejonów i obwodów | `GET /api/v1/alerts` | klucze pasują do `raions.geojson` i `oblasts.geojson`; poziomy `yellow` i `red`; aplikacja tego **nie używa** |
+| Wiadomości z Telegrama | `GET /api/v1/messages` | aplikacja tego nie używa |
+| Strumień | `wss://neptun.in.ua/api/v1/stream` | ramki `{type, ts, data}`: `snapshot` (cała lista, ok. 9 KB przy 15 zagrożeniach), `upsert`, `remove`, `heartbeat` (co 15 s), `alerts` (zaraz po snapshocie) |
+
+Sprawdzone żywym połączeniem (2026-11-03): `ClientWebSocket` łączy się bez nagłówka `Origin` i bez klucza; snapshot przychodzi natychmiast, potem `alerts`, sygnał życia co 15 s, zmiany w sekundach. Pola poza dokumentacją: typ `fpv`, flagi `sea`, `seaLoiter`, `destination`, `presumptiveCourse` (przy zakładanym kursie `positionQuality` to `approx`, `lifecycle` to `uncertain`), `lifecycle`, `displayConfidence`, `trail` (lista punktów `lat`, `lon`, `t`), `epoch` i `seq`. Dokumentacja podaje też flagi `advisory` (obserwacja, nie sygnał do schronienia) i `areaOnly` (znany tylko obwód; `lat` i `lon` to jego środek i nie wolno rysować go jako miejsca ani liczyć z niego ruchu); w próbce z żywego serwera ich nie było, ale parser je obsługuje.
+
+**Warunki użycia** (`neptun.in.ua/api-terms`, 2026-11-03): użycie komercyjne i niekomercyjne dozwolone; **obowiązkowe widoczne łącze do `https://neptun.in.ua/`** obok mapy lub danych (przykład: „Dane: Karta powietrznych alarmów — NEPTUN”), zakaz ukrywania go i przedstawiania danych jako własnych; tylko odczyt (GET i subskrypcja); uczciwe obciążenie (REST nie częściej niż co 5 s, serwis może blokować nadmiarowe źródła); serwis jest agregatorem, a aplikacje dotykające bezpieczeństwa ludzi muszą jasno informować, że dane mogą być nieścisłe lub spóźnione, i odsyłać do oficjalnych sygnałów alarmowych; API „jak jest”, bez gwarancji dostępności ani dokładności, może się zmienić lub zniknąć w każdej chwili; nazwa i logo nie są objęte licencją (aplikacja używa tylko tekstu i linku).
+
+Decyzje:
+
+- **Osobny rodzaj źródła, nie `Aircraft`.** Zagrożenia nie mają kodu ICAO, rejestracji ani wysokości i nie mogą trafić do alertów, wyszukiwarki, filtrów ani śladów samolotów. Core dostał model `Threat` i interfejs `IThreatFeed`, bo źródło nie jest pytane o obszar: samo utrzymuje listę (inaczej niż `IAircraftSource`). Zarządca (limity, zapas, prywatność współrzędnych) go nie dotyczy: żadna pozycja nie jest wysyłana.
+- **WebSocket jako domyślny, pobieranie jako zapas.** Jedno połączenie zamiast żądania co 5 s, zmiany bez opóźnienia. Przy zerwaniu `NeptunThreatFeed` czeka wykładniczo (1, 2, 4… do 60 s), a w trybie z zapasem w tym czasie pobiera listę. Brak jakiejkolwiek ramki przez 45 s (trzy okresy sygnału życia) uznaje połączenie za martwe. Sposób wybiera się w ustawieniach Zaawansowane → „Zagrożenia (NEPTUN): sposób pobierania” (WebSocket z zapasem, tylko WebSocket, tylko REST). Karta „Stan źródeł” pokazuje stan feedu zagrożeń, tryb, wiek ostatniej aktualizacji i ostatni błąd; feed zachowuje te dwie ostatnie informacje po zatrzymaniu, bo gdy ustawienia są otwarte, mapa jest w tle i połączenie jest zamknięte.
+- **Tylko telefon, tylko gdy warstwa jest włączona i mapa na wierzchu.** Połączenie jest zamykane w `OnPause` i po wyłączeniu warstwy, a lista zapominana. Android Auto nigdy nie rysuje tej warstwy (`MapController.ThreatsAllowed` ustawia tylko `MainActivity`).
+- **Kierunek dla zagrożeń bez kursu.** W próbce z żywego serwera `heading` było `null` dla dronów FPV i dla części zagrożeń z flagą `approx`. `ThreatStore` wylicza wtedy kierunek: z dwóch ostatnich punktów `trail` albo z przesunięcia o co najmniej 1,5 km względem miejsca, w którym kierunek był ostatnio wyliczony (próg ucina szum, bo pozycje są zaokrąglone do miejscowości), i zachowuje go, dopóki zagrożenie stoi. Kierunek z serwisu nigdy nie jest nadpisywany, a pozycje `areaOnly` nie dostają kierunku. Wyliczony kierunek ma znacznik `IsHeadingDerived` i opis „(z ruchu)” w karcie. Nie wiadomo jeszcze, jak często FPV zmienia pozycję między odczytami, więc bywa, że kierunku nadal nie ma; wtedy ikona FPV jest symetryczna.
+- **Bezpieczeństwo prezentacji.** Obserwacja (`advisory`) jest neutralna kolorystycznie i opisana jako „nie sygnał do schronienia”; zagrożenie z flagą `areaOnly` nie jest rysowane jako punkt; ślad niepotwierdzany od dawna jest przyciemniony, a zakładany kurs rysowany wyblakłą ikoną. Stałe łącze „Dane: NEPTUN” i zdanie ostrzeżenia są widoczne przez cały czas, gdy warstwa jest włączona.
+- **Czego nie robimy (na razie):** granic rejonów i obwodów (`raions.geojson`, `oblasts.geojson`) i wypełniania alarmów, wiadomości z Telegrama, alertów „zagrożenie w pobliżu” ani przewidywania położenia między odczytami.
 
 ## Czego jeszcze brakuje
 

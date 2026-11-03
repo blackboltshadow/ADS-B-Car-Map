@@ -1,7 +1,9 @@
 using AdsbCarMap.Localization;
 using System.Globalization;
 using System.Text;
+using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.RateLimiting;
+using AdsbCarMap.DataSources.Models;
 
 namespace AdsbCarMap.Data
 {
@@ -53,6 +55,84 @@ namespace AdsbCarMap.Data
             }
 
             return builder.ToString().TrimEnd('\n');
+        }
+
+        /// <summary>
+        /// Describes the threat feed in the same form as the other sources: a group with one line for the source, a line with the chosen way of obtaining the data, and lines for the last update and the last failure.
+        /// </summary>
+        /// <param name="layerOn">Whether the threat layer is switched on in the settings.</param>
+        /// <param name="state">State of the feed.</param>
+        /// <param name="transportIndex">Index of the chosen way of obtaining the data: 0 stream with the download as a fallback, 1 stream only, 2 download only.</param>
+        /// <param name="count">Number of the threats the feed holds.</param>
+        /// <param name="lastUpdateUtc">Time of the last data received, or null when nothing was received yet.</param>
+        /// <param name="failure">The last failure, or null when there was none.</param>
+        /// <param name="utcNow">Current time in UTC, used for the age of the update and of the failure.</param>
+        /// <returns>The text of the group, without a trailing new line.</returns>
+        public static string FormatThreatFeed(bool layerOn, ThreatFeedState state, int transportIndex, int count, DateTime? lastUpdateUtc, ThreatFeedFailure? failure, DateTime utcNow)
+        {
+            StringBuilder builder = new StringBuilder();
+
+            builder.Append(Loc.T("Zagrożenia")).Append(":\n• NEPTUN — ").Append(DescribeThreatFeed(layerOn, state, count)).Append('\n');
+            builder.Append(Loc.T("   tryb: ")).Append(DescribeThreatTransport(transportIndex)).Append('\n');
+
+            if (lastUpdateUtc != null)
+            {
+                builder.Append(Loc.T("   ostatnia aktualizacja: ")).Append(DescribeAge(utcNow - lastUpdateUtc.Value)).Append('\n');
+            }
+
+            if (failure != null)
+            {
+                builder.Append(Loc.T("   ostatni błąd: ")).Append(failure.Description).Append(", ").Append(DescribeAge(utcNow - failure.OccurredUtc)).Append('\n');
+            }
+
+            return builder.ToString().TrimEnd('\n');
+        }
+
+        /// <summary>
+        /// Describes the state of the threat feed.
+        /// </summary>
+        /// <param name="layerOn">Whether the threat layer is switched on in the settings.</param>
+        /// <param name="state">State of the feed.</param>
+        /// <param name="count">Number of the threats the feed holds.</param>
+        /// <returns>The description.</returns>
+        public static string DescribeThreatFeed(bool layerOn, ThreatFeedState state, int count)
+        {
+            if (!layerOn)
+            {
+                return Loc.T("warstwa wyłączona, brak połączenia z serwisem");
+            }
+
+            switch (state)
+            {
+                case ThreatFeedState.Connecting:
+                    return Loc.T("łączenie…");
+                case ThreatFeedState.Streaming:
+                    return Loc.F("połączone (WebSocket), zagrożeń: {0}", count);
+                case ThreatFeedState.Polling:
+                    return Loc.F("pobieranie co 5 s (REST), zagrożeń: {0}", count);
+                case ThreatFeedState.Offline:
+                    return Loc.T("brak połączenia, aplikacja ponawia próby");
+                default:
+                    return Loc.T("wstrzymane, mapa jest w tle");
+            }
+        }
+
+        /// <summary>
+        /// Names the chosen way of obtaining the threats.
+        /// </summary>
+        /// <param name="transportIndex">Index of the way: 0 stream with the download as a fallback, 1 stream only, 2 download only.</param>
+        /// <returns>The name.</returns>
+        public static string DescribeThreatTransport(int transportIndex)
+        {
+            switch (transportIndex)
+            {
+                case 1:
+                    return Loc.T("tylko WebSocket");
+                case 2:
+                    return Loc.T("tylko pobieranie (REST)");
+                default:
+                    return Loc.T("WebSocket z zapasowym pobieraniem");
+            }
         }
 
         /// <summary>

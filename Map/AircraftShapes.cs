@@ -13,7 +13,7 @@ namespace AdsbCarMap.Map
         /// Describes an aircraft silhouette assembled from a fuselage, a pair of wings, a pair of tailplanes and engines.
         /// Y grows towards the tail, X towards the right wing.
         /// </summary>
-        private sealed class Silhouette
+        internal sealed class Silhouette
         {
             /// <summary>
             /// Half of the fuselage width at its widest point.
@@ -227,7 +227,7 @@ namespace AdsbCarMap.Map
         /// </summary>
         /// <param name="path">Target path.</param>
         /// <param name="silhouette">Silhouette description.</param>
-        private static void AddFuselage(AndroidPath path, Silhouette silhouette)
+        internal static void AddFuselage(AndroidPath path, Silhouette silhouette)
         {
             float half = silhouette.HalfWidth;
             float noseEnd = silhouette.Top + silhouette.NoseLength;
@@ -251,7 +251,7 @@ namespace AdsbCarMap.Map
         /// <param name="points">Five wing values.</param>
         /// <param name="rootX">X of the root, hidden under the fuselage.</param>
         /// <returns>Flat list of X and Y values, clockwise.</returns>
-        private static float[] WingPolygon(float[] points, float rootX)
+        internal static float[] WingPolygon(float[] points, float rootX)
         {
             if (points.Length < 5)
             {
@@ -280,7 +280,7 @@ namespace AdsbCarMap.Map
         /// </summary>
         /// <param name="path">Target path.</param>
         /// <param name="rightSide">Flat list of X and Y values of the right-side polygon.</param>
-        private static void AddMirroredPolygon(AndroidPath path, float[] rightSide)
+        internal static void AddMirroredPolygon(AndroidPath path, float[] rightSide)
         {
             int count = rightSide.Length / 2;
 

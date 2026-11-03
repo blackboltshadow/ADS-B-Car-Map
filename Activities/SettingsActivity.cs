@@ -31,7 +31,7 @@ namespace AdsbCarMap.Activities
         private static readonly Color SecondaryTextColor = Color.Rgb(180, 180, 180);
 
         /// <summary>
-        /// Keys of the collapsible cards that are currently expanded. Static, so the state survives the recreation of the activity on rotation.
+        /// Keys of the collapsible cards that are currently expanded. Static, so the state survives the recreation of the activity on rotation; it is cleared when the screen is closed, so that it opens with everything collapsed.
         /// </summary>
         private static readonly HashSet<string> expandedCards = new HashSet<string>();
 
@@ -171,6 +171,11 @@ namespace AdsbCarMap.Activities
         private TrailsPreview? trailsPreview;
 
         /// <summary>
+        /// Card of the language setting inside the collapsible group of the language. It has one row with the name of the setting and the list under it, so the language can be chosen as soon as the group is expanded.
+        /// </summary>
+        private LinearLayout? languageCard;
+
+        /// <summary>
         /// Card shared by the aircraft icon size and outline sliders, created with the first of them.
         /// </summary>
         private LinearLayout? aircraftIconCard;
@@ -179,6 +184,16 @@ namespace AdsbCarMap.Activities
         /// Preview of all aircraft icons inside <see cref="aircraftIconCard"/>.
         /// </summary>
         private AircraftIconsPreview? aircraftIconsPreview;
+
+        /// <summary>
+        /// Card of the threat icon size and outline sliders, which starts with the preview of the icons.
+        /// </summary>
+        private LinearLayout? threatIconCard;
+
+        /// <summary>
+        /// Preview of all threat icons inside <see cref="threatIconCard"/>.
+        /// </summary>
+        private ThreatIconsPreview? threatIconsPreview;
 
         /// <summary>
         /// Threshold settings shown in the altitude scale editor, in the order of their handles.
@@ -224,6 +239,19 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
+        /// Forgets which cards were expanded when the screen is really closed. A recreation after a rotation or a change of the language is not a closing, so it keeps the state.
+        /// </summary>
+        protected override void OnDestroy()
+        {
+            if (IsFinishing)
+            {
+                expandedCards.Clear();
+            }
+
+            base.OnDestroy();
+        }
+
+        /// <summary>
         /// Closes the screen when the back arrow is tapped.
         /// </summary>
         /// <param name="item">Selected bar item.</param>
@@ -254,8 +282,8 @@ namespace AdsbCarMap.Activities
             root.SetPadding(Dp(16), Dp(16), Dp(16), Dp(32));
             scrollView.AddView(root);
 
-            LinearLayout language = CreateAggregate(root, Loc.T("Język / Language"), "language", 20f);
-            GetTitledCard("language", Loc.T("Język / Language"), language);
+            LinearLayout language = CreateAggregate(root, "Język / Language", "language", 20f);
+            languageCard = CreateCard(language);
 
             LinearLayout units = CreateAggregate(root, Loc.T("Jednostki"), "units", 20f);
             GetTitledCard("units", Loc.T("Jednostki miary"), units);
@@ -266,6 +294,7 @@ namespace AdsbCarMap.Activities
             GetTrailCard(aircraft);
             GetAltitudeCard(aircraft);
             GetAirportSettingsCard(appearance);
+            GetThreatIconCard(appearance);
             GetTitledCard("map", Loc.T("Mapa"), appearance);
 
             LinearLayout alerts = CreateAggregate(root, Loc.T("Alerty"), "alertsSection", 20f);
@@ -274,6 +303,7 @@ namespace AdsbCarMap.Activities
             LinearLayout advanced = CreateAggregate(root, Loc.T("Zaawansowane"), "advanced", 20f);
             GetTitledCard("dataSource", Loc.T("Źródło danych"), advanced);
             GetTitledCard("routeSources", Loc.T("Źródła tras"), advanced);
+            GetTitledCard("threatsDev", Loc.T("Zagrożenia (NEPTUN): sposób pobierania"), advanced);
             GetSourceStatusCard(advanced);
             GetTitledCard("privacy", Loc.T("Prywatność"), advanced);
             GetTitledCard("refresh", Loc.T("Odświeżanie"), advanced);
@@ -356,6 +386,8 @@ namespace AdsbCarMap.Activities
                 devLogCard.AddView(CreateResetButton(Loc.T("Przywróć domyślny Dev log"), AppSettings.DevLogSettings, Loc.T("Przywrócono domyślne ustawienia Dev logu")));
             }
 
+            threatIconCard?.AddView(CreateResetButton(Loc.T("Przywróć domyślne zagrożenia"), AppSettings.ThreatSettings.Concat(AppSettings.ThreatIconSettings).ToList(), Loc.T("Przywrócono domyślne ustawienia zagrożeń")));
+            titledCards["threatsDev"].AddView(CreateResetButton(Loc.T("Przywróć domyślny sposób pobierania"), AppSettings.ThreatTransportSettings, Loc.T("Przywrócono domyślny sposób pobierania zagrożeń")));
             titledCards["privacyDev"].AddView(CreateResetButton(Loc.T("Przywróć domyślną prywatność"), AppSettings.PrivacyDevSettings.Concat(AppSettings.PrivacySettings).ToList(), Loc.T("Przywrócono domyślne ustawienia prywatności")));
 
             if (trailCard != null)
@@ -371,6 +403,7 @@ namespace AdsbCarMap.Activities
                 (flightCacheCard, "flightCache"),
                 (devLogCard, "devLog"),
                 (aircraftIconCard, "aircraftIcons"),
+                (threatIconCard, "threatIcons"),
                 (altitudeScaleCard, "altitudeScale"),
             };
 
@@ -607,7 +640,7 @@ namespace AdsbCarMap.Activities
         {
             if (AppSettings.LanguageSettings.Contains(definition))
             {
-                return titledCards["language"];
+                return languageCard;
             }
 
             if (AppSettings.UnitSettings.Contains(definition))
@@ -633,6 +666,21 @@ namespace AdsbCarMap.Activities
             if (AppSettings.PrivacySettings.Contains(definition))
             {
                 return titledCards["privacy"];
+            }
+
+            if (AppSettings.ThreatSettings.Contains(definition))
+            {
+                return GetThreatIconCard(container);
+            }
+
+            if (AppSettings.ThreatTransportSettings.Contains(definition))
+            {
+                return titledCards["threatsDev"];
+            }
+
+            if (AppSettings.ThreatIconSettings.Contains(definition))
+            {
+                return GetThreatIconCard(container);
             }
 
             if (AppSettings.PrivacyDevSettings.Contains(definition))
@@ -825,7 +873,7 @@ namespace AdsbCarMap.Activities
         /// <param name="definition">Setting.</param>
         private void AddSwitch(LinearLayout root, SettingDefinition definition)
         {
-            bool isAirportMaster = definition == AppSettings.ShowAirportsSetting;
+            bool isAirportMaster = definition == AppSettings.ShowAirportsSetting || definition == AppSettings.ShowThreatsSetting;
             LinearLayout? sharedCard = GetSharedCardFor(definition, root);
             bool isGrouped = sharedCard != null && !isAirportMaster;
             LinearLayout card = sharedCard ?? CreateCard(root);
@@ -861,6 +909,21 @@ namespace AdsbCarMap.Activities
                 LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
                 previewParams.SetMargins(0, Dp(8), 0, 0);
                 card.AddView(airportsPreview, previewParams);
+            }
+
+            if (definition == AppSettings.ShowThreatsSetting)
+            {
+                TextView threatHint = new TextView(this);
+                threatHint.Text = Loc.T("Podgląd pokazuje wszystkie rodzaje zagrożeń z bieżącymi ustawieniami. Po wyłączeniu warstwy reszta tej sekcji jest nieaktywna. Cień i akcent ikon są wspólne z ikonami samolotów. Dotknij niebieskiej wartości pod nazwą suwaka (✎), aby wpisać dokładną liczbę.");
+                StyleSecondary(threatHint);
+                threatHint.SetPadding(0, Dp(4), 0, 0);
+                card.AddView(threatHint);
+
+                threatIconsPreview = new ThreatIconsPreview(this);
+
+                LinearLayout.LayoutParams threatPreviewParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
+                threatPreviewParams.SetMargins(0, Dp(8), 0, 0);
+                card.AddView(threatIconsPreview, threatPreviewParams);
             }
 
             if (definition == AppSettings.SmallAirportsPavedSetting)
@@ -960,7 +1023,7 @@ namespace AdsbCarMap.Activities
         private void AddChoice(LinearLayout root, SettingDefinition definition)
         {
             LinearLayout? sharedCard = GetSharedCardFor(definition, root);
-            bool isGrouped = sharedCard != null;
+            bool isGrouped = sharedCard != null && definition != AppSettings.LanguageSetting;
             LinearLayout card = sharedCard ?? CreateCard(root);
             LinearLayout row = new LinearLayout(this);
             row.Orientation = Orientation.Horizontal;
@@ -1246,7 +1309,7 @@ namespace AdsbCarMap.Activities
 
             System.Action<double> refresh = value =>
             {
-                valueText.Text = definition == AppSettings.IconScaleSetting
+                valueText.Text = definition == AppSettings.IconScaleSetting || definition == AppSettings.ThreatIconScaleSetting
                     ? string.Format(CultureInfo.InvariantCulture, Loc.T("×{0}  (domyślnie ×{1})"), FormatValue(definition, value), FormatValue(definition, definition.DefaultValue))
                     : string.Format(CultureInfo.InvariantCulture, Loc.T("{0}{1}  (domyślnie {2})"), FormatValue(definition, value), Loc.T(definition.Unit), FormatValue(definition, definition.DefaultValue));
                 valueText.Text += "  ✎";
@@ -1280,6 +1343,16 @@ namespace AdsbCarMap.Activities
                 if (aircraftIconsPreview != null && definition == AppSettings.IconScaleSetting)
                 {
                     aircraftIconsPreview.IconScale = (float)value;
+                }
+
+                if (threatIconsPreview != null && definition == AppSettings.ThreatIconScaleSetting)
+                {
+                    threatIconsPreview.IconScale = (float)value;
+                }
+
+                if (threatIconsPreview != null && definition == AppSettings.ThreatOutlineWidthSetting)
+                {
+                    threatIconsPreview.OutlineWidth = (float)value;
                 }
 
                 if (aircraftIconsPreview != null && definition == AppSettings.AircraftOutlineWidthSetting)
@@ -1456,6 +1529,23 @@ namespace AdsbCarMap.Activities
             aircraftIconCard = card;
 
             return card;
+        }
+
+        /// <summary>
+        /// Returns the card of the threat layer, creating it at the first call. The first control added to it is the main switch of the layer, followed by the preview of the threat icons and the size and outline sliders, as in the card of the airports.
+        /// </summary>
+        /// <param name="root">Container of the screen.</param>
+        /// <returns>The shared card.</returns>
+        private LinearLayout GetThreatIconCard(LinearLayout root)
+        {
+            if (threatIconCard != null)
+            {
+                return threatIconCard;
+            }
+
+            threatIconCard = CreateCard(root);
+
+            return threatIconCard;
         }
 
         /// <summary>
@@ -1649,7 +1739,10 @@ namespace AdsbCarMap.Activities
                 return;
             }
 
-            sourceStatusText.Text = SourceStateText.Format(AppServices.GetSourceStates(), DateTime.UtcNow);
+            DateTime now = DateTime.UtcNow;
+            DataSources.Interfaces.IThreatFeed feed = AppServices.Threats;
+
+            sourceStatusText.Text = SourceStateText.Format(AppServices.GetSourceStates(), now) + "\n\n" + SourceStateText.FormatThreatFeed(AppSettings.ShowThreats, feed.State, AppSettings.ThreatTransportIndex, feed.Threats.Count, feed.LastUpdateUtc, feed.LastFailure, now);
             sourceStatusText.RemoveCallbacks(sourceStatusRefresh);
             sourceStatusText.PostDelayed(sourceStatusRefresh, 1000);
         }
@@ -1833,7 +1926,7 @@ namespace AdsbCarMap.Activities
                 });
             }
 
-            if (definition == AppSettings.AirportTypesSetting || definition == AppSettings.ShowAirportsSetting || definition == AppSettings.ShowOnlyFavoriteAirportsSetting || definition == AppSettings.DataSourceFallbackSetting || definition == AppSettings.PrivacyDevOverrideSetting)
+            if (definition == AppSettings.AirportTypesSetting || definition == AppSettings.ShowAirportsSetting || definition == AppSettings.ShowOnlyFavoriteAirportsSetting || definition == AppSettings.ShowThreatsSetting || definition == AppSettings.DataSourceFallbackSetting || definition == AppSettings.PrivacyDevOverrideSetting)
             {
                 UpdateDependentControls();
             }
@@ -1893,6 +1986,21 @@ namespace AdsbCarMap.Activities
                     if (child != null)
                     {
                         ApplyGroupState(child, airportsOn);
+                    }
+                }
+            }
+
+            if (threatIconCard != null)
+            {
+                bool threatsOn = AppSettings.ShowThreats;
+
+                for (int index = 1; index < threatIconCard.ChildCount; index++)
+                {
+                    View? child = threatIconCard.GetChildAt(index);
+
+                    if (child != null)
+                    {
+                        ApplyGroupState(child, threatsOn);
                     }
                 }
             }

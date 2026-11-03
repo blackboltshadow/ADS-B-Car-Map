@@ -2,6 +2,7 @@ using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.Enrichment;
 using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Management.Selection;
+using AdsbCarMap.DataSources.Neptun;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Settings;
@@ -41,9 +42,19 @@ namespace AdsbCarMap.Services
         private static readonly Lazy<RouteCache> RouteCacheInstance = new Lazy<RouteCache>(() => new RouteCache(Composition.Value.RouteSources, Composition.Value.RouteMemory, exception => DevLogger.Warn("AdsbCarMap", "Pobieranie trasy lotu nie powiodło się", exception)));
 
         /// <summary>
+        /// Feed of the airborne threats from NEPTUN, created at the first use. It does nothing until it is started, which only the phone map does, and only while the threat layer is switched on.
+        /// </summary>
+        private static readonly Lazy<IThreatFeed> ThreatFeedInstance = new Lazy<IThreatFeed>(CreateThreatFeed);
+
+        /// <summary>
         /// Aircraft source used by the maps: the sources in the order chosen in the settings, the next one asked when the previous one gives no data.
         /// </summary>
         public static IAircraftSource Adsb => Composition.Value.PositionSource;
+
+        /// <summary>
+        /// Feed of the airborne threats from NEPTUN, used by the layer on the phone map.
+        /// </summary>
+        public static IThreatFeed Threats => ThreatFeedInstance.Value;
 
         /// <summary>
         /// Completes the type, the full type name and the registration of the selected aircraft from the other sources.
@@ -143,6 +154,36 @@ namespace AdsbCarMap.Services
                 () => AppSettings.PrivacyOptions);
 
             return new DataComposition(System.IO.Path.Combine(Android.App.Application.Context.CacheDir!.AbsolutePath, "flights"), address => CreateHttpClient(address), Airports, settings);
+        }
+
+        /// <summary>
+        /// Creates the feed of the threats: the download client and the connection to the stream use the same User-Agent as the other servers, and the transport is read from the settings at every step.
+        /// </summary>
+        /// <returns>The feed, stopped.</returns>
+        private static IThreatFeed CreateThreatFeed()
+        {
+            return new NeptunThreatFeed(
+                new NeptunRestClient(CreateHttpClient(NeptunRestClient.DefaultBaseAddress)),
+                () => new WebSocketThreatConnection(new Uri(NeptunThreatFeed.DefaultStreamAddress), UserAgent),
+                GetThreatTransport,
+                (string message, Exception? exception) => DevLogger.Warn("Threats", message, exception));
+        }
+
+        /// <summary>
+        /// Converts the setting of the way of obtaining the threats to the transport of the feed.
+        /// </summary>
+        /// <returns>The transport.</returns>
+        private static ThreatTransport GetThreatTransport()
+        {
+            switch (AppSettings.ThreatTransportIndex)
+            {
+                case 1:
+                    return ThreatTransport.WebSocketOnly;
+                case 2:
+                    return ThreatTransport.RestOnly;
+                default:
+                    return ThreatTransport.WebSocketWithFallback;
+            }
         }
 
         /// <summary>

@@ -105,6 +105,16 @@ namespace AdsbCarMap.Activities
         private ImageButton? militaryButton;
 
         /// <summary>
+        /// Button that shows or hides the layer with the airborne threats.
+        /// </summary>
+        private ImageButton? threatsButton;
+
+        /// <summary>
+        /// Text with the link to the source of the threats, the state of the feed and the warning. Visible only while the layer is on.
+        /// </summary>
+        private TextView? threatsInfo;
+
+        /// <summary>
         /// Button that opens the list of aircraft filters. It is highlighted while any filter is on.
         /// </summary>
         private ImageButton? filtersButton;
@@ -182,6 +192,8 @@ namespace AdsbCarMap.Activities
             AlertBackgroundRunner.Initialize();
 
             controller.SelectionChanged += () => RunOnUiThread(OnSelectionChanged);
+            controller.ThreatsAllowed = true;
+            controller.ThreatTapped += OnThreatTapped;
             SetContentView(BuildContent());
             HandleAlertIntent(Intent);
 
@@ -265,6 +277,9 @@ namespace AdsbCarMap.Activities
 
             controller.SurfaceBroken -= OnSurfaceBroken;
             controller.SurfaceBroken += OnSurfaceBroken;
+            AppServices.Threats.Changed -= OnThreatFeedChanged;
+            AppServices.Threats.Changed += OnThreatFeedChanged;
+            ApplyThreatFeed();
             UpdateModeButtons();
             cardRefreshRunnable = new Java.Lang.Runnable(CardRefreshTick);
             handler.Post(cardRefreshRunnable);
@@ -276,6 +291,8 @@ namespace AdsbCarMap.Activities
         protected override void OnPause()
         {
             controller.SurfaceBroken -= OnSurfaceBroken;
+            AppServices.Threats.Changed -= OnThreatFeedChanged;
+            AppServices.Threats.Stop();
 
             if (cardRefreshRunnable != null)
             {
@@ -494,6 +511,9 @@ namespace AdsbCarMap.Activities
             militaryButton = CreateRoundButton(Resource.Drawable.ic_fighter, Loc.T("Tylko samoloty wojskowe"));
             militaryButton.Click += (sender, args) => OnMilitaryClicked();
 
+            threatsButton = CreateRoundButton(Resource.Drawable.ic_threat, Loc.T("Warstwa zagrożeń (NEPTUN)"));
+            threatsButton.Click += (sender, args) => OnThreatsClicked();
+
             filtersButton = CreateRoundButton(Resource.Drawable.ic_filter, Loc.T("Filtry samolotów"));
             filtersButton.Click += (sender, args) => StartActivity(new Intent(this, typeof(FiltersActivity)));
 
@@ -503,7 +523,7 @@ namespace AdsbCarMap.Activities
             filtersHost.AddView(filtersButton, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.MatchParent));
             filtersHost.AddView(filtersBadge, new FrameLayout.LayoutParams(Dp(BadgeSizeDp), Dp(BadgeSizeDp), GravityFlags.Top | GravityFlags.End));
 
-            foreach (View button in new View[] { isolateButton, multiSelectButton, labelsButton, militaryButton, filtersHost })
+            foreach (View button in new View[] { isolateButton, multiSelectButton, labelsButton, militaryButton, threatsButton, filtersHost })
             {
                 LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(Dp(48), Dp(48));
 
@@ -531,6 +551,20 @@ namespace AdsbCarMap.Activities
             }
 
             root.AddView(modeColumn, modeParams);
+
+            threatsInfo = new TextView(this);
+            threatsInfo.TextSize = 11f;
+            threatsInfo.SetTextColor(Color.White);
+            threatsInfo.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
+            threatsInfo.SetBackgroundColor(Color.Argb(150, 0, 0, 0));
+            threatsInfo.SetMaxWidth((int)((Resources?.DisplayMetrics?.WidthPixels ?? 0) * 0.55f));
+            threatsInfo.Clickable = true;
+            threatsInfo.Visibility = ViewStates.Gone;
+            threatsInfo.Click += (sender, args) => OpenThreatSource();
+
+            FrameLayout.LayoutParams threatsInfoParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent, GravityFlags.Top | GravityFlags.Start);
+            threatsInfoParams.SetMargins(Dp(12), Dp(12), Dp(12), Dp(12));
+            root.AddView(threatsInfo, threatsInfoParams);
 
             aircraftCard = new AircraftCardView(this, landscape ? 1.0f : 1.25f);
             aircraftCard.Visibility = ViewStates.Gone;
@@ -658,6 +692,126 @@ namespace AdsbCarMap.Activities
             button.ContentDescription = description;
 
             return button;
+        }
+
+        /// <summary>
+        /// Starts or stops the feed of the threats according to the setting and refreshes the button and the text of the layer.
+        /// </summary>
+        private void ApplyThreatFeed()
+        {
+            if (AppSettings.ShowThreats)
+            {
+                AppServices.Threats.Start();
+            }
+            else
+            {
+                AppServices.Threats.Stop();
+            }
+
+            UpdateThreatsUi();
+        }
+
+        /// <summary>
+        /// Refreshes the text of the layer on the main thread after the feed changed.
+        /// </summary>
+        private void OnThreatFeedChanged()
+        {
+            RunOnUiThread(UpdateThreatsUi);
+        }
+
+        /// <summary>
+        /// Highlights the button of the layer and shows the link to the source with the state of the feed while the layer is on.
+        /// </summary>
+        private void UpdateThreatsUi()
+        {
+            bool on = AppSettings.ShowThreats;
+
+            threatsButton?.SetBackgroundResource(on ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
+
+            if (threatsInfo == null)
+            {
+                return;
+            }
+
+            threatsInfo.Visibility = on ? ViewStates.Visible : ViewStates.Gone;
+
+            if (!on)
+            {
+                return;
+            }
+
+            DataSources.Interfaces.IThreatFeed feed = AppServices.Threats;
+            int count = feed.Threats.Count((Threat threat) => ThreatText.HasDrawablePosition(threat));
+            string state = ThreatText.BuildStateText(feed.State == DataSources.Interfaces.ThreatFeedState.Streaming, feed.State == DataSources.Interfaces.ThreatFeedState.Polling, feed.State == DataSources.Interfaces.ThreatFeedState.Connecting, count);
+            string attribution = ThreatText.Attribution;
+            SpannableString text = new SpannableString(attribution + " · " + state + "\n" + ThreatText.ShortDisclaimer);
+
+            text.SetSpan(new UnderlineSpan(), 0, attribution.Length, SpanTypes.ExclusiveExclusive);
+            text.SetSpan(new ForegroundColorSpan(Color.Rgb(120, 190, 255)), 0, attribution.Length, SpanTypes.ExclusiveExclusive);
+            threatsInfo.SetText(text, TextView.BufferType.Spannable);
+        }
+
+        /// <summary>
+        /// Opens the page of the source of the threats, which the terms of the source require to be linked.
+        /// </summary>
+        private void OpenThreatSource()
+        {
+            try
+            {
+                StartActivity(new Intent(Intent.ActionView, Android.Net.Uri.Parse(DataSources.Neptun.NeptunThreatFeed.HomePage)));
+            }
+            catch (ActivityNotFoundException)
+            {
+                Toast.MakeText(this, DataSources.Neptun.NeptunThreatFeed.HomePage, ToastLength.Long)?.Show();
+            }
+        }
+
+        /// <summary>
+        /// Switches the layer of the threats on or off and saves the choice in the settings. Switching it on shows the warning that the data is not an official alarm system.
+        /// </summary>
+        private void OnThreatsClicked()
+        {
+            bool show = !AppSettings.ShowThreats;
+            Dictionary<SettingDefinition, double> values = new Dictionary<SettingDefinition, double>
+            {
+                { AppSettings.ShowThreatsSetting, show ? 1.0 : 0.0 },
+            };
+
+            AppSettings.Save(values);
+            ApplyThreatFeed();
+
+            if (show)
+            {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
+                builder.SetTitle(Loc.T("Zagrożenia (NEPTUN)"));
+                builder.SetMessage(ThreatText.Disclaimer);
+                builder.SetPositiveButton(Loc.T("Rozumiem"), (sender, args) => { });
+                builder.SetNeutralButton(ThreatText.Attribution, (sender, args) => OpenThreatSource());
+                builder.Show();
+            }
+            else
+            {
+                Toast.MakeText(this, Loc.T("Warstwa zagrożeń ukryta"), ToastLength.Short)?.Show();
+            }
+        }
+
+        /// <summary>
+        /// Shows the description of a threat that the user tapped on the map.
+        /// </summary>
+        /// <param name="threat">The tapped threat.</param>
+        private void OnThreatTapped(Threat threat)
+        {
+            RunOnUiThread(() =>
+            {
+                List<string> lines = ThreatText.BuildLines(threat, DateTime.UtcNow, AppSettings.Units);
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
+                builder.SetTitle(ThreatText.KindName(threat.Kind));
+                builder.SetMessage(string.Join("\n", lines) + "\n\n" + ThreatText.Disclaimer);
+                builder.SetPositiveButton(Loc.T("Zamknij"), (sender, args) => { });
+                builder.SetNeutralButton(ThreatText.Attribution, (sender, args) => OpenThreatSource());
+                builder.Show();
+            });
         }
 
         /// <summary>

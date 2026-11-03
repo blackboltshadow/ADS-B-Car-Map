@@ -244,6 +244,15 @@ namespace AdsbCarMap.Map
             Volatile.Write(ref screenHits, hits);
             Volatile.Write(ref popupBounds, popupArea);
 
+            if (ThreatsAllowed && AppSettings.ShowThreats)
+            {
+                Volatile.Write(ref threatHits, threatLayer.Draw(canvas, AppServices.Threats.Threats, latitude, longitude, zoomLevel, width, height, screenDensity));
+            }
+            else if (threatHits.Count > 0)
+            {
+                Volatile.Write(ref threatHits, Array.Empty<(Threat Threat, float X, float Y)>());
+            }
+
             if (userKnown)
             {
                 (float X, float Y) userScreen = WebMercator.ProjectToScreen(currentUserLatitude, currentUserLongitude, latitude, longitude, zoomLevel, width, height);

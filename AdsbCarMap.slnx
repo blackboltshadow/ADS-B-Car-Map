@@ -15,6 +15,10 @@
     <Project Path="Sources/AdsbFi/AdsbCarMap.DataSources.AdsbFi/AdsbCarMap.DataSources.AdsbFi.csproj" />
     <Project Path="Sources/AdsbFi/AdsbCarMap.DataSources.AdsbFi.Tests/AdsbCarMap.DataSources.AdsbFi.Tests.csproj" />
   </Folder>
+  <Folder Name="/Sources/Neptun/">
+    <Project Path="Sources/Neptun/AdsbCarMap.DataSources.Neptun/AdsbCarMap.DataSources.Neptun.csproj" />
+    <Project Path="Sources/Neptun/AdsbCarMap.DataSources.Neptun.Tests/AdsbCarMap.DataSources.Neptun.Tests.csproj" />
+  </Folder>
   <Folder Name="/Sources/Adsbdb/">
     <Project Path="Sources/Adsbdb/AdsbCarMap.DataSources.Adsbdb/AdsbCarMap.DataSources.Adsbdb.csproj" />
     <Project Path="Sources/Adsbdb/AdsbCarMap.DataSources.Adsbdb.Tests/AdsbCarMap.DataSources.Adsbdb.Tests.csproj" />

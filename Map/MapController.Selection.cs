@@ -558,6 +558,15 @@ namespace AdsbCarMap.Map
 
             if (tapped == null)
             {
+                Threat? tappedThreat = FindTappedThreat(x, y);
+
+                if (tappedThreat != null)
+                {
+                    ThreatTapped?.Invoke(tappedThreat);
+
+                    return;
+                }
+
                 Airport? tappedAirport = FindTappedAirport(x, y);
 
                 if (tappedAirport != null)
@@ -623,6 +632,33 @@ namespace AdsbCarMap.Map
             }
 
             NotifySelectionChanged();
+        }
+
+        /// <summary>
+        /// Finds the threat marker closest to a tap.
+        /// </summary>
+        /// <param name="x">Horizontal tap position in pixels.</param>
+        /// <param name="y">Vertical tap position in pixels.</param>
+        /// <returns>The threat, or null when no marker is close enough.</returns>
+        private Threat? FindTappedThreat(float x, float y)
+        {
+            IReadOnlyList<(Threat Threat, float X, float Y)> hits = Volatile.Read(ref threatHits);
+            float maximumDistance = TapRadius * density;
+            float bestDistance = maximumDistance * maximumDistance;
+            Threat? tapped = null;
+
+            foreach ((Threat Threat, float X, float Y) hit in hits)
+            {
+                float distance = (hit.X - x) * (hit.X - x) + (hit.Y - y) * (hit.Y - y);
+
+                if (distance <= bestDistance)
+                {
+                    bestDistance = distance;
+                    tapped = hit.Threat;
+                }
+            }
+
+            return tapped;
         }
 
         /// <summary>
