@@ -142,6 +142,11 @@ namespace AdsbCarMap.Map
         private readonly object stateLock = new object();
 
         /// <summary>
+        /// Whether the remembered map view has already been restored in this process. Only the first map started restores it.
+        /// </summary>
+        private static bool viewRestored;
+
+        /// <summary>
         /// Lock guaranteeing that the surface is not used after it has been destroyed.
         /// </summary>
         private readonly object renderLock = new object();
@@ -477,6 +482,8 @@ namespace AdsbCarMap.Map
 
             (IReadOnlyList<Aircraft> Aircraft, DateTime TimestampUtc) shared = LiveTraffic.GetSnapshot();
 
+            RestoreView();
+
             lock (stateLock)
             {
                 surfaceWidth = width;
@@ -532,10 +539,58 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Restores the remembered map center, zoom and follow mode if no map has done it yet in this process.
+        /// </summary>
+        private void RestoreView()
+        {
+            if (viewRestored)
+            {
+                return;
+            }
+
+            viewRestored = true;
+            MapViewState? remembered = MapViewStore.Load();
+
+            if (remembered == null)
+            {
+                return;
+            }
+
+            lock (stateLock)
+            {
+                centerLatitude = remembered.Latitude;
+                centerLongitude = remembered.Longitude;
+                zoom = remembered.Zoom;
+                zoomTarget = remembered.Zoom;
+                followLocation = remembered.FollowLocation;
+            }
+        }
+
+        /// <summary>
+        /// Saves the current map center, zoom and follow mode.
+        /// </summary>
+        private void SaveView()
+        {
+            MapViewState state;
+
+            lock (stateLock)
+            {
+                state = new MapViewState(centerLatitude, centerLongitude, zoomTarget, followLocation);
+            }
+
+            MapViewStore.Save(state);
+        }
+
+        /// <summary>
         /// Stops the loops and the position updates and releases the surface. Returns only after a possible frame drawing has finished.
         /// </summary>
         public void Stop()
         {
+            if (cancellation != null)
+            {
+                SaveView();
+            }
+
             CancellationTokenSource? source = cancellation;
             cancellation = null;
             source?.Cancel();

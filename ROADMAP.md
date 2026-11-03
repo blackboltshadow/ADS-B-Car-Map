@@ -32,14 +32,12 @@ Zasada kolejności: najpierw rzeczy, które pomagają ocenić to, co już dodano
 | 10 | Dalsze rozbicie `MapController` (po podziale na pliki partial ma około 2400 linii): gesty i zaznaczanie (największy jest `MapController.Selection.cs`, 710 linii) | Zrobione: podział na pliki partial, TileLayer, PopupRenderer, AltitudeLegendRenderer, StatusIconRenderer, MapMath, TrailTracker i AircraftDataLoop (pętla pobierania, bez zmian zachowania). Ryzykowne, więc osobne zadanie, bez zmian zachowania | średni |
 
 - Tłumaczenie pozostałych komentarzy na angielski (przy okazji edycji plików).
-- Testy: indeks lotnisk, wyszukiwanie, formatowanie tekstów kart.
 - Zrzuty ekranu do README.
 
 ## P5 – pomysły
 
 - Ustawienie jednostki odległości (km, mile morskie, mile) obok jednostki wysokości. Dziś odległości i ustawienia zaokrąglania położenia są w km, a promień w API w NM.
 
-- Zapamiętywanie ostatniej pozycji i zoomu mapy między uruchomieniami.
 - Historia obserwowanych samolotów.
 - Przyloty i odloty lotniska: najpierw lista „na żywo” z pozycji i tras, potem opcjonalnie rozkład z AeroDataBox z kluczem użytkownika (porównanie źródeł i limity w DATA_SOURCES.md, sekcja „Przyloty i odloty lotniska”).
 
