@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.Settings;
 
 namespace AdsbCarMap.Data
@@ -33,15 +34,15 @@ namespace AdsbCarMap.Data
         {
             return field switch
             {
-                FilterField.OnGround => "Na ziemi",
-                FilterField.Military => "Wojskowy",
-                FilterField.Kind => "Rodzaj samolotu",
-                FilterField.Manufacturer => "Producent",
-                FilterField.TypeCode => "Typ (kod ICAO lub IATA)",
-                FilterField.CallsignPrefix => "Linia (początek znaku)",
-                FilterField.Altitude => "Wysokość [" + AltitudeFormatter.Symbol(altitudeUnit) + "]",
-                FilterField.Origin => "Lotnisko wylotu",
-                FilterField.Destination => "Lotnisko docelowe",
+                FilterField.OnGround => Loc.T("Na ziemi"),
+                FilterField.Military => Loc.T("Wojskowy"),
+                FilterField.Kind => Loc.T("Rodzaj samolotu"),
+                FilterField.Manufacturer => Loc.T("Producent"),
+                FilterField.TypeCode => Loc.T("Typ (kod ICAO lub IATA)"),
+                FilterField.CallsignPrefix => Loc.T("Linia (początek znaku)"),
+                FilterField.Altitude => Loc.T("Wysokość [") + AltitudeFormatter.Symbol(altitudeUnit) + "]",
+                FilterField.Origin => Loc.T("Lotnisko wylotu"),
+                FilterField.Destination => Loc.T("Lotnisko docelowe"),
                 _ => field.ToString(),
             };
         }
@@ -55,10 +56,10 @@ namespace AdsbCarMap.Data
         {
             return field switch
             {
-                FilterField.TypeCode => "np. B738 lub 738",
-                FilterField.CallsignPrefix => "np. LOT",
-                FilterField.Origin => "kod lub miasto, np. WAW",
-                FilterField.Destination => "kod lub miasto, np. RZE",
+                FilterField.TypeCode => Loc.T("np. B738 lub 738"),
+                FilterField.CallsignPrefix => Loc.T("np. LOT"),
+                FilterField.Origin => Loc.T("kod lub miasto, np. WAW"),
+                FilterField.Destination => Loc.T("kod lub miasto, np. RZE"),
                 _ => string.Empty,
             };
         }

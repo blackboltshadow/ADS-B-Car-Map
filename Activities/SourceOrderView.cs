@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.DataSources.Management.Selection;
 using Android.Content;
 using Android.Graphics;
@@ -137,7 +138,7 @@ namespace AdsbCarMap.Activities
             handle.TextSize = 26f;
             handle.Gravity = GravityFlags.Center;
             handle.SetTextColor(Color.White);
-            handle.ContentDescription = "Przeciągnij, aby zmienić kolejność: " + order[index];
+            handle.ContentDescription = Loc.T("Przeciągnij, aby zmienić kolejność: ") + order[index];
             handle.Touch += (sender, args) => OnHandleTouch(row, args);
             row.AddView(handle, new LayoutParams(Dp(44), ViewGroup.LayoutParams.MatchParent));
 
@@ -149,7 +150,7 @@ namespace AdsbCarMap.Activities
             row.AddView(name, new LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
             TextView badge = new TextView(Context);
-            badge.Text = isMain ? "GŁÓWNE" : "ZAPASOWE " + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            badge.Text = isMain ? Loc.T("GŁÓWNE") : Loc.T("ZAPASOWE ") + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
             badge.TextSize = 11f;
             badge.SetTextColor(isMain ? Color.Argb(255, 165, 214, 167) : Color.Argb(200, 255, 255, 255));
             badge.SetTypeface(null, TypefaceStyle.Bold);

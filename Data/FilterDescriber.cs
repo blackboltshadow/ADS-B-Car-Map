@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Globalization;
 using AdsbCarMap.Settings;
 
@@ -28,7 +29,7 @@ namespace AdsbCarMap.Data
                 return null;
             }
 
-            return (filter.Mode == FilterMode.Show ? "Pokazuje każdy samolot, który " : "Ukrywa każdy samolot, który ") + RenderSentence(tree, false, altitudeUnit) + ".";
+            return (filter.Mode == FilterMode.Show ? Loc.T("Pokazuje każdy samolot, który ") : Loc.T("Ukrywa każdy samolot, który ")) + RenderSentence(tree, false, altitudeUnit) + ".";
         }
 
         /// <summary>
@@ -39,7 +40,7 @@ namespace AdsbCarMap.Data
         /// <returns>For example "Pokaż: producent Boeing ORAZ NIE lotnisko docelowe WAW".</returns>
         public static string Describe(AircraftFilter filter, AltitudeUnit altitudeUnit = AltitudeUnit.Metric)
         {
-            return (filter.Mode == FilterMode.Show ? "Pokaż: " : "Ukryj: ") + DescribeNode(filter.Expression, false, altitudeUnit);
+            return (filter.Mode == FilterMode.Show ? Loc.T("Pokaż: ") : Loc.T("Ukryj: ")) + DescribeNode(filter.Expression, false, altitudeUnit);
         }
 
         /// <summary>
@@ -53,17 +54,17 @@ namespace AdsbCarMap.Data
         {
             if (node is FilterNot negation)
             {
-                return "NIE " + DescribeNode(negation.Inner, true, altitudeUnit);
+                return Loc.T("NIE ") + DescribeNode(negation.Inner, true, altitudeUnit);
             }
 
             if (node is FilterGroup group)
             {
-                string connector = group.Mode == FilterGroupMode.All ? " ORAZ " : " LUB ";
+                string connector = group.Mode == FilterGroupMode.All ? Loc.T(" ORAZ ") : Loc.T(" LUB ");
                 string text = string.Join(connector, group.Children.Select((FilterNode child) => DescribeNode(child, true, altitudeUnit)));
 
                 if (group.Children.Count == 0)
                 {
-                    return "(pusta grupa)";
+                    return Loc.T("(pusta grupa)");
                 }
 
                 return nested && group.Children.Count > 1 ? "(" + text + ")" : text;
@@ -83,23 +84,23 @@ namespace AdsbCarMap.Data
             switch (condition.Field)
             {
                 case FilterField.OnGround:
-                    return "na ziemi";
+                    return Loc.T("na ziemi");
                 case FilterField.Military:
                     return "wojskowy";
                 case FilterField.Kind:
-                    return "rodzaj: " + AircraftClassifier.GetDisplayName(condition.Kind);
+                    return Loc.T("rodzaj: ") + AircraftClassifier.GetDisplayName(condition.Kind);
                 case FilterField.Manufacturer:
-                    return "producent " + condition.Text;
+                    return Loc.T("producent ") + condition.Text;
                 case FilterField.TypeCode:
-                    return (condition.Family ? "rodzina typu " : "typ ") + condition.Text;
+                    return (condition.Family ? Loc.T("rodzina typu ") : Loc.T("typ ")) + condition.Text;
                 case FilterField.CallsignPrefix:
-                    return "linia " + condition.Text;
+                    return Loc.T("linia ") + condition.Text;
                 case FilterField.Altitude:
                     return DescribeRange(condition.Minimum, condition.Maximum, altitudeUnit);
                 case FilterField.Origin:
-                    return "lotnisko wylotu " + condition.Text;
+                    return Loc.T("lotnisko wylotu ") + condition.Text;
                 case FilterField.Destination:
-                    return "lotnisko docelowe " + condition.Text;
+                    return Loc.T("lotnisko docelowe ") + condition.Text;
                 default:
                     return string.Empty;
             }
@@ -114,7 +115,7 @@ namespace AdsbCarMap.Data
         /// <returns>For example "wysokość 1000–5000 m".</returns>
         private static string DescribeRange(double? minimum, double? maximum, AltitudeUnit unit)
         {
-            return "wysokość " + (FormatRange(minimum, maximum, unit) ?? "dowolna");
+            return Loc.T("wysokość ") + (FormatRange(minimum, maximum, unit) ?? "dowolna");
         }
 
         /// <summary>
@@ -247,10 +248,10 @@ namespace AdsbCarMap.Data
 
             if (group.Children.Count == 0)
             {
-                return "(pusta grupa)";
+                return Loc.T("(pusta grupa)");
             }
 
-            string text = string.Join(group.All ? " oraz " : " lub ", group.Children.Select((SentenceNode child) => RenderSentence(child, true, altitudeUnit)));
+            string text = string.Join(group.All ? Loc.T(" oraz ") : Loc.T(" lub "), group.Children.Select((SentenceNode child) => RenderSentence(child, true, altitudeUnit)));
 
             return nested ? "(" + text + ")" : text;
         }
@@ -267,35 +268,35 @@ namespace AdsbCarMap.Data
             switch (condition.Field)
             {
                 case FilterField.OnGround:
-                    return negated ? "nie jest na ziemi" : "jest na ziemi";
+                    return negated ? Loc.T("nie jest na ziemi") : Loc.T("jest na ziemi");
                 case FilterField.Military:
-                    return negated ? "nie jest wojskowy" : "jest wojskowy";
+                    return negated ? Loc.T("nie jest wojskowy") : Loc.T("jest wojskowy");
                 case FilterField.Kind:
-                    return (negated ? "nie ma rodzaju: " : "ma rodzaj: ") + AircraftClassifier.GetDisplayName(condition.Kind);
+                    return (negated ? Loc.T("nie ma rodzaju: ") : Loc.T("ma rodzaj: ")) + AircraftClassifier.GetDisplayName(condition.Kind);
                 case FilterField.Manufacturer:
-                    return (negated ? "nie pochodzi od producenta " : "pochodzi od producenta ") + condition.Text;
+                    return (negated ? Loc.T("nie pochodzi od producenta ") : Loc.T("pochodzi od producenta ")) + condition.Text;
                 case FilterField.TypeCode:
                     if (condition.Family)
                     {
-                        return (negated ? "nie należy do rodziny typu " : "należy do rodziny typu ") + condition.Text;
+                        return (negated ? Loc.T("nie należy do rodziny typu ") : Loc.T("należy do rodziny typu ")) + condition.Text;
                     }
 
-                    return (negated ? "nie ma typu " : "ma typ ") + condition.Text;
+                    return (negated ? Loc.T("nie ma typu ") : Loc.T("ma typ ")) + condition.Text;
                 case FilterField.CallsignPrefix:
-                    return (negated ? "nie ma znaku zaczynającego się od " : "ma znak zaczynający się od ") + condition.Text;
+                    return (negated ? Loc.T("nie ma znaku zaczynającego się od ") : Loc.T("ma znak zaczynający się od ")) + condition.Text;
                 case FilterField.Altitude:
                     string? range = FormatRange(condition.Minimum, condition.Maximum, altitudeUnit);
 
                     if (range == null)
                     {
-                        return negated ? "nie leci na dowolnej wysokości" : "leci na dowolnej wysokości";
+                        return negated ? Loc.T("nie leci na dowolnej wysokości") : Loc.T("leci na dowolnej wysokości");
                     }
 
-                    return (negated ? "nie leci na wysokości " : "leci na wysokości ") + range;
+                    return (negated ? Loc.T("nie leci na wysokości ") : Loc.T("leci na wysokości ")) + range;
                 case FilterField.Origin:
-                    return (negated ? "nie leci z lotniska " : "leci z lotniska ") + condition.Text;
+                    return (negated ? Loc.T("nie leci z lotniska ") : Loc.T("leci z lotniska ")) + condition.Text;
                 case FilterField.Destination:
-                    return (negated ? "nie leci do lotniska " : "leci do lotniska ") + condition.Text;
+                    return (negated ? Loc.T("nie leci do lotniska ") : Loc.T("leci do lotniska ")) + condition.Text;
                 default:
                     return string.Empty;
             }

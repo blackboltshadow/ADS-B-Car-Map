@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Collections.Concurrent;
 using AdsbCarMap.Data;
 using AdsbCarMap.DataSources.Adsbdb;
@@ -246,6 +247,19 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition ShowAltitudeLegendSetting = SettingDefinition.CreateSwitch("show_altitude_legend", "Legenda wysokości", true, "Pasek z gradientem kolorów u dołu mapy. Pokazuje, jakiej wysokości odpowiada każdy kolor ikon samolotów i ich śladów: od zera (ziemia), przez pomarańczowy, żółty, zielony i niebieski, do fioletowego. Opisy progów są w wybranej jednostce wysokości, a same progi ustawia się w skali kolorów niżej.");
 
         /// <summary>
+        /// Language of the user interface (phone and Android Auto); the stored value is the index of the language in <see cref="Loc.LanguageNames"/>.
+        /// </summary>
+        public static readonly SettingDefinition LanguageSetting = SettingDefinition.CreateChoice("language", "Język / Language", 0, "Język interfejsu aplikacji, na telefonie i w Android Auto. Zmiana działa od razu. Teksty, które przychodzą z zewnątrz (nazwy lotnisk, linii i typów samolotów), zostają w oryginalnym języku.", Loc.LanguageNames.ToArray());
+
+        /// <summary>
+        /// Settings of the language section. They share one card on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> LanguageSettings = new List<SettingDefinition>
+        {
+            LanguageSetting,
+        };
+
+        /// <summary>
         /// Altitude unit used across the application (phone and Android Auto): meters, feet or flight level.
         /// </summary>
         public static readonly SettingDefinition AltitudeUnitSetting = SettingDefinition.CreateChoice("altitude_unit", "Jednostka wysokości", 0, "Jednostka wysokości w całej aplikacji, na telefonie i w Android Auto. Pokazuje się: na etykietach samolotów na mapie; w wynikach wyszukiwania (wysokość samolotu i lotniska); na karcie i w popupie samolotu (Wysokość); na karcie i w popupie lotniska (wysokość lotniska oraz długość pasów, które w stopach i poziomach lotu są podawane w stopach); w legendzie i w edytorze skali kolorów; w powiadomieniach alertów; w filtrach (pole Wysokość w edytorze i opis filtra). Metry to m i km (w legendzie), stopy to ft, a poziom lotu (FL) to wysokość w setkach stóp, np. FL350 to 35 000 ft.", "Metry (m, km)", "Stopy (ft)", "Poziom lotu (FL)");
@@ -340,6 +354,7 @@ namespace AdsbCarMap.Settings
         /// </summary>
         public static readonly IReadOnlyList<SettingDefinition> All = new List<SettingDefinition>
         {
+            LanguageSetting,
             AltitudeUnitSetting,
             DistanceUnitSetting,
             SpeedUnitSetting,
@@ -823,6 +838,11 @@ namespace AdsbCarMap.Settings
         public static bool DataSourceDetails => Get(DataSourceDetailsSetting) >= 0.5;
 
         /// <summary>
+        /// Language of the user interface.
+        /// </summary>
+        public static AppLanguage Language => Loc.FromSettingValue((int)Get(LanguageSetting));
+
+        /// <summary>
         /// Unit in which the aircraft altitude is shown.
         /// </summary>
         public static AltitudeUnit AltitudeUnit => (AltitudeUnit)(int)Get(AltitudeUnitSetting);
@@ -904,6 +924,7 @@ namespace AdsbCarMap.Settings
             }
 
             editor?.Apply();
+            Loc.Language = Language;
             Saved?.Invoke();
         }
 
@@ -923,6 +944,7 @@ namespace AdsbCarMap.Settings
                 Values[definition.Key] = definition.DefaultValue;
             }
 
+            Loc.Language = Language;
             Saved?.Invoke();
         }
 
@@ -955,6 +977,7 @@ namespace AdsbCarMap.Settings
                 }
 
                 loaded = true;
+                Loc.Language = Language;
             }
         }
 

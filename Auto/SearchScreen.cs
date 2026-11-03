@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
@@ -79,12 +80,12 @@ namespace AdsbCarMap.Auto
             }
 
             listBuilder.SetNoItemsMessage(string.IsNullOrWhiteSpace(query)
-                ? "Brak samolotów i lotnisk w zasięgu"
-                : "Brak pasujących samolotów i lotnisk");
+                ? Loc.T("Brak samolotów i lotnisk w zasięgu")
+                : Loc.T("Brak pasujących samolotów i lotnisk"));
 
             return new SearchTemplate.Builder(new DelegateSearchCallback(OnQueryChanged))
                 .SetHeaderAction(CarAction.Back)
-                .SetSearchHint("Lot, typ, lotnisko…")
+                .SetSearchHint(Loc.T("Lot, typ, lotnisko…"))
                 .SetInitialSearchText(query)
                 .SetShowKeyboardByDefault(true)
                 .SetItemList(listBuilder.Build())

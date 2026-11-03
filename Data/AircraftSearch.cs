@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.DataSources.Models;
 
 
@@ -121,7 +122,7 @@ namespace AdsbCarMap.Data
 
             if (item.OnGround)
             {
-                parts.Add("na ziemi");
+                parts.Add(Loc.T("na ziemi"));
             }
             else if (item.AltitudeFeet.HasValue)
             {
@@ -290,7 +291,7 @@ namespace AdsbCarMap.Data
                 parts.Add(airport.Country);
             }
 
-            parts.Add(airport.Type == AirportType.Large ? "duże lotnisko" : airport.Type == AirportType.Medium ? "średnie lotnisko" : airport.Type == AirportType.Heliport ? "helipad" : "małe lotnisko");
+            parts.Add(airport.Type == AirportType.Large ? Loc.T("duże lotnisko") : airport.Type == AirportType.Medium ? Loc.T("średnie lotnisko") : airport.Type == AirportType.Heliport ? Loc.T("helipad") : Loc.T("małe lotnisko"));
 
             if (airport.IsMilitary)
             {

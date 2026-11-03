@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Globalization;
 using System.Text;
 using AdsbCarMap.DataSources.Management.RateLimiting;
@@ -38,7 +39,7 @@ namespace AdsbCarMap.Data
 
                 if (state.IsLastUsed)
                 {
-                    builder.Append(" (ostatnio użyte)");
+                    builder.Append(Loc.T(" (ostatnio użyte)"));
                 }
 
                 builder.Append('\n');
@@ -47,7 +48,7 @@ namespace AdsbCarMap.Data
 
                 if (failure != null)
                 {
-                    builder.Append("   ostatni błąd: ").Append(failure.Description).Append(", ").Append(DescribeAge(utcNow - failure.OccurredUtc)).Append('\n');
+                    builder.Append(Loc.T("   ostatni błąd: ")).Append(failure.Description).Append(", ").Append(DescribeAge(utcNow - failure.OccurredUtc)).Append('\n');
                 }
             }
 
@@ -63,10 +64,10 @@ namespace AdsbCarMap.Data
         {
             if (status.CanQuery)
             {
-                return "dostępne";
+                return Loc.T("dostępne");
             }
 
-            return string.Format(CultureInfo.CurrentCulture, "wstrzymane jeszcze {0:0} s", Math.Ceiling(status.RemainingBlock.TotalSeconds));
+            return Loc.F("wstrzymane jeszcze {0:0} s", Math.Ceiling(status.RemainingBlock.TotalSeconds));
         }
 
         /// <summary>
@@ -83,15 +84,15 @@ namespace AdsbCarMap.Data
 
             if (age.TotalMinutes < 1.0)
             {
-                return string.Format(CultureInfo.CurrentCulture, "{0:0} s temu", Math.Floor(age.TotalSeconds));
+                return Loc.F("{0:0} s temu", Math.Floor(age.TotalSeconds));
             }
 
             if (age.TotalHours < 1.0)
             {
-                return string.Format(CultureInfo.CurrentCulture, "{0:0} min temu", Math.Floor(age.TotalMinutes));
+                return Loc.F("{0:0} min temu", Math.Floor(age.TotalMinutes));
             }
 
-            return string.Format(CultureInfo.CurrentCulture, "{0:0} h temu", Math.Floor(age.TotalHours));
+            return Loc.F("{0:0} h temu", Math.Floor(age.TotalHours));
         }
     }
 }

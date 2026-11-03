@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Globalization;
 using System.Text;
 using AdsbCarMap.Data;
@@ -29,6 +30,7 @@ namespace AdsbCarMap.Activities
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            Title = Loc.T("Dane developerskie");
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
 
@@ -163,7 +165,7 @@ namespace AdsbCarMap.Activities
             }
 
             parts.Add("pierwszy raz " + FormatTime(entry.FirstSeenUtc));
-            parts.Add("ostatnio " + FormatTime(entry.LastSeenUtc));
+            parts.Add(Loc.T("ostatnio ") + FormatTime(entry.LastSeenUtc));
 
             return string.Join(" · ", parts);
         }
@@ -214,8 +216,8 @@ namespace AdsbCarMap.Activities
             AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
             builder.SetTitle("Wyczyścić listę?");
             builder.SetMessage("Lista brakujących typów zostanie usunięta. Typy pojawią się znowu, gdy samoloty tych typów znów będą widoczne.");
-            builder.SetNegativeButton("Anuluj", (sender, args) => { });
-            builder.SetPositiveButton("Wyczyść", (sender, args) =>
+            builder.SetNegativeButton(Loc.T("Anuluj"), (sender, args) => { });
+            builder.SetPositiveButton(Loc.T("Wyczyść"), (sender, args) =>
             {
                 AppServices.MissingTypes.Clear();
                 Render();

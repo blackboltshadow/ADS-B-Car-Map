@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.Data;
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.Settings;
@@ -150,7 +151,7 @@ namespace AdsbCarMap.Services
 
             if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
             {
-                NotificationChannel channel = new NotificationChannel(ChannelId, "Alerty o samolotach", NotificationImportance.High);
+                NotificationChannel channel = new NotificationChannel(ChannelId, Loc.T("Alerty o samolotach"), NotificationImportance.High);
                 manager.CreateNotificationChannel(channel);
                 builder = new Notification.Builder(context, ChannelId);
             }

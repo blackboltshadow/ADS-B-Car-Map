@@ -6,6 +6,7 @@ Zasady kodu:
 - Komentarze i dokumentacja XML w kodzie piszemy po angielsku. Teksty widoczne dla użytkownika (interfejs, komunikaty) i dokumentacja w README zostają po polsku. Istniejące polskie komentarze tłumaczymy przy okazji edycji pliku (tłumaczymy cały plik, po tłumaczeniu kod poza komentarzami musi być identyczny).
 - Przestrzenie nazw zapisujemy z klamrami (namespace Xyz { ... }), nie w stylu file-scoped (namespace Xyz;).
 - Wiadomości commitów piszemy po angielsku (krótki tytuł w trybie rozkazującym, opcjonalnie opis w punktach). Commit i push tylko po akceptacji użytkownika; wiadomość przekazujemy plikiem (git commit -F), bo cudzysłowy psują argument w PowerShellu 5.1.
+- Teksty widoczne dla użytkownika opakowujemy w Loc.T("polski tekst") (z parametrami Loc.F); polski tekst jest kluczem, a angielski wpisujemy do Localization/EnglishTranslations.cs. Nie wolno tłumaczyć w statycznych polach (język zmienia się w trakcie działania), tłumaczymy w miejscu użycia. Język wybiera LanguageSetting (domyślnie polski).
 - Zmiany dokumentujemy też w README.md (sekcje funkcji, ustawień, ograniczeń).
 
 Projekt:

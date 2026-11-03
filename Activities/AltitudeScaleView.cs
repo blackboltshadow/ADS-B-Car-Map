@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Globalization;
 using AdsbCarMap.Map;
 using AdsbCarMap.Settings;
@@ -227,7 +228,7 @@ namespace AdsbCarMap.Activities
 
             textPaint.Color = Color.Rgb(180, 180, 180);
             textPaint.TextAlign = Paint.Align.Left;
-            canvas.DrawText("Podgląd śladu wznoszącego się samolotu", left, previewBottom - previewHeight - Dp(8), textPaint);
+            canvas.DrawText(Loc.T("Podgląd śladu wznoszącego się samolotu"), left, previewBottom - previewHeight - Dp(8), textPaint);
             textPaint.TextAlign = Paint.Align.Center;
 
             strokePaint.StrokeWidth = Dp(4);
@@ -406,9 +407,9 @@ namespace AdsbCarMap.Activities
             input.SetSelectAllOnFocus(true);
 
             AlertDialog.Builder builder = new AlertDialog.Builder(Context)!;
-            builder.SetTitle(AltitudePalette.StopNames[index] + " [" + unitName + "]");
+            builder.SetTitle(Loc.T(AltitudePalette.StopNames[index]) + " [" + unitName + "]");
             builder.SetView(input);
-            builder.SetNegativeButton("Anuluj", (sender, args) => { });
+            builder.SetNegativeButton(Loc.T("Anuluj"), (sender, args) => { });
             builder.SetPositiveButton("OK", (sender, args) =>
             {
                 if (double.TryParse(input.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out double typed))

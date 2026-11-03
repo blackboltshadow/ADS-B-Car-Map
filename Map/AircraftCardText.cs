@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.DataSources.Models;
 using System.Globalization;
 using AdsbCarMap.Data;
@@ -102,16 +103,16 @@ namespace AdsbCarMap.Map
             switch (routeState)
             {
                 case RouteLookupState.NotApplicable:
-                    return "Trasa: samolot nie nadaje znaku wywoławczego";
+                    return Loc.T("Trasa: samolot nie nadaje znaku wywoławczego");
 
                 case RouteLookupState.NotFound:
-                    return "Trasa: żadne źródło nie zna tego lotu";
+                    return Loc.T("Trasa: żadne źródło nie zna tego lotu");
 
                 case RouteLookupState.Failed:
-                    return "Trasa: nie udało się pobrać (błąd sieci lub limit zapytań)";
+                    return Loc.T("Trasa: nie udało się pobrać (błąd sieci lub limit zapytań)");
 
                 default:
-                    return "Trasa: pobieranie…";
+                    return Loc.T("Trasa: pobieranie…");
             }
         }
 
@@ -128,13 +129,13 @@ namespace AdsbCarMap.Map
                     return null;
 
                 case RouteLookupState.NotFound:
-                    return "Sprawdź ponownie";
+                    return Loc.T("Sprawdź ponownie");
 
                 case RouteLookupState.Failed:
-                    return "Spróbuj ponownie";
+                    return Loc.T("Spróbuj ponownie");
 
                 default:
-                    return "Pobierz teraz";
+                    return Loc.T("Pobierz teraz");
             }
         }
 
@@ -163,7 +164,7 @@ namespace AdsbCarMap.Map
             double total = flown + remaining;
 
             fraction = total > 0.0 ? (float)(flown / total) : 0.0f;
-            text = string.Format(DisplayCulture, "przeleciano {0:0}%  ·  do celu {1}", fraction * 100.0, UnitFormatter.FormatDistance(remaining, units.Distance, 0));
+            text = string.Format(DisplayCulture, Loc.T("przeleciano {0:0}%  ·  do celu {1}"), fraction * 100.0, UnitFormatter.FormatDistance(remaining, units.Distance, 0));
 
             if (!aircraft.OnGround && aircraft.GroundSpeedKnots.HasValue && aircraft.GroundSpeedKnots.Value >= MinimumSpeedForEstimateKnots)
             {
@@ -187,26 +188,26 @@ namespace AdsbCarMap.Map
 
             if (aircraft.OnGround)
             {
-                lines.Add("Wysokość: na ziemi");
+                lines.Add(Loc.T("Wysokość: na ziemi"));
             }
             else if (aircraft.AltitudeFeet.HasValue)
             {
-                lines.Add("Wysokość: " + AltitudeFormatter.Format(aircraft.AltitudeFeet.Value, units.Altitude));
+                lines.Add(Loc.T("Wysokość: ") + AltitudeFormatter.Format(aircraft.AltitudeFeet.Value, units.Altitude));
             }
             else
             {
-                lines.Add("Wysokość: brak danych");
+                lines.Add(Loc.T("Wysokość: brak danych"));
             }
 
             lines.Add(aircraft.GroundSpeedKnots.HasValue
-                ? "Prędkość: " + UnitFormatter.FormatSpeed(aircraft.GroundSpeedKnots.Value, units.Speed)
-                : "Prędkość: brak danych");
+                ? Loc.T("Prędkość: ") + UnitFormatter.FormatSpeed(aircraft.GroundSpeedKnots.Value, units.Speed)
+                : Loc.T("Prędkość: brak danych"));
 
             lines.Add(aircraft.TrackDegrees.HasValue
-                ? string.Format(DisplayCulture, "Kurs: {0:0}° {1}", aircraft.TrackDegrees.Value, GeoMath.CompassPoint(aircraft.TrackDegrees.Value))
-                : "Kurs: brak danych");
+                ? string.Format(DisplayCulture, Loc.T("Kurs: {0:0}° {1}"), aircraft.TrackDegrees.Value, GeoMath.CompassPoint(aircraft.TrackDegrees.Value))
+                : Loc.T("Kurs: brak danych"));
 
-            lines.Add(string.Format(DisplayCulture, "Dane sprzed {0:0} s", info.AgeSeconds + aircraft.SecondsSincePosition));
+            lines.Add(string.Format(DisplayCulture, Loc.T("Dane sprzed {0:0} s"), info.AgeSeconds + aircraft.SecondsSincePosition));
 
             return lines;
         }
@@ -224,19 +225,19 @@ namespace AdsbCarMap.Map
 
             if (aircraft.OnGround)
             {
-                lines.Add("Wznoszenie: –");
+                lines.Add(Loc.T("Wznoszenie: –"));
             }
             else if (aircraft.VerticalRateFeetPerMinute.HasValue)
             {
                 int rate = aircraft.VerticalRateFeetPerMinute.Value;
 
                 lines.Add(Math.Abs(rate) < LevelFlightThresholdFeetPerMinute
-                    ? "Wznoszenie: lot poziomy"
-                    : (rate > 0 ? "Wznoszenie: " : "Opadanie: ") + UnitFormatter.FormatVerticalSpeed(rate, units.VerticalSpeed));
+                    ? Loc.T("Wznoszenie: lot poziomy")
+                    : (rate > 0 ? Loc.T("Wznoszenie: ") : Loc.T("Opadanie: ")) + UnitFormatter.FormatVerticalSpeed(rate, units.VerticalSpeed));
             }
             else
             {
-                lines.Add("Wznoszenie: brak danych");
+                lines.Add(Loc.T("Wznoszenie: brak danych"));
             }
 
             if (info.HasUser)
@@ -244,14 +245,14 @@ namespace AdsbCarMap.Map
                 double distance = GeoMath.DistanceKilometers(info.UserLatitude, info.UserLongitude, info.Latitude, info.Longitude);
                 double bearing = GeoMath.BearingDegrees(info.UserLatitude, info.UserLongitude, info.Latitude, info.Longitude);
 
-                lines.Add(string.Format(DisplayCulture, "Od Ciebie: {0}, {1} ({2:0}°)", UnitFormatter.FormatDistance(distance, units.Distance, 1), GeoMath.CompassPoint(bearing), bearing));
+                lines.Add(string.Format(DisplayCulture, Loc.T("Od Ciebie: {0}, {1} ({2:0}°)"), UnitFormatter.FormatDistance(distance, units.Distance, 1), GeoMath.CompassPoint(bearing), bearing));
             }
             else
             {
-                lines.Add("Od Ciebie: brak pozycji GPS");
+                lines.Add(Loc.T("Od Ciebie: brak pozycji GPS"));
             }
 
-            lines.Add(string.IsNullOrEmpty(aircraft.Squawk) ? "Squawk: brak danych" : "Squawk: " + aircraft.Squawk);
+            lines.Add(string.IsNullOrEmpty(aircraft.Squawk) ? Loc.T("Squawk: brak danych") : Loc.T("Squawk: ") + aircraft.Squawk);
 
             return lines;
         }
@@ -293,7 +294,7 @@ namespace AdsbCarMap.Map
                 return string.Format(DisplayCulture, "{0} min", Math.Max(1, totalMinutes));
             }
 
-            return string.Format(DisplayCulture, "{0} h {1:00} min", totalMinutes / 60, totalMinutes % 60);
+            return string.Format(DisplayCulture, Loc.T("{0} h {1:00} min"), totalMinutes / 60, totalMinutes % 60);
         }
     }
 }

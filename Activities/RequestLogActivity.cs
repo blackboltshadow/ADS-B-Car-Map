@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Globalization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Services;
@@ -72,6 +73,7 @@ namespace AdsbCarMap.Activities
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            Title = Loc.T("Log zapytań");
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
             handler = new Handler(Looper.MainLooper!);
@@ -84,11 +86,11 @@ namespace AdsbCarMap.Activities
             root.SetPadding(Dp(16), Dp(16), Dp(16), Dp(32));
             scrollView.AddView(root);
 
-            root.AddView(CreateText("Log zapytań", 20f, Color.White, true));
-            root.AddView(CreateText("Zapytania wysyłane przez aplikację na zewnątrz: pozycje samolotów, trasy, dane samolotów i kafelki mapy. Log jest tylko w pamięci i znika po zamknięciu aplikacji. Adres zawiera wysyłane współrzędne (po zaokrągleniu według ustawień prywatności).", 13f, Color.Rgb(180, 180, 180), false));
+            root.AddView(CreateText(Loc.T("Log zapytań"), 20f, Color.White, true));
+            root.AddView(CreateText(Loc.T("Zapytania wysyłane przez aplikację na zewnątrz: pozycje samolotów, trasy, dane samolotów i kafelki mapy. Log jest tylko w pamięci i znika po zamknięciu aplikacji. Adres zawiera wysyłane współrzędne (po zaokrągleniu według ustawień prywatności)."), 13f, Color.Rgb(180, 180, 180), false));
 
             onlyErrors = new CheckBox(this);
-            onlyErrors.Text = "Tylko błędy";
+            onlyErrors.Text = Loc.T("Tylko błędy");
             onlyErrors.SetTextColor(Color.White);
             onlyErrors.CheckedChange += (sender, args) => Render();
             root.AddView(onlyErrors);
@@ -98,7 +100,7 @@ namespace AdsbCarMap.Activities
             root.AddView(hostSpinner);
 
             Button clear = new Button(this);
-            clear.Text = "Wyczyść";
+            clear.Text = Loc.T("Wyczyść");
             clear.Click += (sender, args) => AppServices.Requests.Clear();
             root.AddView(clear);
 
@@ -232,7 +234,7 @@ namespace AdsbCarMap.Activities
             int shown = Math.Min(entries.Count, MaxShownEntries);
             int errors = all.Count(entry => entry.IsError);
 
-            summary.Text = string.Format(CultureInfo.CurrentCulture, "Zapytań: {0}, błędów: {1}, na liście: {2}{3}", all.Count, errors, entries.Count, shown < entries.Count ? " (pokazano " + shown + " najnowszych)" : string.Empty);
+            summary.Text = Loc.F("Zapytań: {0}, błędów: {1}, na liście: {2}{3}", all.Count, errors, entries.Count, shown < entries.Count ? Loc.T(" (pokazano ") + shown + Loc.T(" najnowszych)") : string.Empty);
 
             for (int index = 0; index < shown; index++)
             {
@@ -253,7 +255,7 @@ namespace AdsbCarMap.Activities
             blockParams.SetMargins(0, Dp(10), 0, 0);
             list!.AddView(block, blockParams);
 
-            string outcome = entry.Cancelled ? "anulowano" : entry.StatusCode.HasValue ? entry.StatusCode.Value.ToString(CultureInfo.InvariantCulture) : "brak odpowiedzi";
+            string outcome = entry.Cancelled ? "anulowano" : entry.StatusCode.HasValue ? entry.StatusCode.Value.ToString(CultureInfo.InvariantCulture) : Loc.T("brak odpowiedzi");
             Color color = entry.IsError ? Color.Rgb(255, 110, 110) : entry.Cancelled ? Color.Rgb(150, 150, 150) : Color.White;
 
             block.AddView(CreateText(entry.Method + "  " + entry.Host + "  " + outcome + "  " + entry.Duration.TotalMilliseconds.ToString("0", CultureInfo.InvariantCulture) + " ms", 14f, color, true));

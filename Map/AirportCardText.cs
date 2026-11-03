@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Globalization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Settings;
@@ -36,9 +37,9 @@ namespace AdsbCarMap.Map
         /// <returns>Descriptor text.</returns>
         public static string BuildDescriptor(Airport airport)
         {
-            string type = airport.Type == AirportType.Large ? "Duże lotnisko" : airport.Type == AirportType.Medium ? "Średnie lotnisko" : airport.Type == AirportType.Heliport ? "Helipad" : "Małe lotnisko";
+            string type = airport.Type == AirportType.Large ? Loc.T("Duże lotnisko") : airport.Type == AirportType.Medium ? Loc.T("Średnie lotnisko") : airport.Type == AirportType.Heliport ? Loc.T("Helipad") : Loc.T("Małe lotnisko");
 
-            return airport.IsMilitary ? type + " · wojskowe" : type;
+            return airport.IsMilitary ? type + Loc.T(" · wojskowe") : type;
         }
 
         /// <summary>
@@ -73,7 +74,7 @@ namespace AdsbCarMap.Map
 
             if (airport.ElevationFeet.HasValue)
             {
-                lines.Add("Wysokość: " + AltitudeFormatter.Format(airport.ElevationFeet.Value, units.Altitude));
+                lines.Add(Loc.T("Wysokość: ") + AltitudeFormatter.Format(airport.ElevationFeet.Value, units.Altitude));
             }
 
             if (hasUserLocation)
@@ -81,7 +82,7 @@ namespace AdsbCarMap.Map
                 double kilometers = GeoMath.DistanceKilometers(userLatitude, userLongitude, airport.Latitude, airport.Longitude);
                 double bearing = GeoMath.BearingDegrees(userLatitude, userLongitude, airport.Latitude, airport.Longitude);
 
-                lines.Add(string.Format(DisplayCulture, "Odległość: {0}, kierunek {1}", UnitFormatter.FormatDistance(kilometers, units.Distance, 0), GeoMath.CompassPoint(bearing)));
+                lines.Add(string.Format(DisplayCulture, Loc.T("Odległość: {0}, kierunek {1}"), UnitFormatter.FormatDistance(kilometers, units.Distance, 0), GeoMath.CompassPoint(bearing)));
             }
 
             string runwayText = BuildRunways(runways, units.Altitude);
@@ -123,7 +124,7 @@ namespace AdsbCarMap.Map
                 }
             }
 
-            return "Pasy: " + string.Join(", ", items);
+            return Loc.T("Pasy: ") + string.Join(", ", items);
         }
     }
 }

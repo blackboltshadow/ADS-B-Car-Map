@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Globalization;
 using AdsbCarMap.Data;
 using AdsbCarMap.DataSources.Models;
@@ -145,6 +146,7 @@ namespace AdsbCarMap.Activities
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            Title = Loc.T("Alert");
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
             SetContentView(BuildContent());
@@ -212,17 +214,17 @@ namespace AdsbCarMap.Activities
             form.SetPadding(Dp(16), Dp(8), Dp(16), Dp(16));
             scrollView.AddView(form);
 
-            AddLabel(form, "Nazwa");
+            AddLabel(form, Loc.T("Nazwa"));
             nameField = new EditText(this);
-            nameField.Hint = "np. Wojskowe nad domem";
+            nameField.Hint = Loc.T("np. Wojskowe nad domem");
             nameField.SetSingleLine(true);
             form.AddView(nameField);
 
-            AddLabel(form, "Obszar");
+            AddLabel(form, Loc.T("Obszar"));
             RadioGroup areaGroup = new RadioGroup(this);
-            areaGroup.AddView(CreateRadio("Wokół mojej pozycji (GPS)", 1));
-            areaGroup.AddView(CreateRadio("Wokół lotniska", 2));
-            areaGroup.AddView(CreateRadio("Okrąg o wybranym środku", 3));
+            areaGroup.AddView(CreateRadio(Loc.T("Wokół mojej pozycji (GPS)"), 1));
+            areaGroup.AddView(CreateRadio(Loc.T("Wokół lotniska"), 2));
+            areaGroup.AddView(CreateRadio(Loc.T("Okrąg o wybranym środku"), 3));
             areaGroup.Check(1);
             areaGroup.CheckedChange += (sender, args) =>
             {
@@ -234,24 +236,24 @@ namespace AdsbCarMap.Activities
             airportPanel = new LinearLayout(this);
             airportPanel.Orientation = Orientation.Vertical;
             airportField = new EditText(this);
-            airportField.Hint = "Kod lotniska ICAO lub IATA, np. EPWA";
+            airportField.Hint = Loc.T("Kod lotniska ICAO lub IATA, np. EPWA");
             airportField.SetSingleLine(true);
             airportField.InputType = Android.Text.InputTypes.ClassText | Android.Text.InputTypes.TextFlagCapCharacters;
             airportPanel.AddView(airportField);
             Button favoritesButton = new Button(this);
-            favoritesButton.Text = "Wybierz z ulubionych";
+            favoritesButton.Text = Loc.T("Wybierz z ulubionych");
             favoritesButton.Click += (sender, args) => PickFavoriteAirport();
             airportPanel.AddView(favoritesButton);
             form.AddView(airportPanel);
 
             circlePanel = new LinearLayout(this);
             circlePanel.Orientation = Orientation.Vertical;
-            latitudeField = CreateCoordinateField("Szerokość geograficzna, np. 52.2297");
-            longitudeField = CreateCoordinateField("Długość geograficzna, np. 21.0122");
+            latitudeField = CreateCoordinateField(Loc.T("Szerokość geograficzna, np. 52.2297"));
+            longitudeField = CreateCoordinateField(Loc.T("Długość geograficzna, np. 21.0122"));
             circlePanel.AddView(latitudeField);
             circlePanel.AddView(longitudeField);
             Button mapCenterButton = new Button(this);
-            mapCenterButton.Text = "Użyj środka pobieranych danych";
+            mapCenterButton.Text = Loc.T("Użyj środka pobieranych danych");
             mapCenterButton.Click += (sender, args) =>
             {
                 (double latitude, double longitude) = LiveTraffic.GetCenter();
@@ -259,7 +261,7 @@ namespace AdsbCarMap.Activities
             };
             circlePanel.AddView(mapCenterButton);
             Button myPositionButton = new Button(this);
-            myPositionButton.Text = "Użyj mojej pozycji";
+            myPositionButton.Text = Loc.T("Użyj mojej pozycji");
             myPositionButton.Click += (sender, args) =>
             {
                 (bool known, double latitude, double longitude) = LiveTraffic.GetUserLocation();
@@ -270,7 +272,7 @@ namespace AdsbCarMap.Activities
                 }
                 else
                 {
-                    Toast.MakeText(this, "Pozycja GPS nie jest jeszcze znana", ToastLength.Short)?.Show();
+                    Toast.MakeText(this, Loc.T("Pozycja GPS nie jest jeszcze znana"), ToastLength.Short)?.Show();
                 }
             };
             circlePanel.AddView(myPositionButton);
@@ -284,7 +286,7 @@ namespace AdsbCarMap.Activities
             radiusBar.ProgressChanged += (sender, args) => UpdateRadiusText();
             form.AddView(radiusBar);
 
-            AddLabel(form, "Samoloty (filtr)");
+            AddLabel(form, Loc.T("Samoloty (filtr)"));
             filterSpinner = new Spinner(this);
             filterSpinner.ItemSelected += (sender, args) =>
             {
@@ -295,28 +297,28 @@ namespace AdsbCarMap.Activities
             };
             form.AddView(filterSpinner);
             Button newFilterButton = new Button(this);
-            newFilterButton.Text = "＋ Nowy filtr";
+            newFilterButton.Text = Loc.T("＋ Nowy filtr");
             newFilterButton.Click += (sender, args) => StartActivity(new Intent(this, typeof(FilterEditorActivity)));
             form.AddView(newFilterButton);
 
-            AddLabel(form, "Powiadom, gdy");
+            AddLabel(form, Loc.T("Powiadom, gdy"));
             entryBox = new CheckBox(this);
-            entryBox.Text = "samolot wleci w obszar";
+            entryBox.Text = Loc.T("samolot wleci w obszar");
             entryBox.Checked = true;
             form.AddView(entryBox);
             appearanceBox = new CheckBox(this);
-            appearanceBox.Text = "samolot pojawi się w obszarze (np. po starcie)";
+            appearanceBox.Text = Loc.T("samolot pojawi się w obszarze (np. po starcie)");
             appearanceBox.Checked = true;
             form.AddView(appearanceBox);
 
-            AddLabel(form, "Cisza o tym samym samolocie (minuty)");
+            AddLabel(form, Loc.T("Cisza o tym samym samolocie (minuty)"));
             cooldownField = new EditText(this);
             cooldownField.InputType = Android.Text.InputTypes.ClassNumber;
             cooldownField.SetSingleLine(true);
             form.AddView(cooldownField);
 
             Button testButton = new Button(this);
-            testButton.Text = "Sprawdź, ile samolotów pasuje teraz";
+            testButton.Text = Loc.T("Sprawdź, ile samolotów pasuje teraz");
             testButton.Click += (sender, args) => RunTest();
             form.AddView(testButton);
 
@@ -326,12 +328,12 @@ namespace AdsbCarMap.Activities
             root.AddView(buttons, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent));
 
             Button cancelButton = new Button(this);
-            cancelButton.Text = "Anuluj";
+            cancelButton.Text = Loc.T("Anuluj");
             cancelButton.Click += (sender, args) => Finish();
             buttons.AddView(cancelButton, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
             Button saveButton = new Button(this);
-            saveButton.Text = "Zapisz";
+            saveButton.Text = Loc.T("Zapisz");
             saveButton.Click += (sender, args) => Save();
             buttons.AddView(saveButton, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
@@ -386,7 +388,7 @@ namespace AdsbCarMap.Activities
 
             fillingSpinner = true;
 
-            List<string> names = new List<string> { "Każdy samolot" };
+            List<string> names = new List<string> { Loc.T("Każdy samolot") };
 
             spinnerFilterIds = new List<string>();
 
@@ -435,7 +437,7 @@ namespace AdsbCarMap.Activities
         {
             if (radiusText != null && radiusBar != null)
             {
-                radiusText.Text = "Promień: " + (radiusBar.Progress + MinimumRadius).ToString(CultureInfo.InvariantCulture) + " " + UnitFormatter.DistanceSymbol(distanceUnit);
+                radiusText.Text = Loc.T("Promień: ") + (radiusBar.Progress + MinimumRadius).ToString(CultureInfo.InvariantCulture) + " " + UnitFormatter.DistanceSymbol(distanceUnit);
             }
         }
 
@@ -458,14 +460,14 @@ namespace AdsbCarMap.Activities
 
             if (codes.Count == 0)
             {
-                Toast.MakeText(this, "Brak ulubionych lotnisk", ToastLength.Short)?.Show();
+                Toast.MakeText(this, Loc.T("Brak ulubionych lotnisk"), ToastLength.Short)?.Show();
 
                 return;
             }
 
             string[] items = codes.ToArray();
             AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
-            builder.SetTitle("Ulubione lotniska");
+            builder.SetTitle(Loc.T("Ulubione lotniska"));
             builder.SetItems(items, (sender, args) => airportField!.Text = items[args.Which]);
             builder.Show();
         }
@@ -504,7 +506,7 @@ namespace AdsbCarMap.Activities
 
             if (rule.Area.Kind == AlertAreaKind.AroundMe && !known)
             {
-                Toast.MakeText(this, "Pozycja GPS nie jest jeszcze znana", ToastLength.Long)?.Show();
+                Toast.MakeText(this, Loc.T("Pozycja GPS nie jest jeszcze znana"), ToastLength.Long)?.Show();
 
                 return;
             }
@@ -513,8 +515,8 @@ namespace AdsbCarMap.Activities
             int count = AlertMonitor.CountMatching(resolved, aircraft);
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
-            builder.SetTitle("Test alertu");
-            builder.SetMessage("Pasujących samolotów: " + count.ToString(CultureInfo.InvariantCulture) + " (z " + aircraft.Count.ToString(CultureInfo.InvariantCulture) + " w ostatnio pobranych danych).");
+            builder.SetTitle(Loc.T("Test alertu"));
+            builder.SetMessage(Loc.T("Pasujących samolotów: ") + count.ToString(CultureInfo.InvariantCulture) + " (z " + aircraft.Count.ToString(CultureInfo.InvariantCulture) + Loc.T(" w ostatnio pobranych danych)."));
             builder.SetPositiveButton("OK", (sender, args) => { });
             builder.Show();
         }
@@ -556,7 +558,7 @@ namespace AdsbCarMap.Activities
 
                 if (airport == null)
                 {
-                    Toast.MakeText(this, AppServices.Airports.IsLoaded ? "Nie znaleziono lotniska o tym kodzie" : "Baza lotnisk jest jeszcze wczytywana, spróbuj za chwilę", ToastLength.Long)?.Show();
+                    Toast.MakeText(this, AppServices.Airports.IsLoaded ? Loc.T("Nie znaleziono lotniska o tym kodzie") : Loc.T("Baza lotnisk jest jeszcze wczytywana, spróbuj za chwilę"), ToastLength.Long)?.Show();
 
                     return null;
                 }
@@ -570,7 +572,7 @@ namespace AdsbCarMap.Activities
 
                 if (latitude == null || longitude == null)
                 {
-                    Toast.MakeText(this, "Podaj poprawną szerokość i długość geograficzną", ToastLength.Long)?.Show();
+                    Toast.MakeText(this, Loc.T("Podaj poprawną szerokość i długość geograficzną"), ToastLength.Long)?.Show();
 
                     return null;
                 }
@@ -580,7 +582,7 @@ namespace AdsbCarMap.Activities
 
             if (!int.TryParse(cooldownField!.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int cooldown) || cooldown < 0 || cooldown > 1440)
             {
-                Toast.MakeText(this, "Cisza musi być liczbą minut od 0 do 1440", ToastLength.Long)?.Show();
+                Toast.MakeText(this, Loc.T("Cisza musi być liczbą minut od 0 do 1440"), ToastLength.Long)?.Show();
 
                 return null;
             }

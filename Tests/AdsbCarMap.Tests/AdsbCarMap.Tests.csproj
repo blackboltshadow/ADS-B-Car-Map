@@ -19,6 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\Localization\AppLanguage.cs" Link="Linked\AppLanguage.cs" />
+    <Compile Include="..\..\Localization\Loc.cs" Link="Linked\Loc.cs" />
+    <Compile Include="..\..\Localization\EnglishTranslations.cs" Link="Linked\EnglishTranslations.cs" />
     <Compile Include="..\..\Data\GeoMath.cs" Link="Linked\GeoMath.cs" />
     <Compile Include="..\..\Data\GeoPoint.cs" Link="Linked\GeoPoint.cs" />
     <Compile Include="..\..\Data\AlertAreaKind.cs" Link="Linked\AlertAreaKind.cs" />

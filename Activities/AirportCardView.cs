@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using Android.Content;
@@ -54,12 +55,12 @@ namespace AdsbCarMap.Activities
             favoriteButton = CreateText(22f, Color.Rgb(255, 215, 0), true);
             favoriteButton.SetPadding(Dp(4), Dp(2), Dp(8), Dp(2));
             favoriteButton.Clickable = true;
-            favoriteButton.ContentDescription = "Dodaj lub usuń z ulubionych";
+            favoriteButton.ContentDescription = Loc.T("Dodaj lub usuń z ulubionych");
             favoriteButton.Click += (sender, args) => FavoriteClicked?.Invoke();
             header.AddView(favoriteButton, new LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
 
             TextView centerButton = CreateText(14f, Color.Rgb(120, 190, 255), true);
-            centerButton.Text = "Wyśrodkuj";
+            centerButton.Text = Loc.T("Wyśrodkuj");
             centerButton.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
             centerButton.Clickable = true;
             centerButton.Click += (sender, args) => CenterClicked?.Invoke();
@@ -69,7 +70,7 @@ namespace AdsbCarMap.Activities
             closeButton.Text = "✕";
             closeButton.SetPadding(Dp(8), Dp(2), Dp(2), Dp(2));
             closeButton.Clickable = true;
-            closeButton.ContentDescription = "Zamknij kartę lotniska";
+            closeButton.ContentDescription = Loc.T("Zamknij kartę lotniska");
             closeButton.Click += (sender, args) => CloseClicked?.Invoke();
             header.AddView(closeButton, new LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
 

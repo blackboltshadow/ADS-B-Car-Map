@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.Activities;
 using Android.App;
 using Android.Content;
@@ -216,7 +217,7 @@ namespace AdsbCarMap.Services
             if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
             {
                 NotificationManager? manager = GetSystemService(NotificationService)?.JavaCast<NotificationManager>();
-                NotificationChannel channel = new NotificationChannel(ChannelId, "Śledzenie pozycji", NotificationImportance.Low);
+                NotificationChannel channel = new NotificationChannel(ChannelId, Loc.T("Śledzenie pozycji"), NotificationImportance.Low);
                 manager?.CreateNotificationChannel(channel);
                 builder = new Notification.Builder(this, ChannelId);
             }
@@ -231,7 +232,7 @@ namespace AdsbCarMap.Services
             builder
                 .SetSmallIcon(Resource.Drawable.ic_my_location)
                 .SetContentTitle("ADS-B Car Map")
-                .SetContentText("Śledzenie pozycji dla mapy samolotów")
+                .SetContentText(Loc.T("Śledzenie pozycji dla mapy samolotów"))
                 .SetOngoing(true)
                 .SetContentIntent(contentIntent);
 

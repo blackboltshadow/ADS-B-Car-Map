@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.Caching;
@@ -103,7 +104,7 @@ namespace AdsbCarMap.Map
             }
 
             lines.Add(new PopupLine(AirportCardText.BuildTitle(airport), PopupLineStyle.Bold, 0.0f));
-            lines.Add(new PopupLine(AirportCardText.BuildDescriptor(airport) + (AppServices.Favorites.Contains(airport.Icao) ? " · ★ ulubione" : string.Empty), PopupLineStyle.Accent, 0.0f));
+            lines.Add(new PopupLine(AirportCardText.BuildDescriptor(airport) + (AppServices.Favorites.Contains(airport.Icao) ? Loc.T(" · ★ ulubione") : string.Empty), PopupLineStyle.Accent, 0.0f));
 
             foreach (string text in AirportCardText.BuildLines(airport, AppServices.Airports.GetRunways(airport), known, latitude, longitude))
             {
@@ -127,7 +128,7 @@ namespace AdsbCarMap.Map
             if (aircraft == null)
             {
                 lines.Add(new PopupLine(title, PopupLineStyle.Bold, 0.0f));
-                lines.Add(new PopupLine("Samolot jest poza zasięgiem danych.", PopupLineStyle.Normal, 0.0f));
+                lines.Add(new PopupLine(Loc.T("Samolot jest poza zasięgiem danych."), PopupLineStyle.Normal, 0.0f));
 
                 return lines;
             }

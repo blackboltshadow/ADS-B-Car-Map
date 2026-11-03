@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Globalization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Settings;
@@ -155,6 +156,7 @@ namespace AdsbCarMap.Activities
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            Title = Loc.T("Kreator filtru");
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
 
@@ -170,7 +172,7 @@ namespace AdsbCarMap.Activities
 
             if (readOnly)
             {
-                Title = "Filtr wbudowany";
+                Title = Loc.T("Filtr wbudowany");
             }
         }
 
@@ -225,7 +227,7 @@ namespace AdsbCarMap.Activities
 
             if (loaded == null)
             {
-                Toast.MakeText(this, "Nie można otworzyć tego filtru w kreatorze.", ToastLength.Long)?.Show();
+                Toast.MakeText(this, Loc.T("Nie można otworzyć tego filtru w kreatorze."), ToastLength.Long)?.Show();
 
                 return false;
             }
@@ -234,7 +236,7 @@ namespace AdsbCarMap.Activities
 
             if (copy)
             {
-                string name = draft.Name + " (kopia)";
+                string name = draft.Name + Loc.T(" (kopia)");
 
                 draft.Name = name.Length > FilterDraft.MaxNameLength ? name.Substring(0, FilterDraft.MaxNameLength) : name;
             }
@@ -263,7 +265,7 @@ namespace AdsbCarMap.Activities
             if (readOnly)
             {
                 TextView notice = new TextView(this);
-                notice.Text = "To filtr wbudowany, tylko do odczytu. Aby go zmodyfikować, skopiuj go do własnych filtrów.";
+                notice.Text = Loc.T("To filtr wbudowany, tylko do odczytu. Aby go zmodyfikować, skopiuj go do własnych filtrów.");
                 notice.TextSize = 13f;
                 notice.SetTextColor(ProblemColor);
                 notice.SetPadding(0, Dp(4), 0, Dp(8));
@@ -271,7 +273,7 @@ namespace AdsbCarMap.Activities
             }
 
             nameInput = new EditText(this);
-            nameInput.Hint = "Nazwa filtru";
+            nameInput.Hint = Loc.T("Nazwa filtru");
             nameInput.SetSingleLine(true);
             nameInput.SetFilters(new IInputFilter[] { new InputFilterLengthFilter(FilterDraft.MaxNameLength) });
             nameInput.Text = draft.Name;
@@ -283,13 +285,13 @@ namespace AdsbCarMap.Activities
             };
             root.AddView(nameInput);
 
-            root.AddView(CreateSectionTitle("Co robi filtr"));
+            root.AddView(CreateSectionTitle(Loc.T("Co robi filtr")));
             root.AddView(CreateChoice(
-                new string[] { "Pokaż tylko pasujące samoloty", "Ukryj pasujące samoloty" },
+                new string[] { Loc.T("Pokaż tylko pasujące samoloty"), Loc.T("Ukryj pasujące samoloty") },
                 draft.Mode == FilterMode.Show ? 0 : 1,
                 index => draft.Mode = index == 0 ? FilterMode.Show : FilterMode.Hide));
 
-            root.AddView(CreateSectionTitle("Warunki"));
+            root.AddView(CreateSectionTitle(Loc.T("Warunki")));
 
             treeLayout = new LinearLayout(this);
             treeLayout.Orientation = Orientation.Vertical;
@@ -315,24 +317,24 @@ namespace AdsbCarMap.Activities
             if (readOnly)
             {
                 Button copyButton = new Button(this);
-                copyButton.Text = "Kopiuj do własnych";
+                copyButton.Text = Loc.T("Kopiuj do własnych");
                 copyButton.Click += (sender, args) => OpenCopy();
                 buttons.AddView(copyButton, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
                 Button closeButton = new Button(this);
-                closeButton.Text = "Zamknij";
+                closeButton.Text = Loc.T("Zamknij");
                 closeButton.Click += (sender, args) => Finish();
                 buttons.AddView(closeButton, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
             }
             else
             {
                 Button saveButton = new Button(this);
-                saveButton.Text = "Zapisz";
+                saveButton.Text = Loc.T("Zapisz");
                 saveButton.Click += (sender, args) => Save();
                 buttons.AddView(saveButton, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
                 Button cancelButton = new Button(this);
-                cancelButton.Text = "Anuluj";
+                cancelButton.Text = Loc.T("Anuluj");
                 cancelButton.Click += (sender, args) => Finish();
                 buttons.AddView(cancelButton, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
             }
@@ -454,7 +456,7 @@ namespace AdsbCarMap.Activities
             if (group.Collapsed)
             {
                 TextView summary = new TextView(this);
-                summary.Text = group.Children.Count == 0 ? "(pusta grupa)" : FilterDescriber.DescribeNode(group.ToNode(), false, AppSettings.AltitudeUnit);
+                summary.Text = group.Children.Count == 0 ? Loc.T("(pusta grupa)") : FilterDescriber.DescribeNode(group.ToNode(), false, AppSettings.AltitudeUnit);
                 summary.TextSize = 12f;
                 summary.SetTextColor(Color.Rgb(190, 190, 190));
                 summary.SetSingleLine(true);
@@ -499,7 +501,7 @@ namespace AdsbCarMap.Activities
             arrow.TextSize = 20f;
             arrow.SetTextColor(Color.White);
             arrow.SetPadding(Dp(4), Dp(4), Dp(10), Dp(4));
-            arrow.ContentDescription = group.Collapsed ? "Rozwiń grupę" : "Zwiń grupę";
+            arrow.ContentDescription = group.Collapsed ? Loc.T("Rozwiń grupę") : Loc.T("Zwiń grupę");
             arrow.Click += (sender, args) =>
             {
                 group.Collapsed = !group.Collapsed;
@@ -510,12 +512,12 @@ namespace AdsbCarMap.Activities
             header.AddView(CreateNegationChip(group));
 
             TextView mode = new TextView(this);
-            mode.Text = (group.Mode == FilterGroupMode.All ? "ORAZ" : "LUB") + " ▾";
+            mode.Text = (group.Mode == FilterGroupMode.All ? Loc.T("ORAZ") : Loc.T("LUB")) + " ▾";
             mode.TextSize = 13f;
             mode.SetTypeface(null, TypefaceStyle.Bold);
             mode.SetTextColor(Color.White);
             mode.SetPadding(Dp(12), Dp(5), Dp(12), Dp(5));
-            mode.ContentDescription = "Sposób łączenia warunków grupy";
+            mode.ContentDescription = Loc.T("Sposób łączenia warunków grupy");
 
             GradientDrawable modeBackground = new GradientDrawable();
             modeBackground.SetCornerRadius(Dp(12));
@@ -535,7 +537,7 @@ namespace AdsbCarMap.Activities
             if (depth >= MaxIndentLevels)
             {
                 TextView level = new TextView(this);
-                level.Text = "poz. " + depth.ToString(CultureInfo.InvariantCulture);
+                level.Text = Loc.T("poz. ") + depth.ToString(CultureInfo.InvariantCulture);
                 level.TextSize = 11f;
                 level.SetTextColor(Color.Rgb(160, 160, 160));
                 level.SetPadding(Dp(8), 0, 0, 0);
@@ -563,7 +565,7 @@ namespace AdsbCarMap.Activities
             footer.Orientation = Orientation.Horizontal;
 
             Button addCondition = new Button(this, null, Android.Resource.Attribute.BorderlessButtonStyle);
-            addCondition.Text = "＋ warunek";
+            addCondition.Text = Loc.T("＋ warunek");
             addCondition.Click += (sender, args) =>
             {
                 group.Add(new FilterDraftCondition());
@@ -572,7 +574,7 @@ namespace AdsbCarMap.Activities
             footer.AddView(addCondition);
 
             Button addGroup = new Button(this, null, Android.Resource.Attribute.BorderlessButtonStyle);
-            addGroup.Text = "＋ grupa";
+            addGroup.Text = Loc.T("＋ grupa");
             addGroup.Click += (sender, args) =>
             {
                 FilterDraftGroup created = new FilterDraftGroup();
@@ -660,7 +662,7 @@ namespace AdsbCarMap.Activities
             chip.SetTypeface(null, TypefaceStyle.Bold);
             chip.Gravity = GravityFlags.Center;
             chip.SetPadding(Dp(10), Dp(5), Dp(10), Dp(5));
-            chip.ContentDescription = node.Negated ? "Negacja NIE włączona" : "Negacja NIE wyłączona";
+            chip.ContentDescription = node.Negated ? Loc.T("Negacja NIE włączona") : Loc.T("Negacja NIE wyłączona");
 
             GradientDrawable background = new GradientDrawable();
             background.SetCornerRadius(Dp(12));
@@ -705,7 +707,7 @@ namespace AdsbCarMap.Activities
             button.SetTextColor(Color.White);
             button.Gravity = GravityFlags.Center;
             button.SetPadding(Dp(10), Dp(2), Dp(10), Dp(2));
-            button.ContentDescription = "Menu węzła";
+            button.ContentDescription = Loc.T("Menu węzła");
             button.Click += (sender, args) => ShowNodeMenu(button, node);
 
             return button;
@@ -719,8 +721,8 @@ namespace AdsbCarMap.Activities
         private void ShowModeMenu(View anchor, FilterDraftGroup group)
         {
             PopupMenu popup = new PopupMenu(this, anchor);
-            popup.Menu?.Add(0, 1, 0, "ORAZ (wszystkie warunki)");
-            popup.Menu?.Add(0, 2, 1, "LUB (którykolwiek warunek)");
+            popup.Menu?.Add(0, 1, 0, Loc.T("ORAZ (wszystkie warunki)"));
+            popup.Menu?.Add(0, 2, 1, Loc.T("LUB (którykolwiek warunek)"));
             popup.MenuItemClick += (sender, args) =>
             {
                 args.Handled = true;
@@ -740,11 +742,11 @@ namespace AdsbCarMap.Activities
             bool hasTarget = draft.GetGroups().Any((FilterDraftGroup group) => !ReferenceEquals(group, node.Parent) && draft.CanMoveTo(node, group));
 
             PopupMenu popup = new PopupMenu(this, anchor);
-            popup.Menu?.Add(0, MenuMoveUpId, 0, "Przesuń wyżej")?.SetEnabled(draft.CanMoveUp(node));
-            popup.Menu?.Add(0, MenuMoveDownId, 1, "Przesuń niżej")?.SetEnabled(draft.CanMoveDown(node));
-            popup.Menu?.Add(0, MenuMoveToId, 2, "Przenieś do grupy…")?.SetEnabled(hasTarget);
-            popup.Menu?.Add(0, MenuCopyId, 3, "Kopiuj");
-            popup.Menu?.Add(0, MenuRemoveId, 4, "Usuń");
+            popup.Menu?.Add(0, MenuMoveUpId, 0, Loc.T("Przesuń wyżej"))?.SetEnabled(draft.CanMoveUp(node));
+            popup.Menu?.Add(0, MenuMoveDownId, 1, Loc.T("Przesuń niżej"))?.SetEnabled(draft.CanMoveDown(node));
+            popup.Menu?.Add(0, MenuMoveToId, 2, Loc.T("Przenieś do grupy…"))?.SetEnabled(hasTarget);
+            popup.Menu?.Add(0, MenuCopyId, 3, Loc.T("Kopiuj"));
+            popup.Menu?.Add(0, MenuRemoveId, 4, Loc.T("Usuń"));
             popup.MenuItemClick += (sender, args) =>
             {
                 args.Handled = true;
@@ -793,14 +795,14 @@ namespace AdsbCarMap.Activities
             }
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
-            builder.SetTitle("Usunąć grupę?");
-            builder.SetMessage("Grupa zawiera " + group.Children.Count + " elementów, które też zostaną usunięte.");
-            builder.SetPositiveButton("Usuń", (sender, args) =>
+            builder.SetTitle(Loc.T("Usunąć grupę?"));
+            builder.SetMessage(Loc.T("Grupa zawiera ") + group.Children.Count + Loc.T(" elementów, które też zostaną usunięte."));
+            builder.SetPositiveButton(Loc.T("Usuń"), (sender, args) =>
             {
                 draft.Remove(node);
                 RenderTree();
             });
-            builder.SetNegativeButton("Anuluj", (sender, args) => { });
+            builder.SetNegativeButton(Loc.T("Anuluj"), (sender, args) => { });
             builder.Show();
         }
 
@@ -830,12 +832,12 @@ namespace AdsbCarMap.Activities
                     summary = summary.Substring(0, MaxTargetSummaryLength) + "…";
                 }
 
-                labels.Add((index + 1).ToString(CultureInfo.InvariantCulture) + ". " + (group.Parent == null ? "Grupa główna" : "Grupa") + " " + (group.Mode == FilterGroupMode.All ? "ORAZ" : "LUB") + ": " + summary);
+                labels.Add((index + 1).ToString(CultureInfo.InvariantCulture) + ". " + (group.Parent == null ? Loc.T("Grupa główna") : Loc.T("Grupa")) + " " + (group.Mode == FilterGroupMode.All ? Loc.T("ORAZ") : Loc.T("LUB")) + ": " + summary);
                 targets.Add(group);
             }
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
-            builder.SetTitle("Przenieś do grupy");
+            builder.SetTitle(Loc.T("Przenieś do grupy"));
             builder.SetItems(labels.ToArray(), (sender, args) =>
             {
                 FilterDraftGroup target = targets[args.Which];
@@ -844,7 +846,7 @@ namespace AdsbCarMap.Activities
                 draft.MoveTo(node, target);
                 RenderTree();
             });
-            builder.SetNegativeButton("Anuluj", (sender, args) => { });
+            builder.SetNegativeButton(Loc.T("Anuluj"), (sender, args) => { });
             builder.Show();
         }
 
@@ -899,7 +901,7 @@ namespace AdsbCarMap.Activities
                     return CreateRangeOperand(condition);
                 default:
                     TextView none = new TextView(this);
-                    none.Text = "Bez wartości.";
+                    none.Text = Loc.T("Bez wartości.");
                     none.TextSize = 12f;
                     none.SetTextColor(Color.Rgb(180, 180, 180));
                     none.SetPadding(Dp(4), Dp(2), 0, Dp(2));
@@ -933,7 +935,7 @@ namespace AdsbCarMap.Activities
             }
 
             CheckBox family = new CheckBox(this);
-            family.Text = "Cała rodzina (np. każde 737, także MAX)";
+            family.Text = Loc.T("Cała rodzina (np. każde 737, także MAX)");
             family.TextSize = 13f;
             family.Checked = condition.Family;
             family.Enabled = !readOnly;
@@ -1093,8 +1095,8 @@ namespace AdsbCarMap.Activities
             AircraftFilter preview = draft.ToFilter("preview");
             string? sentence = FilterDescriber.DescribeSentence(preview, AppSettings.AltitudeUnit);
 
-            previewText.Text = "Opis: " + FilterDescriber.Describe(preview, AppSettings.AltitudeUnit);
-            sentenceText.Text = sentence == null ? string.Empty : "Czytaj: " + sentence;
+            previewText.Text = Loc.T("Opis: ") + FilterDescriber.Describe(preview, AppSettings.AltitudeUnit);
+            sentenceText.Text = sentence == null ? string.Empty : Loc.T("Czytaj: ") + sentence;
             sentenceText.Visibility = sentence == null ? ViewStates.Gone : ViewStates.Visible;
         }
 

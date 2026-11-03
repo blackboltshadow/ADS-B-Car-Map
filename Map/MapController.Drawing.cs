@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.Caching;
@@ -265,7 +266,7 @@ namespace AdsbCarMap.Map
 
             if (dataLoop.LoadEndedUtc.Ticks == 0 && snapshot.Count == 0)
             {
-                const string startupText = "Wczytywanie…";
+                string startupText = Loc.T("Wczytywanie…");
                 startupPaint.TextSize = 18.0f * screenDensity;
                 float startupHalfWidth = startupPaint.MeasureText(startupText) / 2f + 20f * screenDensity;
                 float startupHalfHeight = 24f * screenDensity;
@@ -350,15 +351,15 @@ namespace AdsbCarMap.Map
             switch (status)
             {
                 case StatusKind.Offline:
-                    return "Brak połączenia z siecią – samoloty niedostępne";
+                    return Loc.T("Brak połączenia z siecią – samoloty niedostępne");
                 case StatusKind.RateLimited:
-                    return "Limit zapytań – ponowienie za " + Math.Ceiling(dataLoop.RateLimitRemaining.TotalSeconds).ToString(CultureInfo.InvariantCulture) + " s";
+                    return Loc.T("Limit zapytań – ponowienie za ") + Math.Ceiling(dataLoop.RateLimitRemaining.TotalSeconds).ToString(CultureInfo.InvariantCulture) + " s";
                 case StatusKind.SearchingAircraft:
-                    return "Wyszukiwanie samolotów…";
+                    return Loc.T("Wyszukiwanie samolotów…");
                 case StatusKind.FetchingDetails:
-                    return "Pobieranie danych samolotu…";
+                    return Loc.T("Pobieranie danych samolotu…");
                 case StatusKind.LoadingMap:
-                    return "Wczytywanie mapy…";
+                    return Loc.T("Wczytywanie mapy…");
                 default:
                     return null;
             }

@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.DataSources.Models;
 using System.Globalization;
 using System.Text.Json;
@@ -85,6 +86,7 @@ namespace AdsbCarMap.Activities
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            Title = Loc.T("Wyszukaj");
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
             SetContentView(BuildContent());
@@ -148,7 +150,7 @@ namespace AdsbCarMap.Activities
             root.AddView(header, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent));
 
             searchInput = new EditText(this);
-            searchInput.Hint = "Szukaj: lot, rejestracja, typ, lotnisko";
+            searchInput.Hint = Loc.T("Szukaj: lot, rejestracja, typ, lotnisko");
             searchInput.SetSingleLine(true);
             searchInput.TextChanged += (sender, args) => RenderResults();
             header.AddView(searchInput);
@@ -232,10 +234,10 @@ namespace AdsbCarMap.Activities
             int aircraftCount = results.Count(item => item.Aircraft != null);
 
             statusText.Text = snapshot.Aircraft.Count == 0
-                ? (isFetching ? "Pobieranie samolotów…" : "Brak danych o samolotach")
+                ? (isFetching ? Loc.T("Pobieranie samolotów…") : Loc.T("Brak danych o samolotach"))
                 : string.Format(
                     CultureInfo.InvariantCulture,
-                    "Samolotów w zasięgu: {0}, pokazano {1} samolotów i {2} lotnisk, dane sprzed {3:0} s",
+                    Loc.T("Samolotów w zasięgu: {0}, pokazano {1} samolotów i {2} lotnisk, dane sprzed {3:0} s"),
                     snapshot.Aircraft.Count,
                     aircraftCount,
                     results.Count - aircraftCount,

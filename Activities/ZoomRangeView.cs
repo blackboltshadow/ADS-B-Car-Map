@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.Settings;
 using Android.Content;
 using Android.Graphics;
@@ -145,7 +146,7 @@ namespace AdsbCarMap.Activities
             textPaint.TextSize = Dp(11);
             textPaint.Color = Color.White;
             canvas.DrawText(
-                "Widoczne od zoomu " + shownFrom.ToString(System.Globalization.CultureInfo.InvariantCulture) + (to >= scaleMax ? " bez górnego limitu" : " do zoomu " + shownTo.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                Loc.T("Widoczne od zoomu ") + shownFrom.ToString(System.Globalization.CultureInfo.InvariantCulture) + (to >= scaleMax ? Loc.T(" bez górnego limitu") : Loc.T(" do zoomu ") + shownTo.ToString(System.Globalization.CultureInfo.InvariantCulture)),
                 Width / 2f,
                 Dp(76),
                 textPaint);

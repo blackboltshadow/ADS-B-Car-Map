@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Settings;
@@ -144,7 +145,7 @@ namespace AdsbCarMap.Activities
                 float rotation = (float)(Math.Atan2(directionX, -directionY) * 180.0 / Math.PI);
 
                 DrawIcon(canvas, SampleKinds[lane], xs[PointCount - 1], ys[PointCount - 1], rotation, colors[PointCount - 1], density);
-                canvas.DrawText(SampleNames[lane], Dp(10), centerY - Dp(LaneHeightDp) / 2f + Dp(14), textPaint);
+                canvas.DrawText(Loc.T(SampleNames[lane]), Dp(10), centerY - Dp(LaneHeightDp) / 2f + Dp(14), textPaint);
             }
         }
 

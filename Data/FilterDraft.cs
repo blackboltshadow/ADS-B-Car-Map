@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 namespace AdsbCarMap.Data
 {
     /// <summary>
@@ -106,12 +107,12 @@ namespace AdsbCarMap.Data
 
             if (name.Length == 0)
             {
-                return "Podaj nazwę filtru.";
+                return Loc.T("Podaj nazwę filtru.");
             }
 
             if (name.Length > MaxNameLength)
             {
-                return "Nazwa filtru może mieć najwyżej " + MaxNameLength + " znaków.";
+                return Loc.T("Nazwa filtru może mieć najwyżej ") + MaxNameLength + Loc.T(" znaków.");
             }
 
             (string Message, FilterDraftNode Node)? problem = FindProblem(Root, 0);
@@ -325,14 +326,14 @@ namespace AdsbCarMap.Data
         {
             if (depth > MaxDepth)
             {
-                return ("Filtr jest zagnieżdżony zbyt głęboko (najwyżej " + MaxDepth + " poziomów).", node);
+                return (Loc.T("Filtr jest zagnieżdżony zbyt głęboko (najwyżej ") + MaxDepth + Loc.T(" poziomów)."), node);
             }
 
             if (node is FilterDraftGroup group)
             {
                 if (group.Children.Count == 0)
                 {
-                    return (group.Parent == null ? "Dodaj co najmniej jeden warunek." : "Grupa jest pusta. Dodaj do niej warunek albo ją usuń.", group);
+                    return (group.Parent == null ? Loc.T("Dodaj co najmniej jeden warunek.") : Loc.T("Grupa jest pusta. Dodaj do niej warunek albo ją usuń."), group);
                 }
 
                 foreach (FilterDraftNode child in group.Children)
@@ -364,15 +365,15 @@ namespace AdsbCarMap.Data
             {
                 case FilterOperandType.Text:
                 case FilterOperandType.Manufacturer:
-                    return string.IsNullOrWhiteSpace(condition.Text) ? "Uzupełnij wartość: " + FilterFieldInfo.GetLabel(condition.Field) + "." : null;
+                    return string.IsNullOrWhiteSpace(condition.Text) ? Loc.T("Uzupełnij wartość: ") + FilterFieldInfo.GetLabel(condition.Field) + "." : null;
                 case FilterOperandType.Range:
                     if (!condition.Minimum.HasValue && !condition.Maximum.HasValue)
                     {
-                        return "Podaj wysokość „od” lub „do”.";
+                        return Loc.T("Podaj wysokość „od” lub „do”.");
                     }
 
                     return condition.Minimum.HasValue && condition.Maximum.HasValue && condition.Minimum.Value > condition.Maximum.Value
-                        ? "Wysokość „od” jest większa niż „do”."
+                        ? Loc.T("Wysokość „od” jest większa niż „do”.")
                         : null;
                 default:
                     return null;

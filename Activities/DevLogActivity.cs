@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Globalization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Services;
@@ -58,6 +59,7 @@ namespace AdsbCarMap.Activities
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            Title = Loc.T("Dev log");
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
             handler = new Handler(Looper.MainLooper!);
@@ -145,8 +147,8 @@ namespace AdsbCarMap.Activities
 
             List<DevLogEntry> entries = DevLogger.Store.Log.GetEntries();
 
-            AddText("Dev log", 20f, Color.White, true, 0);
-            AddText("Nieprzewidziane zdarzenia zebrane podczas używania aplikacji. Udostępnij lub skopiuj log i przekaż go twórcy, gdy coś nie działa jak powinno. Poziom, długość i łączenie wpisów ustawia się w Ustawieniach, w sekcji Dev.", 13f, Color.Rgb(180, 180, 180), false, 6);
+            AddText(Loc.T("Dev log"), 20f, Color.White, true, 0);
+            AddText(Loc.T("Nieprzewidziane zdarzenia zebrane podczas używania aplikacji. Udostępnij lub skopiuj log i przekaż go twórcy, gdy coś nie działa jak powinno. Poziom, długość i łączenie wpisów ustawia się w Ustawieniach, w sekcji Dev."), 13f, Color.Rgb(180, 180, 180), false, 6);
 
             LinearLayout buttons = new LinearLayout(this);
             buttons.Orientation = Orientation.Horizontal;
@@ -154,33 +156,33 @@ namespace AdsbCarMap.Activities
             root.AddView(buttons);
 
             Button share = new Button(this);
-            share.Text = "Udostępnij";
+            share.Text = Loc.T("Udostępnij");
             share.Enabled = entries.Count > 0;
             share.Click += (sender, args) => Share();
             buttons.AddView(share, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
             Button copy = new Button(this);
-            copy.Text = "Kopiuj";
+            copy.Text = Loc.T("Kopiuj");
             copy.Enabled = entries.Count > 0;
             copy.Click += (sender, args) => CopyToClipboard();
             buttons.AddView(copy, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
             Button clear = new Button(this);
-            clear.Text = "Wyczyść";
+            clear.Text = Loc.T("Wyczyść");
             clear.Enabled = entries.Count > 0;
             clear.Click += (sender, args) => ConfirmClear();
             buttons.AddView(clear, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
             if (entries.Count == 0)
             {
-                AddText("Log jest pusty. Zdarzenia pojawią się tu, gdy aplikacja napotka coś nieprzewidzianego na wybranym poziomie logowania.", 14f, Color.White, false, 12);
+                AddText(Loc.T("Log jest pusty. Zdarzenia pojawią się tu, gdy aplikacja napotka coś nieprzewidzianego na wybranym poziomie logowania."), 14f, Color.White, false, 12);
 
                 return;
             }
 
             int shown = Math.Min(entries.Count, MaxShownEntries);
 
-            AddText(entries.Count + (entries.Count == 1 ? " wpis" : " wpisów") + (shown < entries.Count ? " (pokazano " + shown + " najnowszych, raport zawiera wszystkie)" : string.Empty), 14f, Color.Rgb(120, 190, 255), true, 8);
+            AddText(entries.Count + (entries.Count == 1 ? Loc.T(" wpis") : Loc.T(" wpisów")) + (shown < entries.Count ? Loc.T(" (pokazano ") + shown + Loc.T(" najnowszych, raport zawiera wszystkie)") : string.Empty), 14f, Color.Rgb(120, 190, 255), true, 8);
 
             for (int index = 0; index < shown; index++)
             {
@@ -215,7 +217,7 @@ namespace AdsbCarMap.Activities
                 return;
             }
 
-            TextView hint = CreateText(open ? "▴ Ukryj szczegóły" : "▾ Pokaż szczegóły", 12f, Color.Rgb(120, 190, 255), false);
+            TextView hint = CreateText(open ? Loc.T("▴ Ukryj szczegóły") : Loc.T("▾ Pokaż szczegóły"), 12f, Color.Rgb(120, 190, 255), false);
             block.AddView(hint);
 
             TextView details = CreateText(entry.Details, 11f, Color.Rgb(200, 200, 200), false);
@@ -228,7 +230,7 @@ namespace AdsbCarMap.Activities
                 bool nowOpen = details.Visibility != ViewStates.Visible;
 
                 details.Visibility = nowOpen ? ViewStates.Visible : ViewStates.Gone;
-                hint.Text = nowOpen ? "▴ Ukryj szczegóły" : "▾ Pokaż szczegóły";
+                hint.Text = nowOpen ? Loc.T("▴ Ukryj szczegóły") : Loc.T("▾ Pokaż szczegóły");
 
                 if (nowOpen)
                 {
@@ -250,7 +252,7 @@ namespace AdsbCarMap.Activities
         {
             string last = FormatTime(entry.LastUtc);
 
-            return entry.Count > 1 ? "ostatnio " + last + " · pierwszy raz " + FormatTime(entry.FirstUtc) : last;
+            return entry.Count > 1 ? Loc.T("ostatnio ") + last + Loc.T(" · pierwszy raz ") + FormatTime(entry.FirstUtc) : last;
         }
 
         /// <summary>
@@ -297,12 +299,12 @@ namespace AdsbCarMap.Activities
                 send.PutExtra(Intent.ExtraSubject, "ADS-B Car Map – Dev log");
                 send.AddFlags(ActivityFlags.GrantReadUriPermission);
 
-                StartActivity(Intent.CreateChooser(send, "Udostępnij Dev log"));
+                StartActivity(Intent.CreateChooser(send, Loc.T("Udostępnij Dev log")));
             }
             catch (Exception exception)
             {
                 DevLogger.Error("DevLog", "Udostępnienie Dev logu nie powiodło się", exception);
-                Toast.MakeText(this, "Nie udało się udostępnić logu: " + exception.Message, ToastLength.Long)?.Show();
+                Toast.MakeText(this, Loc.T("Nie udało się udostępnić logu: ") + exception.Message, ToastLength.Long)?.Show();
             }
         }
 
@@ -314,7 +316,7 @@ namespace AdsbCarMap.Activities
             ClipboardManager? clipboard = (ClipboardManager?)GetSystemService(ClipboardService);
 
             clipboard?.PrimaryClip = ClipData.NewPlainText("Dev log", DevLogger.Store.BuildReport(true));
-            Toast.MakeText(this, "Skopiowano Dev log", ToastLength.Short)?.Show();
+            Toast.MakeText(this, Loc.T("Skopiowano Dev log"), ToastLength.Short)?.Show();
         }
 
         /// <summary>
@@ -323,10 +325,10 @@ namespace AdsbCarMap.Activities
         private void ConfirmClear()
         {
             AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
-            builder.SetTitle("Wyczyścić log?");
-            builder.SetMessage("Wszystkie wpisy Dev logu zostaną usunięte.");
-            builder.SetNegativeButton("Anuluj", (sender, args) => { });
-            builder.SetPositiveButton("Wyczyść", (sender, args) =>
+            builder.SetTitle(Loc.T("Wyczyścić log?"));
+            builder.SetMessage(Loc.T("Wszystkie wpisy Dev logu zostaną usunięte."));
+            builder.SetNegativeButton(Loc.T("Anuluj"), (sender, args) => { });
+            builder.SetPositiveButton(Loc.T("Wyczyść"), (sender, args) =>
             {
                 openEntries.Clear();
                 DevLogger.Store.Clear();

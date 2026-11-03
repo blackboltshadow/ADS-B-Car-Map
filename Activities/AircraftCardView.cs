@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
@@ -89,7 +90,7 @@ namespace AdsbCarMap.Activities
             header.AddView(registrationText, new LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
 
             TextView followButton = CreateText(14f, Color.Rgb(120, 190, 255), true);
-            followButton.Text = "Śledź";
+            followButton.Text = Loc.T("Śledź");
             followButton.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
             followButton.Clickable = true;
             followButton.Click += (sender, args) => FollowClicked?.Invoke();
@@ -99,7 +100,7 @@ namespace AdsbCarMap.Activities
             closeButton.Text = "✕";
             closeButton.SetPadding(Dp(8), Dp(2), Dp(2), Dp(2));
             closeButton.Clickable = true;
-            closeButton.ContentDescription = "Zamknij kartę i wyczyść zaznaczenie";
+            closeButton.ContentDescription = Loc.T("Zamknij kartę i wyczyść zaznaczenie");
             closeButton.Click += (sender, args) => CloseClicked?.Invoke();
             header.AddView(closeButton, new LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
 
@@ -170,7 +171,7 @@ namespace AdsbCarMap.Activities
                 routeActionText.Visibility = ViewStates.Gone;
                 progressView.Visibility = ViewStates.Gone;
                 progressText.Visibility = ViewStates.Gone;
-                leftColumn.Text = "Samolot jest poza zasięgiem danych.";
+                leftColumn.Text = Loc.T("Samolot jest poza zasięgiem danych.");
                 rightColumn.Text = string.Empty;
 
                 return;

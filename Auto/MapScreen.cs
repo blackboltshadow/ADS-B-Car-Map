@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Globalization;
 using AdsbCarMap.Services;
 using AdsbCarMap.Settings;
@@ -127,10 +128,10 @@ namespace AdsbCarMap.Auto
         {
             bool enabled = controller.ToggleMilitaryOnly(out int militaryCount);
             string message = !enabled
-                ? "Wszystkie samoloty"
+                ? Loc.T("Wszystkie samoloty")
                 : militaryCount > 0
-                    ? string.Format(CultureInfo.InvariantCulture, "Tylko wojskowe: {0} w zasięgu", militaryCount)
-                    : "Tylko wojskowe: żadnego w zasięgu";
+                    ? string.Format(CultureInfo.InvariantCulture, Loc.T("Tylko wojskowe: {0} w zasięgu"), militaryCount)
+                    : Loc.T("Tylko wojskowe: żadnego w zasięgu");
 
             CarToast.MakeText(CarContext, message, CarToast.LengthShort)?.Show();
         }
@@ -147,7 +148,7 @@ namespace AdsbCarMap.Auto
             };
 
             AppSettings.Save(values);
-            CarToast.MakeText(CarContext, show ? "Etykiety samolotów: widoczne" : "Etykiety samolotów: ukryte", CarToast.LengthShort)?.Show();
+            CarToast.MakeText(CarContext, show ? Loc.T("Etykiety samolotów: widoczne") : Loc.T("Etykiety samolotów: ukryte"), CarToast.LengthShort)?.Show();
             RefreshTemplate();
         }
 
@@ -158,7 +159,7 @@ namespace AdsbCarMap.Auto
         {
             if (!controller.TryToggleIsolation(out bool isolated))
             {
-                CarToast.MakeText(CarContext, "Najpierw zaznacz samolot: dotknij go na mapie lub wyszukaj", CarToast.LengthShort)?.Show();
+                CarToast.MakeText(CarContext, Loc.T("Najpierw zaznacz samolot: dotknij go na mapie lub wyszukaj"), CarToast.LengthShort)?.Show();
             }
         }
 

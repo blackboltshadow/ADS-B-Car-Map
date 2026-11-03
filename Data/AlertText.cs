@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Globalization;
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.Settings;
@@ -23,13 +24,13 @@ namespace AdsbCarMap.Data
             switch (area.Kind)
             {
                 case AlertAreaKind.AroundMe:
-                    return "Wokół mojej pozycji, " + radius;
+                    return Loc.T("Wokół mojej pozycji, ") + radius;
                 case AlertAreaKind.AroundAirport:
-                    return "Wokół lotniska " + area.AirportIcao + ", " + radius;
+                    return Loc.T("Wokół lotniska ") + area.AirportIcao + ", " + radius;
                 default:
                     return area.Center == null
-                        ? "Okrąg, " + radius
-                        : "Okrąg " + area.Center.Latitude.ToString("0.000", CultureInfo.InvariantCulture) + ", " + area.Center.Longitude.ToString("0.000", CultureInfo.InvariantCulture) + ", " + radius;
+                        ? Loc.T("Okrąg, ") + radius
+                        : Loc.T("Okrąg ") + area.Center.Latitude.ToString("0.000", CultureInfo.InvariantCulture) + ", " + area.Center.Longitude.ToString("0.000", CultureInfo.InvariantCulture) + ", " + radius;
             }
         }
 
@@ -49,12 +50,12 @@ namespace AdsbCarMap.Data
 
             if (rule.NotifyOnAppearance)
             {
-                events.Add("pojawienie się");
+                events.Add(Loc.T("pojawienie się"));
             }
 
-            string text = events.Count == 0 ? "bez zdarzeń" : string.Join(", ", events);
+            string text = events.Count == 0 ? Loc.T("bez zdarzeń") : string.Join(", ", events);
 
-            return text + " · cisza " + rule.CooldownMinutes.ToString(CultureInfo.InvariantCulture) + " min";
+            return text + Loc.T(" · cisza ") + rule.CooldownMinutes.ToString(CultureInfo.InvariantCulture) + Loc.T(" min");
         }
 
         /// <summary>
@@ -64,9 +65,9 @@ namespace AdsbCarMap.Data
         /// <returns>The rule name followed by the event.</returns>
         public static string Title(AlertMatch match)
         {
-            string name = string.IsNullOrWhiteSpace(match.Rule.Name) ? "Alert" : match.Rule.Name;
+            string name = string.IsNullOrWhiteSpace(match.Rule.Name) ? Loc.T("Alert") : match.Rule.Name;
 
-            return name + (match.Trigger == AlertTrigger.Entered ? " – wlot do obszaru" : " – w obszarze");
+            return name + (match.Trigger == AlertTrigger.Entered ? Loc.T(" – wlot do obszaru") : Loc.T(" – w obszarze"));
         }
 
         /// <summary>
@@ -94,7 +95,7 @@ namespace AdsbCarMap.Data
 
             if (aircraft.OnGround)
             {
-                parts.Add("na ziemi");
+                parts.Add(Loc.T("na ziemi"));
             }
             else if (aircraft.AltitudeFeet != null)
             {

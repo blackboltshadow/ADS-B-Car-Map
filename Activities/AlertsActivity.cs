@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Services;
 using AdsbCarMap.Settings;
@@ -49,6 +50,7 @@ namespace AdsbCarMap.Activities
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            Title = Loc.T("Alerty");
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
             SetContentView(BuildContent());
@@ -108,7 +110,7 @@ namespace AdsbCarMap.Activities
             root.AddView(header, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent));
 
             masterSwitch = new Switch(this);
-            masterSwitch.Text = "Alerty włączone";
+            masterSwitch.Text = Loc.T("Alerty włączone");
             masterSwitch.TextSize = 17f;
             masterSwitch.CheckedChange += (sender, args) =>
             {
@@ -120,7 +122,7 @@ namespace AdsbCarMap.Activities
             header.AddView(masterSwitch);
 
             Button addButton = new Button(this);
-            addButton.Text = "＋ Nowy alert";
+            addButton.Text = Loc.T("＋ Nowy alert");
             addButton.Click += (sender, args) => OpenEditor(null);
             header.AddView(addButton);
 
@@ -130,7 +132,7 @@ namespace AdsbCarMap.Activities
             hint.TextSize = 12f;
             hint.SetTextColor(Color.Rgb(180, 180, 180));
             hint.SetPadding(0, Dp(4), 0, Dp(4));
-            hint.Text = "Alert powiadamia, gdy samolot spełniający wybrany filtr wleci w obszar albo pojawi się w nim. Bez trybu w tle alerty są sprawdzane tylko, gdy aplikacja pobiera samoloty (mapa na telefonie lub w Android Auto) i tylko w obszarze pobieranych danych. Tryb w tle sam pobiera samoloty wokół obszarów alertów, zużywa baterię i dane oraz wymaga zgody na lokalizację i powiadomienia. Częstotliwość i limit alertów w tle ustawia się w Ustawieniach → Alerty.";
+            hint.Text = Loc.T("Alert powiadamia, gdy samolot spełniający wybrany filtr wleci w obszar albo pojawi się w nim. Bez trybu w tle alerty są sprawdzane tylko, gdy aplikacja pobiera samoloty (mapa na telefonie lub w Android Auto) i tylko w obszarze pobieranych danych. Tryb w tle sam pobiera samoloty wokół obszarów alertów, zużywa baterię i dane oraz wymaga zgody na lokalizację i powiadomienia. Częstotliwość i limit alertów w tle ustawia się w Ustawieniach → Alerty.");
             header.AddView(hint);
 
             ScrollView scrollView = new ScrollView(this);
@@ -174,7 +176,7 @@ namespace AdsbCarMap.Activities
             if (rules.Count == 0)
             {
                 TextView empty = new TextView(this);
-                empty.Text = "Brak alertów. Dotknij „Nowy alert”.";
+                empty.Text = Loc.T("Brak alertów. Dotknij „Nowy alert”.");
                 empty.SetTextColor(Color.Rgb(190, 190, 190));
                 empty.SetPadding(Dp(16), Dp(16), Dp(16), Dp(16));
                 listLayout.AddView(empty);
@@ -202,7 +204,7 @@ namespace AdsbCarMap.Activities
 
             Switch toggle = new Switch(this);
             toggle.Checked = rule.IsEnabled;
-            toggle.ContentDescription = "Włącz alert " + rule.Name;
+            toggle.ContentDescription = Loc.T("Włącz alert ") + rule.Name;
             toggle.CheckedChange += (sender, args) => AppServices.Alerts.SetRuleEnabled(rule.Id, args.IsChecked);
             row.AddView(toggle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
 
@@ -227,8 +229,8 @@ namespace AdsbCarMap.Activities
             texts.Click += (sender, args) => OpenEditor(rule.Id);
             row.AddView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
-            row.AddView(CreateIconButton(Resource.Drawable.ic_edit, "Edytuj alert", () => OpenEditor(rule.Id)));
-            row.AddView(CreateIconButton(Resource.Drawable.ic_delete, "Usuń alert", () => ConfirmRemove(rule)));
+            row.AddView(CreateIconButton(Resource.Drawable.ic_edit, Loc.T("Edytuj alert"), () => OpenEditor(rule.Id)));
+            row.AddView(CreateIconButton(Resource.Drawable.ic_delete, Loc.T("Usuń alert"), () => ConfirmRemove(rule)));
 
             return row;
         }
@@ -240,7 +242,7 @@ namespace AdsbCarMap.Activities
         private void BuildBackgroundSection(LinearLayout header)
         {
             backgroundSwitch = new Switch(this);
-            backgroundSwitch.Text = "Sprawdzaj w tle (usługa ze stałym powiadomieniem)";
+            backgroundSwitch.Text = Loc.T("Sprawdzaj w tle (usługa ze stałym powiadomieniem)");
             backgroundSwitch.TextSize = 15f;
             backgroundSwitch.SetPadding(0, Dp(8), 0, 0);
             backgroundSwitch.CheckedChange += (sender, args) =>
@@ -273,11 +275,11 @@ namespace AdsbCarMap.Activities
 
             backgroundSwitch.Checked = store.IsBackgroundEnabled;
 
-            string text = store.IsBackgroundEnabled ? "Tryb w tle: " + AlertBackgroundRunner.Status : "Tryb w tle wyłączony: alerty działają tylko, gdy mapa pobiera samoloty.";
+            string text = store.IsBackgroundEnabled ? Loc.T("Tryb w tle: ") + AlertBackgroundRunner.Status : Loc.T("Tryb w tle wyłączony: alerty działają tylko, gdy mapa pobiera samoloty.");
 
             if (store.IsBackgroundEnabled && store.Rules.Count(rule => rule.IsEnabled) > AppSettings.AlertMaxBackground)
             {
-                text += "\nW tle sprawdzane jest tylko pierwszych " + AppSettings.AlertMaxBackground + " aktywnych alertów (limit w Ustawieniach → Alerty).";
+                text += Loc.T("\nW tle sprawdzane jest tylko pierwszych ") + AppSettings.AlertMaxBackground + Loc.T(" aktywnych alertów (limit w Ustawieniach → Alerty).");
             }
 
             backgroundStatus.Text = text;
@@ -290,13 +292,13 @@ namespace AdsbCarMap.Activities
         /// <returns>Text for the list.</returns>
         private static string DescribeRule(AlertRule rule)
         {
-            string filter = "Każdy samolot";
+            string filter = Loc.T("Każdy samolot");
 
             if (rule.ConditionFilterId != null)
             {
                 AircraftFilter? found = AppServices.Filters.Find(rule.ConditionFilterId);
 
-                filter = found == null ? "Filtr usunięty, alert nieaktywny" : "Filtr: " + found.Name;
+                filter = found == null ? Loc.T("Filtr usunięty, alert nieaktywny") : Loc.T("Filtr: ") + found.Name;
             }
 
             return AlertText.DescribeArea(rule.Area, AppSettings.DistanceUnit) + "\n" + filter + "\n" + AlertText.DescribeEvents(rule);
@@ -325,10 +327,10 @@ namespace AdsbCarMap.Activities
         private void ConfirmRemove(AlertRule rule)
         {
             AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
-            builder.SetTitle("Usunąć alert?");
+            builder.SetTitle(Loc.T("Usunąć alert?"));
             builder.SetMessage(rule.Name);
-            builder.SetPositiveButton("Usuń", (sender, args) => AppServices.Alerts.Remove(rule.Id));
-            builder.SetNegativeButton("Anuluj", (sender, args) => { });
+            builder.SetPositiveButton(Loc.T("Usuń"), (sender, args) => AppServices.Alerts.Remove(rule.Id));
+            builder.SetNegativeButton(Loc.T("Anuluj"), (sender, args) => { });
             builder.Show();
         }
 

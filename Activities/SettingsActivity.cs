@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using System.Globalization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Services;
@@ -191,6 +192,7 @@ namespace AdsbCarMap.Activities
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            Title = Loc.T("Ustawienia");
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
             SetContentView(BuildContent());
@@ -252,27 +254,30 @@ namespace AdsbCarMap.Activities
             root.SetPadding(Dp(16), Dp(16), Dp(16), Dp(32));
             scrollView.AddView(root);
 
-            LinearLayout units = CreateAggregate(root, "Jednostki", "units", 20f);
-            GetTitledCard("units", "Jednostki miary", units);
+            LinearLayout language = CreateAggregate(root, Loc.T("Język / Language"), "language", 20f);
+            GetTitledCard("language", Loc.T("Język / Language"), language);
 
-            LinearLayout appearance = CreateAggregate(root, "Wygląd", "appearance", 20f);
-            LinearLayout aircraft = CreateAggregate(appearance, "Samoloty", "aircraft", 17f);
+            LinearLayout units = CreateAggregate(root, Loc.T("Jednostki"), "units", 20f);
+            GetTitledCard("units", Loc.T("Jednostki miary"), units);
+
+            LinearLayout appearance = CreateAggregate(root, Loc.T("Wygląd"), "appearance", 20f);
+            LinearLayout aircraft = CreateAggregate(appearance, Loc.T("Samoloty"), "aircraft", 17f);
             GetAircraftIconCard(aircraft);
             GetTrailCard(aircraft);
             GetAltitudeCard(aircraft);
             GetAirportSettingsCard(appearance);
-            GetTitledCard("map", "Mapa", appearance);
+            GetTitledCard("map", Loc.T("Mapa"), appearance);
 
-            LinearLayout alerts = CreateAggregate(root, "Alerty", "alertsSection", 20f);
-            GetTitledCard("alerts", "Sprawdzanie w tle", alerts);
+            LinearLayout alerts = CreateAggregate(root, Loc.T("Alerty"), "alertsSection", 20f);
+            GetTitledCard("alerts", Loc.T("Sprawdzanie w tle"), alerts);
 
-            LinearLayout advanced = CreateAggregate(root, "Zaawansowane", "advanced", 20f);
-            GetTitledCard("dataSource", "Źródło danych", advanced);
-            GetTitledCard("routeSources", "Źródła tras", advanced);
+            LinearLayout advanced = CreateAggregate(root, Loc.T("Zaawansowane"), "advanced", 20f);
+            GetTitledCard("dataSource", Loc.T("Źródło danych"), advanced);
+            GetTitledCard("routeSources", Loc.T("Źródła tras"), advanced);
             GetSourceStatusCard(advanced);
-            GetTitledCard("privacy", "Prywatność", advanced);
-            GetTitledCard("refresh", "Odświeżanie", advanced);
-            GetTitledCard("tiles", "Pobieranie kafelków", advanced);
+            GetTitledCard("privacy", Loc.T("Prywatność"), advanced);
+            GetTitledCard("refresh", Loc.T("Odświeżanie"), advanced);
+            GetTitledCard("tiles", Loc.T("Pobieranie kafelków"), advanced);
             GetTileCacheCard(advanced);
             GetFlightCacheCard(advanced);
 
@@ -285,7 +290,7 @@ namespace AdsbCarMap.Activities
             developer.AddView(version);
 
             GetDevLogCard(developer);
-            GetTitledCard("privacyDev", "Prywatność (zaawansowane)", developer);
+            GetTitledCard("privacyDev", Loc.T("Prywatność (zaawansowane)"), developer);
 
             foreach (SettingDefinition definition in AppSettings.All)
             {
@@ -325,37 +330,37 @@ namespace AdsbCarMap.Activities
 
             if (aircraftIconCard != null)
             {
-                aircraftIconCard.AddView(CreateResetButton("Przywróć domyślne ikony i etykiety", new List<SettingDefinition> { AppSettings.IconScaleSetting, AppSettings.AircraftOutlineWidthSetting, AppSettings.AircraftShadowSetting, AppSettings.AircraftCockpitSetting, AppSettings.ShowLabelsSetting, AppSettings.LabelTextSizeSetting }, "Przywrócono domyślne ustawienia ikon i etykiet"));
+                aircraftIconCard.AddView(CreateResetButton(Loc.T("Przywróć domyślne ikony i etykiety"), new List<SettingDefinition> { AppSettings.IconScaleSetting, AppSettings.AircraftOutlineWidthSetting, AppSettings.AircraftShadowSetting, AppSettings.AircraftCockpitSetting, AppSettings.ShowLabelsSetting, AppSettings.LabelTextSizeSetting }, Loc.T("Przywrócono domyślne ustawienia ikon i etykiet")));
             }
 
             if (airportSettingsCard != null)
             {
-                airportSettingsCard.AddView(CreateResetButton("Przywróć domyślne lotniska", AppSettings.AirportSettings, "Przywrócono domyślne ustawienia lotnisk"));
+                airportSettingsCard.AddView(CreateResetButton(Loc.T("Przywróć domyślne lotniska"), AppSettings.AirportSettings, Loc.T("Przywrócono domyślne ustawienia lotnisk")));
             }
 
             if (tileCacheCard != null)
             {
-                tileCacheCard.AddView(CreateResetButton("Przywróć domyślną pamięć podręczną", AppSettings.TileCacheSettings, "Przywrócono domyślne ustawienia pamięci podręcznej"));
+                tileCacheCard.AddView(CreateResetButton(Loc.T("Przywróć domyślną pamięć podręczną"), AppSettings.TileCacheSettings, Loc.T("Przywrócono domyślne ustawienia pamięci podręcznej")));
             }
 
             if (flightCacheCard != null)
             {
-                flightCacheCard.AddView(CreateResetButton("Przywróć domyślny czas przechowywania", AppSettings.FlightCacheSettings, "Przywrócono domyślny czas przechowywania informacji o lotach"));
+                flightCacheCard.AddView(CreateResetButton(Loc.T("Przywróć domyślny czas przechowywania"), AppSettings.FlightCacheSettings, Loc.T("Przywrócono domyślny czas przechowywania informacji o lotach")));
             }
 
-            titledCards["units"].AddView(CreateResetButton("Przywróć domyślne jednostki", AppSettings.UnitSettings, "Przywrócono domyślne jednostki"));
-            titledCards["alerts"].AddView(CreateResetButton("Przywróć domyślne alerty", AppSettings.AlertSettings, "Przywrócono domyślne ustawienia alertów"));
+            titledCards["units"].AddView(CreateResetButton(Loc.T("Przywróć domyślne jednostki"), AppSettings.UnitSettings, Loc.T("Przywrócono domyślne jednostki")));
+            titledCards["alerts"].AddView(CreateResetButton(Loc.T("Przywróć domyślne alerty"), AppSettings.AlertSettings, Loc.T("Przywrócono domyślne ustawienia alertów")));
 
             if (devLogCard != null)
             {
-                devLogCard.AddView(CreateResetButton("Przywróć domyślny Dev log", AppSettings.DevLogSettings, "Przywrócono domyślne ustawienia Dev logu"));
+                devLogCard.AddView(CreateResetButton(Loc.T("Przywróć domyślny Dev log"), AppSettings.DevLogSettings, Loc.T("Przywrócono domyślne ustawienia Dev logu")));
             }
 
-            titledCards["privacyDev"].AddView(CreateResetButton("Przywróć domyślną prywatność", AppSettings.PrivacyDevSettings.Concat(AppSettings.PrivacySettings).ToList(), "Przywrócono domyślne ustawienia prywatności"));
+            titledCards["privacyDev"].AddView(CreateResetButton(Loc.T("Przywróć domyślną prywatność"), AppSettings.PrivacyDevSettings.Concat(AppSettings.PrivacySettings).ToList(), Loc.T("Przywrócono domyślne ustawienia prywatności")));
 
             if (trailCard != null)
             {
-                trailCard.AddView(CreateResetButton("Przywróć domyślne ślady", AppSettings.TrailSettings, "Przywrócono domyślne ustawienia śladów"));
+                trailCard.AddView(CreateResetButton(Loc.T("Przywróć domyślne ślady"), AppSettings.TrailSettings, Loc.T("Przywrócono domyślne ustawienia śladów")));
             }
 
             List<(LinearLayout?, string)> collapsibleCards = new List<(LinearLayout?, string)>
@@ -387,7 +392,7 @@ namespace AdsbCarMap.Activities
             buttons.SetPadding(0, Dp(8), 0, 0);
             advanced.AddView(buttons);
 
-            buttons.AddView(CreateResetButton("Przywróć wszystkie domyślne", AppSettings.All, "Przywrócono ustawienia domyślne"));
+            buttons.AddView(CreateResetButton(Loc.T("Przywróć wszystkie domyślne"), AppSettings.All, Loc.T("Przywrócono ustawienia domyślne")));
 
             AddDeveloperDataCard(developer);
 
@@ -485,7 +490,7 @@ namespace AdsbCarMap.Activities
 
                 body.Visibility = expanded ? ViewStates.Visible : ViewStates.Gone;
                 arrow.Text = expanded ? "▴" : "▾";
-                arrow.ContentDescription = expanded ? "Zwiń sekcję" : "Rozwiń sekcję";
+                arrow.ContentDescription = expanded ? Loc.T("Zwiń sekcję") : Loc.T("Rozwiń sekcję");
             };
 
             apply();
@@ -581,15 +586,15 @@ namespace AdsbCarMap.Activities
 
             if (definition == AppSettings.FetchIntervalSetting || definition == AppSettings.RenderIntervalSetting)
             {
-                return GetTitledCard("refresh", "Odświeżanie", container);
+                return GetTitledCard("refresh", Loc.T("Odświeżanie"), container);
             }
 
             if (definition == AppSettings.MaxCachedTilesSetting || definition == AppSettings.TileRetrySetting)
             {
-                return GetTitledCard("tiles", "Pobieranie kafelków", container);
+                return GetTitledCard("tiles", Loc.T("Pobieranie kafelków"), container);
             }
 
-            return GetTitledCard("map", "Mapa", container);
+            return GetTitledCard("map", Loc.T("Mapa"), container);
         }
 
         /// <summary>
@@ -600,6 +605,11 @@ namespace AdsbCarMap.Activities
         /// <returns>The shared card, or null when the setting has a card of its own.</returns>
         private LinearLayout? GetSharedCardFor(SettingDefinition definition, LinearLayout container)
         {
+            if (AppSettings.LanguageSettings.Contains(definition))
+            {
+                return titledCards["language"];
+            }
+
             if (AppSettings.UnitSettings.Contains(definition))
             {
                 return titledCards["units"];
@@ -683,7 +693,7 @@ namespace AdsbCarMap.Activities
             LinearLayout card = CreateCard(container);
 
             TextView title = new TextView(this);
-            title.Text = "Kolory wysokości";
+            title.Text = Loc.T("Kolory wysokości");
             StyleTitle(title);
             card.AddView(title);
 
@@ -701,12 +711,12 @@ namespace AdsbCarMap.Activities
             LinearLayout card = CreateCard(root);
 
             TextView title = new TextView(this);
-            title.Text = "Dane developerskie";
+            title.Text = Loc.T("Dane developerskie");
             StyleTitle(title);
             card.AddView(title);
 
             TextView hint = new TextView(this);
-            hint.Text = "Dane zbierane podczas używania mapy, przydatne przy uzupełnianiu tabel w aplikacji.";
+            hint.Text = Loc.T("Dane zbierane podczas używania mapy, przydatne przy uzupełnianiu tabel w aplikacji.");
             StyleSecondary(hint);
             hint.SetPadding(0, Dp(4), 0, 0);
             card.AddView(hint);
@@ -722,7 +732,7 @@ namespace AdsbCarMap.Activities
         /// </summary>
         private void UpdateDeveloperDataButton()
         {
-            developerDataButton?.Text = "Brakujące typy samolotów (" + AppServices.MissingTypes.Missing.Count + ")";
+            developerDataButton?.Text = Loc.T("Brakujące typy samolotów (") + AppServices.MissingTypes.Missing.Count + ")";
         }
 
         /// <summary>
@@ -742,8 +752,8 @@ namespace AdsbCarMap.Activities
             TextView label = new TextView(this);
             label.Text = string.Format(
                 CultureInfo.InvariantCulture,
-                "{0}  (domyślnie {1}, zakres {2}–{3})",
-                definition.Label,
+                Loc.T("{0}  (domyślnie {1}, zakres {2}–{3})"),
+                Loc.T(definition.Label),
                 FormatValue(definition, definition.DefaultValue),
                 FormatValue(definition, definition.Minimum),
                 FormatValue(definition, definition.Maximum));
@@ -826,7 +836,7 @@ namespace AdsbCarMap.Activities
             card.AddView(row);
 
             Switch toggle = new Switch(this);
-            toggle.Text = definition.Label;
+            toggle.Text = Loc.T(definition.Label);
             StyleTitle(toggle);
 
             if (isGrouped)
@@ -841,7 +851,7 @@ namespace AdsbCarMap.Activities
             if (definition == AppSettings.ShowOnlyFavoriteAirportsSetting)
             {
                 TextView previewHint = new TextView(this);
-                previewHint.Text = "Podgląd pokazuje rodzaje lotnisk z bieżącymi ustawieniami. Po wyłączeniu lotnisk reszta tej sekcji jest nieaktywna.";
+                previewHint.Text = Loc.T("Podgląd pokazuje rodzaje lotnisk z bieżącymi ustawieniami. Po wyłączeniu lotnisk reszta tej sekcji jest nieaktywna.");
                 StyleSecondary(previewHint);
                 previewHint.SetPadding(0, Dp(4), 0, 0);
                 card.AddView(previewHint);
@@ -858,7 +868,7 @@ namespace AdsbCarMap.Activities
                 smallPavedToggle = toggle;
 
                 smallPavedHint = new TextView(this);
-                smallPavedHint.Text = "Dostępne tylko wtedy, gdy zaznaczone są małe lotniska.";
+                smallPavedHint.Text = Loc.T("Dostępne tylko wtedy, gdy zaznaczone są małe lotniska.");
                 StyleSecondary(smallPavedHint);
                 smallPavedHint.SetPadding(Dp(4), 0, 0, 0);
                 card.AddView(smallPavedHint);
@@ -898,7 +908,7 @@ namespace AdsbCarMap.Activities
             card.AddView(row);
 
             TextView label = new TextView(this);
-            label.Text = definition.Label;
+            label.Text = Loc.T(definition.Label);
             StyleSubTitle(label);
             row.AddView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
             AddUndoButton(row, definition);
@@ -906,8 +916,8 @@ namespace AdsbCarMap.Activities
 
             TextView hint = new TextView(this);
             hint.Text = isRoutes
-                ? "Przytrzymaj ≡ i przeciągnij. Pierwszy serwis jest głównym źródłem tras, kolejne są pytane po kolei, gdy poprzedni nie zna lotu albo nie odpowiada. Trasa jest przypisana do znaku wywoławczego, więc nie zawsze odpowiada bieżącemu przelotowi."
-                : "Przytrzymaj ≡ i przeciągnij. Pierwszy serwis jest głównym źródłem, kolejne są pytane po kolei, gdy poprzedni nie zwraca danych.";
+                ? Loc.T("Przytrzymaj ≡ i przeciągnij. Pierwszy serwis jest głównym źródłem tras, kolejne są pytane po kolei, gdy poprzedni nie zna lotu albo nie odpowiada. Trasa jest przypisana do znaku wywoławczego, więc nie zawsze odpowiada bieżącemu przelotowi.")
+                : Loc.T("Przytrzymaj ≡ i przeciągnij. Pierwszy serwis jest głównym źródłem, kolejne są pytane po kolei, gdy poprzedni nie zwraca danych.");
             StyleSecondary(hint);
             hint.SetPadding(0, Dp(4), 0, Dp(6));
             card.AddView(hint);
@@ -959,7 +969,7 @@ namespace AdsbCarMap.Activities
             card.AddView(row);
 
             TextView label = new TextView(this);
-            label.Text = definition.Label;
+            label.Text = Loc.T(definition.Label);
             StyleTitle(label);
 
             if (isGrouped)
@@ -986,7 +996,7 @@ namespace AdsbCarMap.Activities
             Spinner spinner = new Spinner(this);
             spinner.Background = null;
             spinner.SetPadding(Dp(8), Dp(6), Dp(40), Dp(6));
-            ArrayAdapter<string> adapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, definition.Choices!.ToList());
+            ArrayAdapter<string> adapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, definition.Choices!.Select(choice => Loc.T(choice)).ToList());
             adapter.SetDropDownViewResource(Android.Resource.Layout.SimpleSpinnerDropDownItem);
             spinner.Adapter = adapter;
             field.AddView(spinner, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent));
@@ -1034,7 +1044,7 @@ namespace AdsbCarMap.Activities
                 favoritesOnlyInactiveViews.Add(titleRow);
 
                 TextView label = new TextView(this);
-                label.Text = "Zakres zoomu, w którym widać lotniska";
+                label.Text = Loc.T("Zakres zoomu, w którym widać lotniska");
                 StyleTitle(label);
                 StyleSubTitle(label);
                 titleRow.AddView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
@@ -1092,7 +1102,7 @@ namespace AdsbCarMap.Activities
             favoritesOnlyInactiveViews.Add(titleRow);
 
             TextView label = new TextView(this);
-            label.Text = definition.Label;
+            label.Text = Loc.T(definition.Label);
             StyleTitle(label);
 
             if (isGrouped)
@@ -1120,7 +1130,7 @@ namespace AdsbCarMap.Activities
                 }
 
                 CheckBox box = new CheckBox(this);
-                box.Text = choices[index];
+                box.Text = Loc.T(choices[index]);
                 box.TextSize = 13f;
                 box.SetTextColor(PrimaryTextColor);
                 boxRow!.AddView(box, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
@@ -1197,7 +1207,7 @@ namespace AdsbCarMap.Activities
             card.AddView(titleRow);
 
             TextView title = new TextView(this);
-            title.Text = definition.Label;
+            title.Text = Loc.T(definition.Label);
             StyleTitle(title);
 
             if (isGrouped)
@@ -1237,8 +1247,8 @@ namespace AdsbCarMap.Activities
             System.Action<double> refresh = value =>
             {
                 valueText.Text = definition == AppSettings.IconScaleSetting
-                    ? string.Format(CultureInfo.InvariantCulture, "×{0}  (domyślnie ×{1})", FormatValue(definition, value), FormatValue(definition, definition.DefaultValue))
-                    : string.Format(CultureInfo.InvariantCulture, "{0}{1}  (domyślnie {2})", FormatValue(definition, value), definition.Unit, FormatValue(definition, definition.DefaultValue));
+                    ? string.Format(CultureInfo.InvariantCulture, Loc.T("×{0}  (domyślnie ×{1})"), FormatValue(definition, value), FormatValue(definition, definition.DefaultValue))
+                    : string.Format(CultureInfo.InvariantCulture, Loc.T("{0}{1}  (domyślnie {2})"), FormatValue(definition, value), Loc.T(definition.Unit), FormatValue(definition, definition.DefaultValue));
                 valueText.Text += "  ✎";
 
                 if (trailsPreview != null && isTrailSetting)
@@ -1357,9 +1367,9 @@ namespace AdsbCarMap.Activities
             input.SetSelectAllOnFocus(true);
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
-            builder.SetTitle(definition.Label + " (" + FormatValue(definition, definition.Minimum) + "–" + FormatValue(definition, definition.Maximum) + definition.Unit + ")");
+            builder.SetTitle(Loc.T(definition.Label) + " (" + FormatValue(definition, definition.Minimum) + "–" + FormatValue(definition, definition.Maximum) + Loc.T(definition.Unit) + ")");
             builder.SetView(input);
-            builder.SetNegativeButton("Anuluj", (sender, args) => { });
+            builder.SetNegativeButton(Loc.T("Anuluj"), (sender, args) => { });
             builder.SetPositiveButton("OK", (sender, args) =>
             {
                 string text = (input.Text ?? string.Empty).Trim().Replace(',', '.');
@@ -1384,13 +1394,13 @@ namespace AdsbCarMap.Activities
                 LinearLayout card = GetAltitudeCard(root);
 
                 TextView title = new TextView(this);
-                title.Text = "Skala kolorów";
+                title.Text = Loc.T("Skala kolorów");
                 StyleSubTitle(title);
                 title.SetPadding(0, Dp(10), 0, 0);
                 card.AddView(title);
 
                 TextView hint = new TextView(this);
-                hint.Text = "Przeciągnij znacznik, aby zmienić próg, albo dotknij go, aby wpisać wartość. Wartości są w jednostce wybranej wyżej.";
+                hint.Text = Loc.T("Przeciągnij znacznik, aby zmienić próg, albo dotknij go, aby wpisać wartość. Wartości są w jednostce wybranej wyżej.");
                 StyleSecondary(hint);
                 hint.SetPadding(0, Dp(4), 0, 0);
                 card.AddView(hint);
@@ -1400,11 +1410,11 @@ namespace AdsbCarMap.Activities
                 card.AddView(altitudeScale);
 
                 Button resetColors = new Button(this);
-                resetColors.Text = "Przywróć domyślne kolory";
+                resetColors.Text = Loc.T("Przywróć domyślne kolory");
                 resetColors.Click += (sender, args) => ConfirmReset(resetColors.Text ?? string.Empty, () =>
                 {
                     ResetSettings(altitudeScaleSettings);
-                    Toast.MakeText(this, "Przywrócono domyślne kolory", ToastLength.Short)?.Show();
+                    Toast.MakeText(this, Loc.T("Przywrócono domyślne kolory"), ToastLength.Short)?.Show();
                 });
                 card.AddView(resetColors);
             }
@@ -1433,7 +1443,7 @@ namespace AdsbCarMap.Activities
             LinearLayout card = CreateCard(root);
 
             TextView title = new TextView(this);
-            title.Text = "Ikony i etykiety samolotów";
+            title.Text = Loc.T("Ikony i etykiety samolotów");
             StyleTitle(title);
             card.AddView(title);
 
@@ -1463,12 +1473,12 @@ namespace AdsbCarMap.Activities
             LinearLayout card = CreateCard(root);
 
             TextView title = new TextView(this);
-            title.Text = "Ślady samolotów";
+            title.Text = Loc.T("Ślady samolotów");
             StyleTitle(title);
             card.AddView(title);
 
             TextView hint = new TextView(this);
-            hint.Text = "Podgląd pokazuje ślady drona, śmigłowca i samolotu pasażerskiego z bieżącymi ustawieniami. Dotknij niebieskiej wartości pod nazwą suwaka (✎), aby wpisać dokładną liczbę.";
+            hint.Text = Loc.T("Podgląd pokazuje ślady drona, śmigłowca i samolotu pasażerskiego z bieżącymi ustawieniami. Dotknij niebieskiej wartości pod nazwą suwaka (✎), aby wpisać dokładną liczbę.");
             StyleSecondary(hint);
             hint.SetPadding(0, Dp(4), 0, 0);
             card.AddView(hint);
@@ -1499,7 +1509,7 @@ namespace AdsbCarMap.Activities
             LinearLayout card = CreateCard(root);
 
             TextView title = new TextView(this);
-            title.Text = "Pamięć podręczna map";
+            title.Text = Loc.T("Pamięć podręczna map");
             StyleTitle(title);
             card.AddView(title);
 
@@ -1509,7 +1519,7 @@ namespace AdsbCarMap.Activities
             card.AddView(tileCacheUsageText);
 
             Button clear = new Button(this);
-            clear.Text = "Wyczyść teraz";
+            clear.Text = Loc.T("Wyczyść teraz");
             clear.Click += (sender, args) =>
             {
                 clear.Enabled = false;
@@ -1521,7 +1531,7 @@ namespace AdsbCarMap.Activities
                     {
                         clear.Enabled = true;
                         UpdateTileCacheUsage();
-                        Toast.MakeText(this, "Wyczyszczono pamięć podręczną map", ToastLength.Short)?.Show();
+                        Toast.MakeText(this, Loc.T("Wyczyszczono pamięć podręczną map"), ToastLength.Short)?.Show();
                     });
                 });
             };
@@ -1548,7 +1558,7 @@ namespace AdsbCarMap.Activities
             LinearLayout card = CreateCard(root);
 
             TextView title = new TextView(this);
-            title.Text = "Pamięć podręczna lotów";
+            title.Text = Loc.T("Pamięć podręczna lotów");
             StyleTitle(title);
             card.AddView(title);
 
@@ -1558,12 +1568,12 @@ namespace AdsbCarMap.Activities
             card.AddView(flightCacheUsageText);
 
             Button clear = new Button(this);
-            clear.Text = "Wyczyść teraz";
+            clear.Text = Loc.T("Wyczyść teraz");
             clear.Click += (sender, args) =>
             {
                 AppServices.ClearFlightInfo();
                 UpdateFlightCacheUsage();
-                Toast.MakeText(this, "Wyczyszczono pamięć podręczną lotów", ToastLength.Short)?.Show();
+                Toast.MakeText(this, Loc.T("Wyczyszczono pamięć podręczną lotów"), ToastLength.Short)?.Show();
             };
             card.AddView(clear);
 
@@ -1588,7 +1598,7 @@ namespace AdsbCarMap.Activities
             LinearLayout card = CreateCard(root);
 
             TextView title = new TextView(this);
-            title.Text = "Dev log";
+            title.Text = Loc.T("Dev log");
             StyleTitle(title);
             card.AddView(title);
 
@@ -1609,7 +1619,7 @@ namespace AdsbCarMap.Activities
         /// <returns>The card.</returns>
         private LinearLayout GetSourceStatusCard(LinearLayout root)
         {
-            LinearLayout card = GetTitledCard("sourceStatus", "Stan źródeł", root);
+            LinearLayout card = GetTitledCard("sourceStatus", Loc.T("Stan źródeł"), root);
 
             if (sourceStatusText == null)
             {
@@ -1619,7 +1629,7 @@ namespace AdsbCarMap.Activities
                 card.AddView(sourceStatusText);
 
                 Button requestLog = new Button(this);
-                requestLog.Text = "Pokaż log zapytań";
+                requestLog.Text = Loc.T("Pokaż log zapytań");
                 requestLog.Click += (sender, args) => StartActivity(new Android.Content.Intent(this, typeof(RequestLogActivity)));
                 card.AddView(requestLog);
 
@@ -1657,7 +1667,7 @@ namespace AdsbCarMap.Activities
         /// </summary>
         private void UpdateFlightCacheUsage()
         {
-            flightCacheUsageText?.Text = string.Format(CultureInfo.CurrentCulture, "Zapisane informacje: {0} (trasy i dane samolotów, razem z odpowiedziami „nieznany”)", AppServices.FlightInfoCount);
+            flightCacheUsageText?.Text = Loc.F("Zapisane informacje: {0} (trasy i dane samolotów, razem z odpowiedziami „nieznany”)", AppServices.FlightInfoCount);
         }
 
         /// <summary>
@@ -1676,7 +1686,7 @@ namespace AdsbCarMap.Activities
                         return;
                     }
 
-                    tileCacheUsageText.Text = string.Format(CultureInfo.CurrentCulture, "Zajęte: {0:0.0} MB z {1:0} MB ({2} kafelków)", bytes / 1048576.0, AppSettings.TileCacheMaxBytes / 1048576.0, count);
+                    tileCacheUsageText.Text = Loc.F("Zajęte: {0:0.0} MB z {1:0} MB ({2} kafelków)", bytes / 1048576.0, AppSettings.TileCacheMaxBytes / 1048576.0, count);
                 });
             });
         }
@@ -1833,6 +1843,11 @@ namespace AdsbCarMap.Activities
                 airportsPreview?.Invalidate();
             }
 
+            if (definition == AppSettings.LanguageSetting)
+            {
+                Recreate();
+            }
+
             if (definition == AppSettings.AltitudeUnitSetting)
             {
                 altitudeScale?.Invalidate();
@@ -1917,7 +1932,7 @@ namespace AdsbCarMap.Activities
         /// <returns>True when the view is or contains an info button.</returns>
         private static bool ApplyGroupState(View view, bool on)
         {
-            if (view.ContentDescription != null && view.ContentDescription.StartsWith("Opis ustawienia", StringComparison.Ordinal))
+            if (view.ContentDescription != null && view.ContentDescription.StartsWith(Loc.T("Opis ustawienia"), StringComparison.Ordinal))
             {
                 return true;
             }
@@ -2050,13 +2065,13 @@ namespace AdsbCarMap.Activities
         private void ConfirmReset(string title, System.Action reset)
         {
             const int DelaySeconds = 10;
-            const string ConfirmText = "Przywróć domyślne wartości";
+            string confirmText = Loc.T("Przywróć domyślne wartości");
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
             builder.SetTitle(title);
-            builder.SetMessage("Czy na pewno chcesz przywrócić domyślne wartości? Obecne wartości zostaną zastąpione (każdą zmianę można potem cofnąć przyciskiem ↺).");
-            builder.SetNegativeButton("Anuluj", (sender, args) => { });
-            builder.SetPositiveButton(ConfirmText, (sender, args) => reset());
+            builder.SetMessage(Loc.T("Czy na pewno chcesz przywrócić domyślne wartości? Obecne wartości zostaną zastąpione (każdą zmianę można potem cofnąć przyciskiem ↺)."));
+            builder.SetNegativeButton(Loc.T("Anuluj"), (sender, args) => { });
+            builder.SetPositiveButton(confirmText, (sender, args) => reset());
 
             AlertDialog dialog = builder.Create()!;
             dialog.Show();
@@ -2085,13 +2100,13 @@ namespace AdsbCarMap.Activities
                 if (remaining > 0)
                 {
                     confirm.Enabled = false;
-                    confirm.Text = ConfirmText + " (" + remaining + ")";
+                    confirm.Text = confirmText + " (" + remaining + ")";
                     remaining--;
                     handler.PostDelayed(tick, 1000);
                 }
                 else
                 {
-                    confirm.Text = ConfirmText;
+                    confirm.Text = confirmText;
                     confirm.Enabled = true;
                 }
             };
@@ -2106,7 +2121,7 @@ namespace AdsbCarMap.Activities
         /// <param name="definition">Setting.</param>
         private void AddUndoButton(LinearLayout row, SettingDefinition definition)
         {
-            TextView button = CreateRoundButton("↺", "Cofnij do zapisanej wartości: " + definition.Label);
+            TextView button = CreateRoundButton("↺", Loc.T("Cofnij do zapisanej wartości: ") + Loc.T(definition.Label));
             button.Visibility = ViewStates.Invisible;
             undoButtons[definition] = button;
 
@@ -2129,7 +2144,7 @@ namespace AdsbCarMap.Activities
                 return;
             }
 
-            TextView button = CreateRoundButton("i", "Opis ustawienia: " + definition.Label);
+            TextView button = CreateRoundButton("i", Loc.T("Opis ustawienia: ") + Loc.T(definition.Label));
             button.SetTypeface(null, TypefaceStyle.BoldItalic);
 
             button.Click += (sender, args) =>
@@ -2139,7 +2154,7 @@ namespace AdsbCarMap.Activities
                 content.SetPadding(Dp(24), Dp(8), Dp(24), 0);
 
                 TextView description = new TextView(this);
-                description.Text = definition.Help;
+                description.Text = Loc.T(definition.Help);
                 description.TextSize = 14f;
                 content.AddView(description);
 
@@ -2148,7 +2163,7 @@ namespace AdsbCarMap.Activities
                 if (example != null)
                 {
                     TextView caption = new TextView(this);
-                    caption.Text = "Przykład:";
+                    caption.Text = Loc.T("Przykład:");
                     caption.TextSize = 12f;
                     caption.SetTextColor(Color.Rgb(180, 180, 180));
                     caption.SetPadding(0, Dp(16), 0, Dp(6));
@@ -2160,7 +2175,7 @@ namespace AdsbCarMap.Activities
                 scroll.AddView(content);
 
                 AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
-                builder.SetTitle(definition.Label);
+                builder.SetTitle(Loc.T(definition.Label));
                 builder.SetView(scroll);
                 builder.SetPositiveButton("OK", (dialogSender, dialogArgs) => { });
                 builder.Show();
@@ -2206,8 +2221,8 @@ namespace AdsbCarMap.Activities
                 AltitudeUnit[] units = new AltitudeUnit[] { AltitudeUnit.Metric, AltitudeUnit.Feet, AltitudeUnit.FlightLevel };
 
                 return BuildUnitExample(
-                    "Samolot na wysokości 35 000 ft:",
-                    new string[] { "Metry", "Stopy", "Poziom lotu" },
+                    Loc.T("Samolot na wysokości 35 000 ft:"),
+                    new string[] { Loc.T("Metry"), Loc.T("Stopy"), Loc.T("Poziom lotu") },
                     units.Select(unit => AltitudeFormatter.Format(35000, unit)).ToArray(),
                     Array.IndexOf(units, AppSettings.AltitudeUnit));
             }
@@ -2217,8 +2232,8 @@ namespace AdsbCarMap.Activities
                 DistanceUnit[] units = new DistanceUnit[] { DistanceUnit.Kilometers, DistanceUnit.NauticalMiles, DistanceUnit.Miles };
 
                 return BuildUnitExample(
-                    "Odległość 100 km:",
-                    new string[] { "Kilometry", "Mile morskie", "Mile lądowe" },
+                    Loc.T("Odległość 100 km:"),
+                    new string[] { Loc.T("Kilometry"), Loc.T("Mile morskie"), Loc.T("Mile lądowe") },
                     units.Select(unit => UnitFormatter.FormatDistance(100.0, unit, 0)).ToArray(),
                     Array.IndexOf(units, AppSettings.DistanceUnit));
             }
@@ -2228,8 +2243,8 @@ namespace AdsbCarMap.Activities
                 SpeedUnit[] units = new SpeedUnit[] { SpeedUnit.KilometersPerHour, SpeedUnit.Knots, SpeedUnit.MilesPerHour };
 
                 return BuildUnitExample(
-                    "Prędkość 400 kt:",
-                    new string[] { "Kilometry na godzinę", "Węzły", "Mile na godzinę" },
+                    Loc.T("Prędkość 400 kt:"),
+                    new string[] { Loc.T("Kilometry na godzinę"), Loc.T("Węzły"), Loc.T("Mile na godzinę") },
                     units.Select(unit => UnitFormatter.FormatSpeed(400.0, unit)).ToArray(),
                     Array.IndexOf(units, AppSettings.SpeedUnit));
             }
@@ -2239,8 +2254,8 @@ namespace AdsbCarMap.Activities
                 VerticalSpeedUnit[] units = new VerticalSpeedUnit[] { VerticalSpeedUnit.FeetPerMinute, VerticalSpeedUnit.MetersPerSecond };
 
                 return BuildUnitExample(
-                    "Wznoszenie 1 500 ft/min:",
-                    new string[] { "Stopy na minutę", "Metry na sekundę" },
+                    Loc.T("Wznoszenie 1 500 ft/min:"),
+                    new string[] { Loc.T("Stopy na minutę"), Loc.T("Metry na sekundę") },
                     units.Select(unit => UnitFormatter.FormatVerticalSpeed(1500.0, unit)).ToArray(),
                     Array.IndexOf(units, AppSettings.VerticalSpeedUnit));
             }

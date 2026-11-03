@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.Data;
 using Android.App;
 using Android.Graphics;
@@ -26,6 +27,7 @@ namespace AdsbCarMap.Activities
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            Title = Loc.T("O aplikacji");
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
             SetContentView(BuildContent());
@@ -63,23 +65,23 @@ namespace AdsbCarMap.Activities
             scrollView.AddView(root);
 
             AddText(root, "ADS-B Car Map", 22f, Color.White, true, 0);
-            AddText(root, "Wersja " + BuildInfo.Version + " (kompilacja " + BuildInfo.Build + ")", 14f, Color.Rgb(180, 180, 180), false, 2);
-            AddText(root, "Mapa samolotów ADS-B na telefonie i w Android Auto. Aplikacja na licencji MIT, kod źródłowy: " + RepositoryUrl, 14f, Color.White, false, 8, true);
+            AddText(root, Loc.T("Wersja ") + BuildInfo.Version + Loc.T(" (kompilacja ") + BuildInfo.Build + ")", 14f, Color.Rgb(180, 180, 180), false, 2);
+            AddText(root, Loc.T("Mapa samolotów ADS-B na telefonie i w Android Auto. Aplikacja na licencji MIT, kod źródłowy: ") + RepositoryUrl, 14f, Color.White, false, 8, true);
 
-            AddSection(root, "Mapa");
-            AddText(root, "© współtwórcy OpenStreetMap, dane na licencji ODbL (openstreetmap.org/copyright). Kafelki mapy pochodzą z serwera tile.openstreetmap.org.", 14f, Color.White, false, 4, true);
+            AddSection(root, Loc.T("Mapa"));
+            AddText(root, Loc.T("© współtwórcy OpenStreetMap, dane na licencji ODbL (openstreetmap.org/copyright). Kafelki mapy pochodzą z serwera tile.openstreetmap.org."), 14f, Color.White, false, 4, true);
 
-            AddSection(root, "Samoloty i trasy");
-            AddText(root, "Pozycje samolotów: adsb.lol albo airplanes.live (otwarte dane ADS-B, wybór w ustawieniach zaawansowanych). Trasy lotów: adsbdb.com, adsb.lol i hexdb.io (kolejność w ustawieniach zaawansowanych), dane samolotów (pełna nazwa typu, właściciel): adsbdb.com i hexdb.io.", 14f, Color.White, false, 4, true);
+            AddSection(root, Loc.T("Samoloty i trasy"));
+            AddText(root, Loc.T("Pozycje samolotów: adsb.lol albo airplanes.live (otwarte dane ADS-B, wybór w ustawieniach zaawansowanych). Trasy lotów: adsbdb.com, adsb.lol i hexdb.io (kolejność w ustawieniach zaawansowanych), dane samolotów (pełna nazwa typu, właściciel): adsbdb.com i hexdb.io."), 14f, Color.White, false, 4, true);
 
-            AddSection(root, "Lotniska i pasy startowe");
-            AddText(root, "Dane lotnisk i pasów startowych pochodzą z projektu OurAirports (ourairports.com), udostępnionego jako domena publiczna. " + GetAirportDataDate(), 14f, Color.White, false, 4, true);
-            AddText(root, "Dane są dołączone do aplikacji i aktualizowane przy każdym wydaniu. Lotnisko wojskowe jest rozpoznawane po nazwie, więc zdarzają się pomyłki.", 13f, Color.Rgb(180, 180, 180), false, 6);
+            AddSection(root, Loc.T("Lotniska i pasy startowe"));
+            AddText(root, Loc.T("Dane lotnisk i pasów startowych pochodzą z projektu OurAirports (ourairports.com), udostępnionego jako domena publiczna. ") + GetAirportDataDate(), 14f, Color.White, false, 4, true);
+            AddText(root, Loc.T("Dane są dołączone do aplikacji i aktualizowane przy każdym wydaniu. Lotnisko wojskowe jest rozpoznawane po nazwie, więc zdarzają się pomyłki."), 13f, Color.Rgb(180, 180, 180), false, 6);
 
-            AddSection(root, "Prywatność");
-            AddText(root, "Aplikacja nie ma kont ani analityki i nie wysyła niczego poza tym, co potrzebne do działania mapy: do serwera samolotów (adsb.lol lub airplanes.live, a gdy pierwszy nie odpowiada i zapasowe źródło jest włączone, do obu) środek i promień widocznego obszaru mapy (gdy mapa podąża za Tobą, jest to Twoja okolica), do serwisów tras i danych samolotów (adsbdb.com, adsb.lol, hexdb.io, w kolejności z ustawień, a przy braku danych do kolejnych) znak wywoławczy lub kod ICAO zaznaczonego lub wyszukiwanego lotu, do serwera kafelków numery kafelków. Do każdego z nich dochodzi nagłówek User-Agent z nazwą aplikacji i opcjonalnym kontaktem właściciela. Twoja pozycja GPS służy tylko do wyświetlania na mapie i liczenia odległości na urządzeniu.", 14f, Color.White, false, 4);
+            AddSection(root, Loc.T("Prywatność"));
+            AddText(root, Loc.T("Aplikacja nie ma kont ani analityki i nie wysyła niczego poza tym, co potrzebne do działania mapy: do serwera samolotów (adsb.lol lub airplanes.live, a gdy pierwszy nie odpowiada i zapasowe źródło jest włączone, do obu) środek i promień widocznego obszaru mapy (gdy mapa podąża za Tobą, jest to Twoja okolica), do serwisów tras i danych samolotów (adsbdb.com, adsb.lol, hexdb.io, w kolejności z ustawień, a przy braku danych do kolejnych) znak wywoławczy lub kod ICAO zaznaczonego lub wyszukiwanego lotu, do serwera kafelków numery kafelków. Do każdego z nich dochodzi nagłówek User-Agent z nazwą aplikacji i opcjonalnym kontaktem właściciela. Twoja pozycja GPS służy tylko do wyświetlania na mapie i liczenia odległości na urządzeniu."), 14f, Color.White, false, 4);
 
-            AddSection(root, "Biblioteki");
+            AddSection(root, Loc.T("Biblioteki"));
             AddText(root, "AndroidX Car App Library (Android Auto), .NET for Android.", 14f, Color.White, false, 4);
 
             return scrollView;
@@ -111,7 +113,7 @@ namespace AdsbCarMap.Activities
                     }
                 }
 
-                return date == null ? string.Empty : "Baza z dnia " + date + (count == null ? string.Empty : " (" + count + " lotnisk).");
+                return date == null ? string.Empty : Loc.T("Baza z dnia ") + date + (count == null ? string.Empty : " (" + count + Loc.T(" lotnisk)."));
             }
             catch (Exception)
             {

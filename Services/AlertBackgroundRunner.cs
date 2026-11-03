@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.Data;
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.Settings;
@@ -37,7 +38,7 @@ namespace AdsbCarMap.Services
         /// <summary>
         /// Text describing what the runner does now, for the alerts screen.
         /// </summary>
-        private static string status = "Wyłączone";
+        private static string status = Loc.T("Wyłączone");
 
         /// <summary>
         /// Text describing what the runner does now.
@@ -84,7 +85,7 @@ namespace AdsbCarMap.Services
 
                 if (!wanted)
                 {
-                    StopLocked(store.IsBackgroundEnabled ? "Czeka na włączony alert" : "Wyłączone");
+                    StopLocked(store.IsBackgroundEnabled ? Loc.T("Czeka na włączony alert") : Loc.T("Wyłączone"));
 
                     return;
                 }
@@ -96,7 +97,7 @@ namespace AdsbCarMap.Services
 
                 if (!LocationTracker.HasPermission())
                 {
-                    status = "Brak zgody na lokalizację";
+                    status = Loc.T("Brak zgody na lokalizację");
 
                     return;
                 }
@@ -113,7 +114,7 @@ namespace AdsbCarMap.Services
                 tracker = newTracker;
                 cancellation = new CancellationTokenSource();
                 AlertMonitor.BackgroundActive = true;
-                status = "Uruchamianie";
+                status = Loc.T("Uruchamianie");
 
                 CancellationToken token = cancellation.Token;
 
@@ -156,13 +157,13 @@ namespace AdsbCarMap.Services
                 }
                 catch (RateLimitedException exception)
                 {
-                    SetStatus("Wstrzymane przez źródło danych (limit zapytań)", token);
+                    SetStatus(Loc.T("Wstrzymane przez źródło danych (limit zapytań)"), token);
                     delay = exception.RetryAfter > delay ? exception.RetryAfter : delay;
                 }
                 catch (Exception exception)
                 {
                     DevLogger.Warn(LogTag, "Sprawdzenie alertów w tle nie powiodło się", exception);
-                    SetStatus("Błąd pobierania, ponowna próba za chwilę", token);
+                    SetStatus(Loc.T("Błąd pobierania, ponowna próba za chwilę"), token);
                 }
 
                 try
@@ -196,7 +197,7 @@ namespace AdsbCarMap.Services
 
             if (circles.Count == 0)
             {
-                SetStatus(rules.Count == 0 ? "Czeka na włączony alert" : "Czeka na pozycję GPS lub lotnisko", token);
+                SetStatus(rules.Count == 0 ? Loc.T("Czeka na włączony alert") : Loc.T("Czeka na pozycję GPS lub lotnisko"), token);
 
                 return;
             }
@@ -218,7 +219,7 @@ namespace AdsbCarMap.Services
             token.ThrowIfCancellationRequested();
             RequestRoutes(rules, all, myPosition);
             AlertMonitor.ProcessBackground(all, rules);
-            SetStatus("Działa, ostatnie sprawdzenie " + DateTime.Now.ToString("HH:mm:ss") + ", co " + (int)AppSettings.AlertInterval.TotalSeconds + " s", token);
+            SetStatus(Loc.T("Działa, ostatnie sprawdzenie ") + DateTime.Now.ToString("HH:mm:ss") + ", co " + (int)AppSettings.AlertInterval.TotalSeconds + " s", token);
         }
 
         /// <summary>

@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.DataSources.Models;
 
 
@@ -157,18 +158,18 @@ namespace AdsbCarMap.Data
         {
             return kind switch
             {
-                AircraftKind.Airliner => "samolot pasażerski",
-                AircraftKind.Heavy => "samolot szerokokadłubowy",
-                AircraftKind.SmallJet => "mały odrzutowiec",
-                AircraftKind.Turboprop => "samolot turbośmigłowy",
-                AircraftKind.LightPlane => "samolot lekki",
-                AircraftKind.Helicopter => "śmigłowiec",
-                AircraftKind.Fighter => "samolot bojowy",
-                AircraftKind.MilitaryTransport => "wojskowy transportowy",
-                AircraftKind.Glider => "szybowiec",
-                AircraftKind.Balloon => "balon",
-                AircraftKind.Drone => "dron",
-                AircraftKind.Ground => "obiekt naziemny",
+                AircraftKind.Airliner => Loc.T("samolot pasażerski"),
+                AircraftKind.Heavy => Loc.T("samolot szerokokadłubowy"),
+                AircraftKind.SmallJet => Loc.T("mały odrzutowiec"),
+                AircraftKind.Turboprop => Loc.T("samolot turbośmigłowy"),
+                AircraftKind.LightPlane => Loc.T("samolot lekki"),
+                AircraftKind.Helicopter => Loc.T("śmigłowiec"),
+                AircraftKind.Fighter => Loc.T("samolot bojowy"),
+                AircraftKind.MilitaryTransport => Loc.T("wojskowy transportowy"),
+                AircraftKind.Glider => Loc.T("szybowiec"),
+                AircraftKind.Balloon => Loc.T("balon"),
+                AircraftKind.Drone => Loc.T("dron"),
+                AircraftKind.Ground => Loc.T("obiekt naziemny"),
                 _ => string.Empty,
             };
         }

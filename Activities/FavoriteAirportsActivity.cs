@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Services;
@@ -43,6 +44,7 @@ namespace AdsbCarMap.Activities
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            Title = Loc.T("Ulubione lotniska");
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
             SetContentView(BuildContent());
@@ -104,7 +106,7 @@ namespace AdsbCarMap.Activities
             root.AddView(header, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent));
 
             searchInput = new EditText(this);
-            searchInput.Hint = "Dodaj lotnisko: kod, nazwa lub miasto";
+            searchInput.Hint = Loc.T("Dodaj lotnisko: kod, nazwa lub miasto");
             searchInput.SetSingleLine(true);
             searchInput.TextChanged += (sender, args) => Render();
             header.AddView(searchInput);
@@ -148,7 +150,7 @@ namespace AdsbCarMap.Activities
 
             if (!AppServices.Airports.IsLoaded)
             {
-                hintText.Text = "Wczytywanie bazy lotnisk…";
+                hintText.Text = Loc.T("Wczytywanie bazy lotnisk…");
 
                 return;
             }
@@ -165,8 +167,8 @@ namespace AdsbCarMap.Activities
             IReadOnlyList<string> codes = AppServices.Favorites.Codes;
 
             hintText.Text = codes.Count == 0
-                ? "Brak ulubionych. Wpisz kod lub nazwę, aby dodać lotnisko, albo dotknij gwiazdki na karcie lotniska na mapie."
-                : "Ulubione są zawsze widoczne na mapie (od zoomu 5), niezależnie od wybranych rodzajów lotnisk. Kolejność wpływa na listę tutaj i w wyszukiwarce.";
+                ? Loc.T("Brak ulubionych. Wpisz kod lub nazwę, aby dodać lotnisko, albo dotknij gwiazdki na karcie lotniska na mapie.")
+                : Loc.T("Ulubione są zawsze widoczne na mapie (od zoomu 5), niezależnie od wybranych rodzajów lotnisk. Kolejność wpływa na listę tutaj i w wyszukiwarce.");
 
             for (int index = 0; index < codes.Count; index++)
             {
@@ -186,7 +188,7 @@ namespace AdsbCarMap.Activities
                 .ToList();
             List<(Airport Airport, int Quality)> results = AppServices.Airports.Search(terms, MaxSearchResults, true, airport => AppServices.Favorites.Contains(airport.Icao));
 
-            hintText!.Text = results.Count == 0 ? "Brak pasujących lotnisk." : "Dotknij „＋”, aby dodać lotnisko do ulubionych, albo wiersza, aby zobaczyć jego dane.";
+            hintText!.Text = results.Count == 0 ? Loc.T("Brak pasujących lotnisk.") : Loc.T("Dotknij „＋”, aby dodać lotnisko do ulubionych, albo wiersza, aby zobaczyć jego dane.");
 
             for (int index = 0; index < results.Count; index++)
             {
@@ -211,7 +213,7 @@ namespace AdsbCarMap.Activities
             row.SetPadding(Dp(12), Dp(6), Dp(4), Dp(6));
             row.SetBackgroundColor(index % 2 == 0 ? Color.Argb(28, 255, 255, 255) : Color.Transparent);
 
-            LinearLayout texts = CreateTexts(airport != null ? AirportTitle(airport) : icao, airport != null ? AircraftSearch.DescribeAirport(airport) : "brak w bazie danych, można usunąć");
+            LinearLayout texts = CreateTexts(airport != null ? AirportTitle(airport) : icao, airport != null ? AircraftSearch.DescribeAirport(airport) : Loc.T("brak w bazie danych, można usunąć"));
             texts.Clickable = airport != null;
 
             if (airport != null)
@@ -220,9 +222,9 @@ namespace AdsbCarMap.Activities
             }
 
             row.AddView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
-            row.AddView(CreateButton("▲", "Przesuń wyżej", index > 0, () => AppServices.Favorites.Move(icao, -1)));
-            row.AddView(CreateButton("▼", "Przesuń niżej", index < count - 1, () => AppServices.Favorites.Move(icao, 1)));
-            row.AddView(CreateButton("✕", "Usuń z ulubionych", true, () => AppServices.Favorites.Remove(icao)));
+            row.AddView(CreateButton("▲", Loc.T("Przesuń wyżej"), index > 0, () => AppServices.Favorites.Move(icao, -1)));
+            row.AddView(CreateButton("▼", Loc.T("Przesuń niżej"), index < count - 1, () => AppServices.Favorites.Move(icao, 1)));
+            row.AddView(CreateButton("✕", Loc.T("Usuń z ulubionych"), true, () => AppServices.Favorites.Remove(icao)));
 
             return row;
         }
@@ -249,8 +251,8 @@ namespace AdsbCarMap.Activities
             row.AddView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
             row.AddView(isFavorite
-                ? CreateButton("★", "Usuń z ulubionych", true, () => AppServices.Favorites.Remove(airport.Icao))
-                : CreateButton("＋", "Dodaj do ulubionych", true, () => AppServices.Favorites.Add(airport.Icao)));
+                ? CreateButton("★", Loc.T("Usuń z ulubionych"), true, () => AppServices.Favorites.Remove(airport.Icao))
+                : CreateButton("＋", Loc.T("Dodaj do ulubionych"), true, () => AppServices.Favorites.Add(airport.Icao)));
 
             return row;
         }
@@ -345,13 +347,13 @@ namespace AdsbCarMap.Activities
             AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
             builder.SetTitle(AirportCardText.BuildTitle(airport));
             builder.SetMessage(string.Join("\n", lines));
-            builder.SetPositiveButton("Pokaż na mapie", (sender, args) =>
+            builder.SetPositiveButton(Loc.T("Pokaż na mapie"), (sender, args) =>
             {
                 LiveTraffic.RequestAirportFocus(icao);
                 Finish();
             });
-            builder.SetNeutralButton(isFavorite ? "Usuń z ulubionych" : "Dodaj do ulubionych", (sender, args) => AppServices.Favorites.Toggle(icao));
-            builder.SetNegativeButton("Zamknij", (sender, args) => { });
+            builder.SetNeutralButton(isFavorite ? Loc.T("Usuń z ulubionych") : Loc.T("Dodaj do ulubionych"), (sender, args) => AppServices.Favorites.Toggle(icao));
+            builder.SetNegativeButton(Loc.T("Zamknij"), (sender, args) => { });
             builder.Show();
         }
 

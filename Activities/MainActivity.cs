@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.DataSources.Models;
 using System.Globalization;
 using AdsbCarMap.Data;
@@ -164,12 +165,18 @@ namespace AdsbCarMap.Activities
         private const int MinimumCounterCount = 2;
 
         /// <summary>
+        /// Language the screen was built with; the screen is recreated when the setting changes.
+        /// </summary>
+        private AppLanguage shownLanguage;
+
+        /// <summary>
         /// Builds the screen with the map and buttons, and asks for the location and notification permissions if they are missing.
         /// </summary>
         /// <param name="savedInstanceState">Saved activity state.</param>
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            shownLanguage = Loc.Language;
             DevLogger.InstallGlobalHandlers();
             Log.Info(LogTag, "MainActivity.OnCreate");
             AlertBackgroundRunner.Initialize();
@@ -241,6 +248,13 @@ namespace AdsbCarMap.Activities
         protected override void OnResume()
         {
             base.OnResume();
+
+            if (shownLanguage != Loc.Language)
+            {
+                Recreate();
+
+                return;
+            }
 
             controller.SurfaceBroken -= OnSurfaceBroken;
             controller.SurfaceBroken += OnSurfaceBroken;
@@ -413,17 +427,17 @@ namespace AdsbCarMap.Activities
             mapView = new PhoneMapView(this, controller);
             root.AddView(mapView);
 
-            ImageButton menuButton = CreateRoundButton(Resource.Drawable.ic_menu, "Menu");
+            ImageButton menuButton = CreateRoundButton(Resource.Drawable.ic_menu, Loc.T("Menu"));
             menuButton.Click += (sender, args) => ShowMenu(menuButton);
 
             FrameLayout.LayoutParams menuParams = new FrameLayout.LayoutParams(Dp(48), Dp(48), GravityFlags.Top | GravityFlags.End);
             menuParams.SetMargins(Dp(12), Dp(12), Dp(12), Dp(12));
             root.AddView(menuButton, menuParams);
 
-            isolateButton = CreateTextButton("I", "Izoluj zaznaczone samoloty");
+            isolateButton = CreateTextButton("I", Loc.T("Izoluj zaznaczone samoloty"));
             isolateButton.Click += (sender, args) => OnIsolateClicked();
 
-            multiSelectButton = CreateTextButton("M", "Zaznaczanie wielu samolotów");
+            multiSelectButton = CreateTextButton("M", Loc.T("Zaznaczanie wielu samolotów"));
             multiSelectButton.Click += (sender, args) => OnMultiSelectClicked();
 
             bool landscape = Resources?.Configuration?.Orientation == Android.Content.Res.Orientation.Landscape;
@@ -431,13 +445,13 @@ namespace AdsbCarMap.Activities
             LinearLayout modeColumn = new LinearLayout(this);
             modeColumn.Orientation = landscape ? Orientation.Horizontal : Orientation.Vertical;
 
-            labelsButton = CreateRoundButton(Resource.Drawable.ic_labels, "Pokaż lub ukryj etykiety samolotów");
+            labelsButton = CreateRoundButton(Resource.Drawable.ic_labels, Loc.T("Pokaż lub ukryj etykiety samolotów"));
             labelsButton.Click += (sender, args) => OnLabelsClicked();
 
-            militaryButton = CreateRoundButton(Resource.Drawable.ic_fighter, "Tylko samoloty wojskowe");
+            militaryButton = CreateRoundButton(Resource.Drawable.ic_fighter, Loc.T("Tylko samoloty wojskowe"));
             militaryButton.Click += (sender, args) => OnMilitaryClicked();
 
-            filtersButton = CreateRoundButton(Resource.Drawable.ic_filter, "Filtry samolotów");
+            filtersButton = CreateRoundButton(Resource.Drawable.ic_filter, Loc.T("Filtry samolotów"));
             filtersButton.Click += (sender, args) => StartActivity(new Intent(this, typeof(FiltersActivity)));
 
             filtersBadge = CreateBadge();
@@ -512,13 +526,13 @@ namespace AdsbCarMap.Activities
 
             UpdateModeButtons();
 
-            ImageButton zoomInButton = CreateRoundButton(Resource.Drawable.ic_zoom_in, "Przybliż");
+            ImageButton zoomInButton = CreateRoundButton(Resource.Drawable.ic_zoom_in, Loc.T("Przybliż"));
             zoomInButton.Click += (sender, args) => controller.ZoomIn();
 
-            ImageButton zoomOutButton = CreateRoundButton(Resource.Drawable.ic_zoom_out, "Oddal");
+            ImageButton zoomOutButton = CreateRoundButton(Resource.Drawable.ic_zoom_out, Loc.T("Oddal"));
             zoomOutButton.Click += (sender, args) => controller.ZoomOut();
 
-            ImageButton centerButton = CreateRoundButton(Resource.Drawable.ic_my_location, "Centruj na mojej pozycji");
+            ImageButton centerButton = CreateRoundButton(Resource.Drawable.ic_my_location, Loc.T("Centruj na mojej pozycji"));
             centerButton.Click += (sender, args) => controller.FollowUser();
 
             LinearLayout buttonColumn = new LinearLayout(this);
@@ -609,7 +623,7 @@ namespace AdsbCarMap.Activities
         {
             if (!controller.TryToggleIsolation(out bool isolated))
             {
-                Toast.MakeText(this, "Najpierw zaznacz samolot, dotykając go na mapie", ToastLength.Short)?.Show();
+                Toast.MakeText(this, Loc.T("Najpierw zaznacz samolot, dotykając go na mapie"), ToastLength.Short)?.Show();
             }
         }
 
@@ -620,8 +634,8 @@ namespace AdsbCarMap.Activities
         {
             bool enabled = controller.ToggleMultiSelect();
             string message = enabled
-                ? "Zaznaczanie wielu samolotów: dotykaj samolotów, aby je dodać lub odjąć"
-                : "Zaznaczanie wielu samolotów wyłączone";
+                ? Loc.T("Zaznaczanie wielu samolotów: dotykaj samolotów, aby je dodać lub odjąć")
+                : Loc.T("Zaznaczanie wielu samolotów wyłączone");
 
             Toast.MakeText(this, message, ToastLength.Short)?.Show();
         }
@@ -639,7 +653,7 @@ namespace AdsbCarMap.Activities
 
             AppSettings.Save(values);
             UpdateModeButtons();
-            Toast.MakeText(this, show ? "Etykiety samolotów: widoczne" : "Etykiety samolotów: ukryte", ToastLength.Short)?.Show();
+            Toast.MakeText(this, show ? Loc.T("Etykiety samolotów: widoczne") : Loc.T("Etykiety samolotów: ukryte"), ToastLength.Short)?.Show();
         }
 
         /// <summary>
@@ -649,10 +663,10 @@ namespace AdsbCarMap.Activities
         {
             bool enabled = controller.ToggleMilitaryOnly(out int militaryCount);
             string message = !enabled
-                ? "Wszystkie samoloty"
+                ? Loc.T("Wszystkie samoloty")
                 : militaryCount > 0
-                    ? string.Format(CultureInfo.InvariantCulture, "Tylko wojskowe: {0} w zasięgu", militaryCount)
-                    : "Tylko wojskowe: żadnego w zasięgu";
+                    ? string.Format(CultureInfo.InvariantCulture, Loc.T("Tylko wojskowe: {0} w zasięgu"), militaryCount)
+                    : Loc.T("Tylko wojskowe: żadnego w zasięgu");
 
             Toast.MakeText(this, message, ToastLength.Short)?.Show();
         }
@@ -687,8 +701,8 @@ namespace AdsbCarMap.Activities
             filtersBadge.Visibility = count > 0 ? ViewStates.Visible : ViewStates.Gone;
             filtersBadge.Text = count.ToString(CultureInfo.InvariantCulture);
             filtersButton.ContentDescription = count > 0
-                ? string.Format(CultureInfo.InvariantCulture, "Filtry samolotów, włączone: {0}", count)
-                : "Filtry samolotów";
+                ? string.Format(CultureInfo.InvariantCulture, Loc.T("Filtry samolotów, włączone: {0}"), count)
+                : Loc.T("Filtry samolotów");
         }
 
         /// <summary>
@@ -714,8 +728,8 @@ namespace AdsbCarMap.Activities
 
             multiSelectButton.SetText(spannable, TextView.BufferType.Normal);
             multiSelectButton.ContentDescription = count > 0
-                ? string.Format(CultureInfo.InvariantCulture, "Zaznaczanie wielu samolotów, zaznaczono: {0}", count)
-                : "Zaznaczanie wielu samolotów";
+                ? string.Format(CultureInfo.InvariantCulture, Loc.T("Zaznaczanie wielu samolotów, zaznaczono: {0}"), count)
+                : Loc.T("Zaznaczanie wielu samolotów");
         }
 
         /// <summary>
@@ -725,16 +739,16 @@ namespace AdsbCarMap.Activities
         private void ShowMenu(View anchor)
         {
             PopupMenu popup = new PopupMenu(this, anchor);
-            popup.Menu?.Add(0, MenuSearchId, 0, "Wyszukaj");
-            popup.Menu?.Add(0, MenuFavoritesId, 1, "Ulubione lotniska");
-            popup.Menu?.Add(0, MenuFiltersId, 2, "Filtry samolotów");
-            popup.Menu?.Add(0, MenuAlertsId, 3, "Alerty");
-            popup.Menu?.Add(0, MenuSettingsId, 4, "Ustawienia");
-            popup.Menu?.Add(0, MenuAboutId, 5, "O aplikacji");
+            popup.Menu?.Add(0, MenuSearchId, 0, Loc.T("Wyszukaj"));
+            popup.Menu?.Add(0, MenuFavoritesId, 1, Loc.T("Ulubione lotniska"));
+            popup.Menu?.Add(0, MenuFiltersId, 2, Loc.T("Filtry samolotów"));
+            popup.Menu?.Add(0, MenuAlertsId, 3, Loc.T("Alerty"));
+            popup.Menu?.Add(0, MenuSettingsId, 4, Loc.T("Ustawienia"));
+            popup.Menu?.Add(0, MenuAboutId, 5, Loc.T("O aplikacji"));
 
             if (AppSettings.ShowDevLog)
             {
-                popup.Menu?.Add(0, MenuDevLogId, 6, "Dev log");
+                popup.Menu?.Add(0, MenuDevLogId, 6, Loc.T("Dev log"));
             }
 
             popup.MenuItemClick += (sender, args) =>

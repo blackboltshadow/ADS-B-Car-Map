@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Settings;
 using AdsbCarMap.Services;
@@ -34,6 +35,7 @@ namespace AdsbCarMap.Activities
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            Title = Loc.T("Filtry samolotów");
 
             ActionBar?.SetDisplayHomeAsUpEnabled(true);
             SetContentView(BuildContent());
@@ -93,7 +95,7 @@ namespace AdsbCarMap.Activities
             root.AddView(header, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent));
 
             Button addButton = new Button(this);
-            addButton.Text = "＋ Nowy filtr";
+            addButton.Text = Loc.T("＋ Nowy filtr");
             addButton.Click += (sender, args) => OpenEditor(null, null);
             header.AddView(addButton);
 
@@ -101,7 +103,7 @@ namespace AdsbCarMap.Activities
             hintText.TextSize = 12f;
             hintText.SetTextColor(Color.Rgb(180, 180, 180));
             hintText.SetPadding(0, Dp(4), 0, Dp(4));
-            hintText.Text = "Włączone filtry „Ukryj” zawsze wygrywają. Gdy włączony jest co najmniej jeden filtr „Pokaż”, widać tylko samoloty pasujące do któregokolwiek z nich. Zaznaczony samolot jest zawsze widoczny. Filtry działają też w Android Auto.";
+            hintText.Text = Loc.T("Włączone filtry „Ukryj” zawsze wygrywają. Gdy włączony jest co najmniej jeden filtr „Pokaż”, widać tylko samoloty pasujące do któregokolwiek z nich. Zaznaczony samolot jest zawsze widoczny. Filtry działają też w Android Auto.");
             header.AddView(hintText);
 
             ScrollView scrollView = new ScrollView(this);
@@ -161,7 +163,7 @@ namespace AdsbCarMap.Activities
 
             Switch toggle = new Switch(this);
             toggle.Checked = AppServices.Filters.IsActive(filter.Id);
-            toggle.ContentDescription = "Włącz filtr " + filter.Name;
+            toggle.ContentDescription = Loc.T("Włącz filtr ") + filter.Name;
             toggle.CheckedChange += (sender, args) => AppServices.Filters.SetActive(filter.Id, args.IsChecked);
             row.AddView(toggle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
 
@@ -170,7 +172,7 @@ namespace AdsbCarMap.Activities
             texts.SetPadding(Dp(12), 0, Dp(4), 0);
 
             TextView title = new TextView(this);
-            title.Text = builtIn ? filter.Name + " (wbudowany)" : filter.Name;
+            title.Text = builtIn ? filter.Name + Loc.T(" (wbudowany)") : filter.Name;
             title.TextSize = 17f;
             title.SetTextColor(Color.White);
             title.SetTypeface(null, TypefaceStyle.Bold);
@@ -188,12 +190,12 @@ namespace AdsbCarMap.Activities
 
             if (builtIn)
             {
-                row.AddView(CreateIconButton(Resource.Drawable.ic_visibility, "Pokaż filtr (tylko do odczytu)", () => OpenEditor(null, filter.Id)));
+                row.AddView(CreateIconButton(Resource.Drawable.ic_visibility, Loc.T("Pokaż filtr (tylko do odczytu)"), () => OpenEditor(null, filter.Id)));
             }
             else
             {
-                row.AddView(CreateIconButton(Resource.Drawable.ic_edit, "Edytuj filtr", () => OpenEditor(filter.Id, null)));
-                row.AddView(CreateIconButton(Resource.Drawable.ic_delete, "Usuń filtr", () => ConfirmRemove(filter)));
+                row.AddView(CreateIconButton(Resource.Drawable.ic_edit, Loc.T("Edytuj filtr"), () => OpenEditor(filter.Id, null)));
+                row.AddView(CreateIconButton(Resource.Drawable.ic_delete, Loc.T("Usuń filtr"), () => ConfirmRemove(filter)));
             }
 
             return row;
@@ -228,10 +230,10 @@ namespace AdsbCarMap.Activities
         private void ConfirmRemove(AircraftFilter filter)
         {
             AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
-            builder.SetTitle("Usunąć filtr?");
+            builder.SetTitle(Loc.T("Usunąć filtr?"));
             builder.SetMessage(filter.Name);
-            builder.SetPositiveButton("Usuń", (sender, args) => AppServices.Filters.Remove(filter.Id));
-            builder.SetNegativeButton("Anuluj", (sender, args) => { });
+            builder.SetPositiveButton(Loc.T("Usuń"), (sender, args) => AppServices.Filters.Remove(filter.Id));
+            builder.SetNegativeButton(Loc.T("Anuluj"), (sender, args) => { });
             builder.Show();
         }
 

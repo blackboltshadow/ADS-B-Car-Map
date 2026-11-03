@@ -1,3 +1,4 @@
+using AdsbCarMap.Localization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Settings;
@@ -119,18 +120,18 @@ namespace AdsbCarMap.Activities
                 }
 
                 namePaint.Color = enabled ? Color.White : Color.Argb(120, 170, 170, 170);
-                canvas.DrawText(sample.Name, x, centerY - radius - 5f * density, namePaint);
+                canvas.DrawText(Loc.T(sample.Name), x, centerY - radius - 5f * density, namePaint);
             }
 
             notePaint.TextSize = Dp(10);
             canvas.DrawText(
                 onlyFavorites
-                    ? "Na mapie są tylko ulubione lotniska"
+                    ? Loc.T("Na mapie są tylko ulubione lotniska")
                     : string.Format(
                         System.Globalization.CultureInfo.InvariantCulture,
-                        "Lotniska widoczne od zoomu {0:0.#}{1}",
+                        Loc.T("Lotniska widoczne od zoomu {0:0.#}{1}"),
                         AirportLayer.GetFromZoom(),
-                        AppSettings.AirportToZoom < AppSettings.MaxZoom ? " do zoomu " + AppSettings.AirportToZoom.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) : " bez górnego limitu"),
+                        AppSettings.AirportToZoom < AppSettings.MaxZoom ? Loc.T(" do zoomu ") + AppSettings.AirportToZoom.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) : Loc.T(" bez górnego limitu")),
                 Width / 2f,
                 Height - Dp(9),
                 notePaint);
