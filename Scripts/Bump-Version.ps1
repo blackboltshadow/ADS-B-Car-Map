@@ -22,7 +22,7 @@ if ($Minor -eq $Patch) {
     throw "Choose exactly one of -Minor or -Patch."
 }
 
-$versionFile = Join-Path (Split-Path $PSScriptRoot) "Version.txt"
+$versionFile = Join-Path (Split-Path $PSScriptRoot) "Build/Version.txt"
 
 if (-not (Test-Path $versionFile)) {
     throw "Version file not found: $versionFile"

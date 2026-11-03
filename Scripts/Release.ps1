@@ -46,14 +46,14 @@ if (-not $SkipAirportData -and (Test-Path (Join-Path $airportDataDirectory "airp
 }
 
 if (-not $NoTag) {
-    $dirty = & $gitPath -C (Split-Path $projectPath) status --porcelain | Where-Object { $_ -notmatch '^\s*M\s+(BuildNumber\.txt|release-history\.csv)$' }
+    $dirty = & $gitPath -C (Split-Path $projectPath) status --porcelain | Where-Object { $_ -notmatch '^\s*M\s+Build/(BuildNumber\.txt|release-history\.csv)$' }
 
     if ($dirty -and -not $Force) {
         Write-Host ($dirty -join "`n")
-        throw "Working tree has uncommitted changes (other than BuildNumber.txt and release-history.csv). Commit them first or use -Force."
+        throw "Working tree has uncommitted changes (other than Build/BuildNumber.txt and Build/release-history.csv). Commit them first or use -Force."
     }
 
-    $version = ([IO.File]::ReadAllText((Join-Path (Split-Path $projectPath) "Version.txt"))).Trim()
+    $version = ([IO.File]::ReadAllText((Join-Path (Split-Path $projectPath) "Build/Version.txt"))).Trim()
     $tag = "v$version"
     & $gitPath -C (Split-Path $projectPath) rev-parse -q --verify "refs/tags/$tag" | Out-Null
 
@@ -96,7 +96,7 @@ try {
 
     if (-not $NoTag) {
         $root = Split-Path $projectPath
-        $buildNumber = ([IO.File]::ReadAllText((Join-Path $root "BuildNumber.txt"))).Trim()
+        $buildNumber = ([IO.File]::ReadAllText((Join-Path $root "Build/BuildNumber.txt"))).Trim()
         $commit = (& $gitPath -C $root rev-parse HEAD).Trim()
         $signedAab = $aabFiles | Where-Object { $_.Name -like "*-Signed.aab" } | Select-Object -First 1
 
@@ -127,7 +127,7 @@ Built:       $date
         & $gitPath -C $root tag -a $tag -F $messageFile
         if ($LASTEXITCODE -ne 0) { throw "Creating tag $tag failed." }
 
-        $historyFile = Join-Path $root "release-history.csv"
+        $historyFile = Join-Path $root "Build/release-history.csv"
         if (-not (Test-Path $historyFile)) {
             [IO.File]::WriteAllText($historyFile, "date,version,versionCode,commit,aab,size,sha256`r`n", (New-Object System.Text.UTF8Encoding($false)))
         }

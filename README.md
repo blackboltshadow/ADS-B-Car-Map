@@ -112,7 +112,15 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 | Wersja aplikacji | lewy dolny róg mapy |
 | Atrybucja OSM | prawy dolny róg mapy |
 
-> Zrzuty ekranu: miejsce na `docs/screenshots/`.
+### Zrzuty ekranu
+
+| Mapa | Karta lotniska | Karta samolotu |
+|---|---|---|
+| <img src="docs/screenshots/mapa.jpg" width="240"> | <img src="docs/screenshots/karta-lotniska.jpg" width="240"> | <img src="docs/screenshots/karta-samolotu.jpg" width="240"> |
+
+| Wyszukiwanie | Ustawienia | Filtry samolotów |
+|---|---|---|
+| <img src="docs/screenshots/wyszukiwanie.png" width="240"> | <img src="docs/screenshots/ustawienia.png" width="240"> | <img src="docs/screenshots/filtry.png" width="240"> |
 
 ## Przykładowe zastosowania
 
@@ -249,15 +257,15 @@ dotnet build -c Debug
 dotnet build -c Debug -t:Install "-p:AdbTarget=-s <numer-seryjny-urządzenia>"
 ```
 
-Numer seryjny urządzenia pokaże `adb devices`. Każdy build zwiększa numer kompilacji w `BuildNumber.txt`, który jest też `versionCode` aplikacji. Wersja aplikacji (`versionName`) jest w pliku `Version.txt` w postaci `0.<druga>.<trzecia>` (np. `0.3.0`) i zmienia się tylko przy przygotowaniu wydania skryptem `Scripts\Bump-Version.ps1`. W lewym dolnym rogu mapy i na ekranie ustawień widać wersję z numerem kompilacji, np. `v0.3.0 (164)`. `versionCode` nigdy nie jest zerowany, bo Google Play wymaga, żeby rósł.
+Numer seryjny urządzenia pokaże `adb devices`. Każdy build zwiększa numer kompilacji w `Build/BuildNumber.txt`, który jest też `versionCode` aplikacji. Wersja aplikacji (`versionName`) jest w pliku `Build/Version.txt` w postaci `0.<druga>.<trzecia>` (np. `0.3.0`) i zmienia się tylko przy przygotowaniu wydania skryptem `Scripts\Bump-Version.ps1`. W lewym dolnym rogu mapy i na ekranie ustawień widać wersję z numerem kompilacji, np. `v0.3.0 (164)`. `versionCode` nigdy nie jest zerowany, bo Google Play wymaga, żeby rósł.
 
 **Skrypty pomocnicze (`Scripts/`)**
 
 | Skrypt | Działanie |
 |---|---|
 | `Setup-Environment.ps1` | Przygotowuje nowy komputer: kopiuje pliki podpisu i kontaktu z wybranego katalogu (np. pendrive'a) do `%USERPROFILE%`, opcjonalnie ustawia `JAVA_HOME` i zmienne z hasłami oraz dopisuje katalog `platform-tools` (ADB) do PATH użytkownika. |
-| `Release.ps1` | Buduje podpisany plik `aab` w konfiguracji Release. Gdy istnieje `adsbcarmap-signing.props` lub zmienna `ADSBCARMAP_STOREPASS`, nie pyta o hasło, a w przeciwnym razie prosi o nie i ustawia zmienne tylko na czas działania. Po udanym buildzie tworzy adnotowany tag `v<wersja z Version.txt>` (np. `v0.3.0`), a jeśli taki tag już istnieje, przerywa z podpowiedzią, żeby najpierw podbić wersję na bieżącym commicie, z wersją, `versionCode`, commitem, nazwą, rozmiarem i SHA-256 paczki, oraz dopisuje te wartości do `release-history.csv`. Wersja musi być zatwierdzona w `Version.txt` przed buildem. Przed buildem wymaga czystego drzewa (poza `BuildNumber.txt` i `release-history.csv`). Przełączniki: `-NoTag` (sam build), `-Push` (wysyła tag na GitHuba), `-Force` (pomija sprawdzenie drzewa), `-SkipAirportData` (nie pobiera danych lotnisk). Przed buildem, gdy istnieje `Assets\Airports\airports.meta`, skrypt sam uruchamia `Update-AirportData.ps1`; jeśli dane się zmieniły, drzewo jest brudne i trzeba zatwierdzić nowe pliki przed ponownym uruchomieniem. |
-| `Bump-Version.ps1` | Zmienia wersję w `Version.txt` przed wydaniem. Wymaga dokładnie jednego przełącznika, bo to Ty decydujesz: `-Minor` (nowe wydanie, druga cyfra rośnie, trzecia wraca do 0, np. 0.3.0 → 0.4.0) albo `-Patch` (poprawka, tylko trzecia cyfra, np. 0.3.0 → 0.3.1). Po skrypcie zatwierdź `Version.txt` i uruchom `Release.ps1`. |
+| `Release.ps1` | Buduje podpisany plik `aab` w konfiguracji Release. Gdy istnieje `adsbcarmap-signing.props` lub zmienna `ADSBCARMAP_STOREPASS`, nie pyta o hasło, a w przeciwnym razie prosi o nie i ustawia zmienne tylko na czas działania. Po udanym buildzie tworzy adnotowany tag `v<wersja z Version.txt>` (np. `v0.3.0`), a jeśli taki tag już istnieje, przerywa z podpowiedzią, żeby najpierw podbić wersję na bieżącym commicie, z wersją, `versionCode`, commitem, nazwą, rozmiarem i SHA-256 paczki, oraz dopisuje te wartości do `Build/release-history.csv`. Wersja musi być zatwierdzona w `Build/Version.txt` przed buildem. Przed buildem wymaga czystego drzewa (poza `Build/BuildNumber.txt` i `Build/release-history.csv`). Przełączniki: `-NoTag` (sam build), `-Push` (wysyła tag na GitHuba), `-Force` (pomija sprawdzenie drzewa), `-SkipAirportData` (nie pobiera danych lotnisk). Przed buildem, gdy istnieje `Assets\Airports\airports.meta`, skrypt sam uruchamia `Update-AirportData.ps1`; jeśli dane się zmieniły, drzewo jest brudne i trzeba zatwierdzić nowe pliki przed ponownym uruchomieniem. |
+| `Bump-Version.ps1` | Zmienia wersję w `Build/Version.txt` przed wydaniem. Wymaga dokładnie jednego przełącznika, bo to Ty decydujesz: `-Minor` (nowe wydanie, druga cyfra rośnie, trzecia wraca do 0, np. 0.3.0 → 0.4.0) albo `-Patch` (poprawka, tylko trzecia cyfra, np. 0.3.0 → 0.3.1). Po skrypcie zatwierdź `Build/Version.txt` i uruchom `Release.ps1`. |
 | `Update-AirportData.ps1` | Pobiera najnowsze dane lotnisk i pasów startowych z OurAirports (domena publiczna) i zapisuje zwięzłe pliki `Assets\Airports\airports.tsv`, `runways.tsv` i `airports.meta` (liczby wierszy i SHA-256). Zostają duże, średnie i małe lotniska (bez śmigłowcowych, wodnosamolotowych i zamkniętych) oraz pasy ze współrzędnymi obu końców. Lotnisko wojskowe jest zgadywane po nazwie. Pliki są nadpisywane tylko wtedy, gdy dane się zmieniły. Parametry: `-OutputDirectory`, `-Url`. |
 | `Release-Notes.ps1` | Tworzy notatki wydania: podsumowanie commitów od poprzedniego tagu wydania, pogrupowane na Add, Fix, Change, Remove i Other. Wypisuje je i zapisuje w `release-notes\<wersja>.md` (katalog ignorowany przez git). Parametry: `-From`, `-To`, `-Version`, `-NoFile`. |
 | `DHU_Start.ps1` | Przekierowuje port `5277` i uruchamia Desktop Head Unit (emulator samochodu). |
@@ -356,7 +364,7 @@ Sources/      dane zewnętrzne: AdsbCarMap.DataSources (Core: interfejsy i model
 Tests/        projekty testowe (xUnit): AdsbCarMap.Tests (aplikacja) i AdsbCarMap.DataSources.Management.Tests (zarządca źródeł)
 Scripts/      skrypty PowerShell: konfiguracja komputera, build Release, pokrycie testami (Coverage.ps1), Android Auto DHU
 RELEASE_NOTES.md  historia wersji: co zostało wydane w kolejnych wydaniach
-release-history.csv  wersja, commit i SHA-256 każdej zbudowanej paczki
+Build/        Version.txt (wersja), BuildNumber.txt (numer kompilacji, versionCode), release-history.csv (wersja, commit i SHA-256 każdej zbudowanej paczki), car-app-api.level (plik dla Android Auto)
 ```
 
 Mapa na telefonie i w Android Auto używa tego samego `MapController`, więc zmiany w rysowaniu dotyczą obu. Klasa jest podzielona na pliki `MapController.*.cs` (gesty, zaznaczanie, połączenie z danymi, rysowanie, popup), a rysowanie kafelków, popupu, legendy i ikony stanu oraz cykliczne pobieranie samolotów wykonują osobne klasy (`TileLayer`, `PopupRenderer`, `AltitudeLegendRenderer`, `StatusIconRenderer`, `AircraftDataLoop`); czyste obliczenia (`MapMath`, `TrailTracker`) mają testy jednostkowe.

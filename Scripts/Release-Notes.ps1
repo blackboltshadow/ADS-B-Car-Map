@@ -47,7 +47,7 @@ if (-not $Version) {
         $Version = $tagsOnTarget[0].TrimStart("v")
     }
     else {
-        $currentVersion = ([IO.File]::ReadAllText((Join-Path $root "Version.txt"))).Trim()
+        $currentVersion = ([IO.File]::ReadAllText((Join-Path $root "Build/Version.txt"))).Trim()
         $Version = "$currentVersion (unreleased)"
     }
 }

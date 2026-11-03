@@ -86,16 +86,16 @@
 
   <Target Name="AddCarAppApiLevelFile" BeforeTargets="_BuildApkFastDev;_BuildApkEmbed">
     <ItemGroup>
-      <FilesToAddToArchive Include="$(MSBuildProjectDirectory)\Libs\car-app-api.level">
+      <FilesToAddToArchive Include="$(MSBuildProjectDirectory)\Build\car-app-api.level">
         <ArchivePath>root/car-app-api.level</ArchivePath>
       </FilesToAddToArchive>
     </ItemGroup>
   </Target>
 
   <PropertyGroup>
-    <BuildNumberFile>$(MSBuildProjectDirectory)\BuildNumber.txt</BuildNumberFile>
+    <BuildNumberFile>$(MSBuildProjectDirectory)\Build\BuildNumber.txt</BuildNumberFile>
     <ApplicationVersion Condition="Exists('$(BuildNumberFile)')">$([MSBuild]::Add($([System.IO.File]::ReadAllText('$(BuildNumberFile)').Trim()), 1))</ApplicationVersion>
-    <VersionFile>$(MSBuildProjectDirectory)\Version.txt</VersionFile>
+    <VersionFile>$(MSBuildProjectDirectory)\Build\Version.txt</VersionFile>
     <ApplicationDisplayVersion Condition="Exists('$(VersionFile)')">$([System.IO.File]::ReadAllText('$(VersionFile)').Trim())</ApplicationDisplayVersion>
   </PropertyGroup>
 
