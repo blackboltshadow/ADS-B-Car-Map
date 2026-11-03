@@ -1,9 +1,9 @@
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
+using AdsbCarMap.Settings;
 using Android.Content;
 using Android.Graphics;
 using Android.Views;
-using AndroidPath = Android.Graphics.Path;
 
 namespace AdsbCarMap.Activities
 {
@@ -23,24 +23,14 @@ namespace AdsbCarMap.Activities
         private const float CellHeightDp = 64f;
 
         /// <summary>
-        /// Shapes of the icons, the same as the ones used by the map.
+        /// Draws the icons the same way as the map does.
         /// </summary>
-        private readonly AircraftShapes shapes = new AircraftShapes();
+        private readonly AircraftIconPainter iconPainter = new AircraftIconPainter(new AircraftShapes());
 
         /// <summary>
         /// Aircraft kinds in drawing order.
         /// </summary>
         private readonly AircraftKind[] kinds = Enum.GetValues<AircraftKind>();
-
-        /// <summary>
-        /// Paint of the icon fill.
-        /// </summary>
-        private readonly Paint fillPaint = new Paint(PaintFlags.AntiAlias);
-
-        /// <summary>
-        /// Paint of the dark icon outline.
-        /// </summary>
-        private readonly Paint outlinePaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
         /// Paint of the dark background imitating the map.
@@ -63,15 +53,48 @@ namespace AdsbCarMap.Activities
         private float iconScale = 1.0f;
 
         /// <summary>
+        /// Shadow strength from 0 to 1, the same as the aircraft shadow setting.
+        /// </summary>
+        private float shadowStrength = AppSettings.AircraftShadowStrength;
+
+        /// <summary>
+        /// Cockpit accent strength from 0 to 1, the same as the cockpit accent setting.
+        /// </summary>
+        private float cockpitStrength = AppSettings.AircraftCockpitStrength;
+
+        /// <summary>
         /// Creates the preview.
         /// </summary>
         /// <param name="context">Context of the screen.</param>
         public AircraftIconsPreview(Context context) : base(context)
         {
-            outlinePaint.SetStyle(Paint.Style.Stroke);
-            outlinePaint.StrokeJoin = Paint.Join.Round;
-            outlinePaint.Color = Color.Argb(235, 0, 0, 0);
             backgroundPaint.Color = Color.Rgb(40, 44, 52);
+        }
+
+        /// <summary>
+        /// Shadow strength from 0 to 1. Changing it redraws the preview.
+        /// </summary>
+        public float ShadowStrength
+        {
+            get => shadowStrength;
+            set
+            {
+                shadowStrength = value;
+                Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// Cockpit accent strength from 0 to 1. Changing it redraws the preview.
+        /// </summary>
+        public float CockpitStrength
+        {
+            get => cockpitStrength;
+            set
+            {
+                cockpitStrength = value;
+                Invalidate();
+            }
         }
 
         /// <summary>
@@ -130,24 +153,11 @@ namespace AdsbCarMap.Activities
             for (int index = 0; index < kinds.Length; index++)
             {
                 AircraftKind kind = kinds[index];
-                (AndroidPath Path, float Scale) shape = shapes.Get(kind);
                 float centerX = (index % IconsPerRow + 0.5f) * cellWidth;
                 float centerY = Dp(4) + (index / IconsPerRow + 0.5f) * cellHeight;
+                Color color = kind == AircraftKind.Ground ? AltitudePalette.GroundColor : AltitudePalette.StopColors[index % AltitudePalette.StopColors.Length];
 
-                fillPaint.Color = kind == AircraftKind.Ground ? AltitudePalette.GroundColor : AltitudePalette.StopColors[index % AltitudePalette.StopColors.Length];
-
-                canvas.Save();
-                canvas.Translate(centerX, centerY);
-                canvas.Scale(density * shape.Scale * iconScale, density * shape.Scale * iconScale);
-
-                if (outlineWidth > 0.0f)
-                {
-                    outlinePaint.StrokeWidth = 2.0f * outlineWidth / (shape.Scale * iconScale);
-                    canvas.DrawPath(shape.Path, outlinePaint);
-                }
-
-                canvas.DrawPath(shape.Path, fillPaint);
-                canvas.Restore();
+                iconPainter.Draw(canvas, kind, centerX, centerY, 0f, color, density, iconScale, outlineWidth, shadowStrength, cockpitStrength);
             }
         }
 

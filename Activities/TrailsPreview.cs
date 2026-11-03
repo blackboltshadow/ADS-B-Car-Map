@@ -39,19 +39,9 @@ namespace AdsbCarMap.Activities
         private readonly TrailPainter trailPainter = new TrailPainter();
 
         /// <summary>
-        /// Shapes of the icons, the same as the ones used by the map.
+        /// Draws the icons the same way as the map does.
         /// </summary>
-        private readonly AircraftShapes shapes = new AircraftShapes();
-
-        /// <summary>
-        /// Paint of the icon fill.
-        /// </summary>
-        private readonly Paint fillPaint = new Paint(PaintFlags.AntiAlias);
-
-        /// <summary>
-        /// Paint of the dark icon outline.
-        /// </summary>
-        private readonly Paint iconOutlinePaint = new Paint(PaintFlags.AntiAlias);
+        private readonly AircraftIconPainter iconPainter = new AircraftIconPainter(new AircraftShapes());
 
         /// <summary>
         /// Paint of the dark background imitating the map.
@@ -99,9 +89,6 @@ namespace AdsbCarMap.Activities
         /// <param name="context">Context of the screen.</param>
         public TrailsPreview(Context context) : base(context)
         {
-            iconOutlinePaint.SetStyle(Paint.Style.Stroke);
-            iconOutlinePaint.StrokeJoin = Paint.Join.Round;
-            iconOutlinePaint.Color = Color.Argb(235, 0, 0, 0);
             backgroundPaint.Color = Color.Rgb(40, 44, 52);
             textPaint.Color = Color.Rgb(170, 170, 170);
         }
@@ -193,25 +180,7 @@ namespace AdsbCarMap.Activities
         /// <param name="density">Screen density factor.</param>
         private void DrawIcon(Canvas canvas, AircraftKind kind, float x, float y, float rotation, Color color, float density)
         {
-            (AndroidPath Path, float Scale) shape = shapes.Get(kind);
-            float iconScale = AppSettings.IconScale;
-            float outlineWidth = AppSettings.AircraftOutlineWidth;
-
-            fillPaint.Color = color;
-
-            canvas.Save();
-            canvas.Translate(x, y);
-            canvas.Rotate(rotation);
-            canvas.Scale(density * shape.Scale * iconScale, density * shape.Scale * iconScale);
-
-            if (outlineWidth > 0.0f)
-            {
-                iconOutlinePaint.StrokeWidth = 2.0f * outlineWidth / (shape.Scale * iconScale);
-                canvas.DrawPath(shape.Path, iconOutlinePaint);
-            }
-
-            canvas.DrawPath(shape.Path, fillPaint);
-            canvas.Restore();
+            iconPainter.Draw(canvas, kind, x, y, rotation, color, density, AppSettings.IconScale, AppSettings.AircraftOutlineWidth, AppSettings.AircraftShadowStrength, AppSettings.AircraftCockpitStrength);
         }
 
         /// <summary>

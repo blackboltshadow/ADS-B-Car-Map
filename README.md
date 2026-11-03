@@ -2,7 +2,7 @@
 
 Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietrzu na żywo (dane ADS-B). Działa na telefonie, a także jako aplikacja nawigacyjna w Android Auto, rysowana własnym kodem na `Canvas`.
 
-> **Status: proof of concept.** Mapa na telefonie działa. Wyświetlanie w Android Auto jest wciąż w fazie uruchamiania i nie zostało potwierdzone end-to-end (patrz [Znane ograniczenia](#znane-ograniczenia)). Projekt jest przeznaczony do użytku własnego i instalacji z pliku (sideload), nie do Sklepu Play.
+> **Status: proof of concept.** Mapa działa na telefonie i w Android Auto (sprawdzone w samochodzie i w DHU na wydaniu 0.4.0, patrz [Znane ograniczenia](#znane-ograniczenia)). Projekt jest przeznaczony do użytku własnego i instalacji z pliku (sideload), nie do Sklepu Play.
 
 ## Spis treści
 
@@ -154,6 +154,8 @@ Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązuj�
 | Przyciemnienie mapy | 90 | 0–220 | krycie czarnej warstwy nad kafelkami (0 wyłącza), im więcej, tym ciemniejsza mapa |
 | Rozmiar ikon samolotów | ×1,0 | ×0,6–×2,0 | suwak co 0,1, mnoży rozmiar wszystkich ikon, kółek zaznaczenia i śledzenia oraz odsunięcie etykiety, na telefonie i w Android Auto. Grubość obwódki nie zmienia się z rozmiarem ikony. |
 | Obwódka samolotów [dp] | 1,2 | 0–6 | suwak co 0,1 dp (0 wyłącza obwódkę). Oba suwaki są w jednej ramce „Ikony samolotów” po skali kolorów wysokości, nad suwakami jest podgląd wszystkich ikon samolotów w bieżącym rozmiarze i grubości obwódki. |
+| Cień samolotów [%] | 40 | 0–100 | suwak co 5 % (0 wyłącza cień), miękki cień ikony w prawo i w dół, odsuwany proporcjonalnie do rozmiaru ikony; nie dotyczy znacznika obiektu naziemnego. |
+| Akcent kabiny [%] | 60 | 0–100 | suwak co 5 % (0 wyłącza akcent), ciemna szyba kokpitu na ikonie samolotu, śmigłowca i drona, pokazuje kierunek lotu przy małych ikonach. Balon, obiekt naziemny i strzałka nie mają kabiny. Oba suwaki są w ramce „Ikony samolotów”, podgląd ikon pokazuje je na bieżąco. |
 | Etykiety samolotów | wyłączone | przełącznik | pokazuje lub ukrywa etykiety (to samo robi przycisk na mapie) |
 | Lotniska na mapie | włączone | przełącznik | pokazuje lotniska i pasy startowe |
 | Tylko ulubione lotniska | wyłączone | przełącznik | pod głównym przełącznikiem: pokazuje na mapie wyłącznie ulubione lotniska, przy każdym zoomie. Rodzaje lotnisk, filtr małych lotnisk i zakres zoomu są wtedy wyszarzone, a podgląd pokazuje wszystkie rodzaje jako ukryte. |
@@ -284,10 +286,8 @@ Zapoznaj się z warunkami użycia tych serwisów, zanim udostępnisz własną ko
 ## Znane ograniczenia
 
 - **Android Auto:** aplikacja nie zawsze pojawia się lub działa w Android Auto. Z usługą mogą się połączyć tylko znane hosty z listy w `Resources\values\allowed_hosts.xml`: build Debug używa listy `hosts_allowlist_dev`, a Release listy `hosts_allowlist_release`. Obecnie na obu jest Android Auto z Google Play (`com.google.android.projection.gearhead`, skrót certyfikatu sprawdzony na wersji 17.9). Jeśli Twój Android Auto ma inny podpis, aplikacja się w samochodzie nie pokaże; w logu pojawi się wtedy ostrzeżenie biblioteki (tag `CarApp.Val`) z dokładną linią do dopisania, a build Debug zapisuje też w logu (tag `AdsbCarMap`), czy zainstalowany host pasuje do listy.
-- **Dev log:** funkcja jest zbudowana i przetestowana jednostkowo (logika dziennika, raportowanie zdarzeń przez źródła), ale **nie była jeszcze uruchamiana ani sprawdzana na telefonie**. Dotyczy to zwłaszcza udostępniania pliku przez systemowe okno (`FileProvider`), pozycji w menu, zapisu po awarii i zdarzeń z Android Auto, do których dochodzi tylko handler nieobsłużonych wyjątków.
-- **Zaokrąglanie współrzędnych:** ukrywa dokładny punkt tylko w zapytaniach o samoloty. Nie ukrywa adresu IP, obszaru widocznego z numerów kafelków pobieranych z serwerów mapy ani tego, o który lot lub samolot pytasz (znak wywoławczy i kod ICAO idą do serwisów tras i danych). Większa siatka oznacza większą odpowiedź serwera, a przy dużej siatce i dużym oddaleniu promień może dojść do limitu 250 mil morskich, wtedy przy brzegu ekranu mogą brakować samolotów. Przy szerokościach powyżej około 85° zapas promienia nie jest gwarantowany. Zaokrąglanie nie było jeszcze sprawdzane na telefonie.
-- **Limity API:** zbyt częste zapytania kończą się odpowiedzią 429. Aplikacja wtedy wstrzymuje zapytania z wydłużanym odstępem (5, 10, 20, 40, 60 s, albo według `Retry-After`).
-- **Typ samolotu:** pokazywany jest kod ICAO (np. `A21N`), bez pełnej nazwy. Ikona jest dobierana heurystycznie, więc rzadkie typy mogą dostać ogólną ikonę. Znacznik „wojskowy” w bazie bywa niedokładny.
+- **Zaokrąglanie współrzędnych:** ukrywa dokładny punkt tylko w zapytaniach o samoloty. Nie ukrywa adresu IP, obszaru widocznego z numerów kafelków pobieranych z serwerów mapy ani tego, o który lot lub samolot pytasz (znak wywoławczy i kod ICAO idą do serwisów tras i danych). Większa siatka oznacza większą odpowiedź serwera, a przy dużej siatce i dużym oddaleniu promień może dojść do limitu 250 mil morskich, wtedy przy brzegu ekranu mogą brakować samolotów. Przy szerokościach powyżej około 85° zapas promienia nie jest gwarantowany.- **Limity API:** zbyt częste zapytania kończą się odpowiedzią 429. Aplikacja wtedy wstrzymuje zapytania z wydłużanym odstępem (5, 10, 20, 40, 60 s, albo według `Retry-After`).
+- **Typ samolotu:** na liście i w wyszukiwarce pokazywany jest kod ICAO (np. `A21N`); pełną nazwę, producenta i właściciela ma tylko karta zaznaczonego samolotu. Ikona jest dobierana heurystycznie, więc rzadkie typy mogą dostać ogólną ikonę. Znacznik „wojskowy” w bazie bywa niedokładny.
 - **Dane ADS-B:** nie obejmują wszystkich samolotów (część wojskowych, część nieużywających transpondera lub zakłócona). Opóźnienia i błędy pozycji są możliwe.
 - **Cache kafelków:** kafelki na dysku leżą w katalogu cache aplikacji, który Android może opróżnić przy braku miejsca. Starsze kafelki są usuwane według czasu zapisu, a nie ostatniego użycia. Aplikacja nie pobiera kafelków na zapas dla całych obszarów (zakazuje tego polityka OpenStreetMap).
 - **Minimalna wersja Androida:** 7.0 (API 24). Aplikacja była sprawdzana tylko na jednym telefonie z nowym Androidem.
@@ -299,6 +299,14 @@ Projekt `Tests\AdsbCarMap.Tests\AdsbCarMap.Tests.csproj` (xUnit, net10.0) linkuj
 ```powershell
 dotnet test Tests\AdsbCarMap.Tests\AdsbCarMap.Tests.csproj
 ```
+
+Pokrycie testami liczy się z plikiem `coverage.runsettings` (ustawia `IncludeTestAssembly=true`, bez czego coverlet pomija zlinkowany kod, i wyklucza pliki testów):
+
+```powershell
+dotnet test Tests\AdsbCarMap.Tests\AdsbCarMap.Tests.csproj --settings coverage.runsettings --collect:"XPlat Code Coverage"
+```
+
+Workflow GitHub Actions `.github/workflows/tests.yml` uruchamia wszystkie projekty `*.Tests.csproj` przy każdym pushu na `main` i w pull requestach, zapisuje raporty pokrycia jako artefakt i nie buduje aplikacji ani nie podpisuje paczki (klucz jest poza repozytorium).
 
 Testy obejmują odległość i kierunek, ekstrapolację pozycji samolotu i promień pobierania (`MapMath`), historię śladów (`TrailTracker`), projekcję Web Mercator i dobór kafelków, klasyfikację rodzajów samolotów, wspólny stan zaznaczenia telefonu i samochodu oraz definicje ustawień z historią zmian. Kod zależny od Androida jest rozdzielony na pliki `*.Android.cs` i `*.App.cs` (klasy `partial`), a część czysta dostaje stan z zewnątrz: `AirportDatabase.LoadFrom` przyjmuje linie plików, a `AircraftSearch` odczyt tras, ulubione i formatowanie wysokości jako parametry. Jednostka wysokości jest parametrem metod formatujących (`AltitudeFormatter`, teksty kart), a obliczenia koloru po wysokości są w `AltitudeBlend`, bez `Android.Graphics.Color`. `RouteCache` nadal wymaga wydzielenia logowania Androida. Nowa logika niezależna od Androida powinna dostać test, a jej plik trzeba dopisać jako `Compile Include` w pliku csproj testów.
 
@@ -328,7 +336,7 @@ dotnet test Tests\AdsbCarMap.DataSources.Management.Tests\AdsbCarMap.DataSources
 Activities/   ekrany telefonu: mapa (MainActivity), wyszukiwarka, ustawienia
 Auto/         część Android Auto: usługa Car App, ekran mapy, ekran wyszukiwania
 Data/         dane aplikacji: klasyfikacja rodzajów, filtry, wyszukiwanie, lotniska, cache tras
-Map/          renderowanie mapy: kontroler (MapController.*.cs), kafelki (TileLayer), popup, legenda i ikona stanu (PopupRenderer, AltitudeLegendRenderer, StatusIconRenderer), projekcja, kształty ikon, widok telefonu, MapMath
+Map/          renderowanie mapy: kontroler (MapController.*.cs), kafelki (TileLayer), popup, legenda i ikona stanu (PopupRenderer, AltitudeLegendRenderer, StatusIconRenderer), pętla pobierania samolotów (AircraftDataLoop), projekcja, kształty ikon, widok telefonu, MapMath
 Services/     współdzielone usługi: klienci HTTP, pozycja GPS, usługa pierwszoplanowa, ruch na żywo
 Settings/     definicje i zapis ustawień
 Resources/    ikony i zasoby graficzne
@@ -339,11 +347,10 @@ RELEASE_NOTES.md  historia wersji: co zostało wydane w kolejnych wydaniach
 release-history.csv  wersja, commit i SHA-256 każdej zbudowanej paczki
 ```
 
-Mapa na telefonie i w Android Auto używa tego samego `MapController`, więc zmiany w rysowaniu dotyczą obu. Klasa jest podzielona na pliki `MapController.*.cs` (gesty, zaznaczanie, dane, rysowanie, popup), a rysowanie kafelków, popupu, legendy i ikony stanu wykonują osobne klasy (`TileLayer`, `PopupRenderer`, `AltitudeLegendRenderer`, `StatusIconRenderer`); czyste obliczenia (`MapMath`, `TrailTracker`) mają testy jednostkowe.
+Mapa na telefonie i w Android Auto używa tego samego `MapController`, więc zmiany w rysowaniu dotyczą obu. Klasa jest podzielona na pliki `MapController.*.cs` (gesty, zaznaczanie, połączenie z danymi, rysowanie, popup), a rysowanie kafelków, popupu, legendy i ikony stanu oraz cykliczne pobieranie samolotów wykonują osobne klasy (`TileLayer`, `PopupRenderer`, `AltitudeLegendRenderer`, `StatusIconRenderer`, `AircraftDataLoop`); czyste obliczenia (`MapMath`, `TrailTracker`) mają testy jednostkowe.
 
 ## Plany
 
-- Sprawdzenie w Desktop Head Unit i na telefonie: lotniska, popupy, ulubione, synchronizacja telefonu z samochodem.
 - Filtry samolotów: wysokość w wybranej jednostce (dziś w metrach), kody IATA linii lotniczych i nazwy linii (potrzebna tabela linii), kod ICAO lotniska wylotu i przylotu obok IATA, podpowiedzi przy wpisywaniu typu i lotniska, kolejność pobierania tras od samolotów najbliższych środka mapy, zapis tekstowy filtru (np. `Boeing + LOT - WAW`).
 - Pełne nazwy typów samolotów (np. A21N jako Airbus A321neo) są już w tabeli typów; zostaje pokazanie ich na karcie samolotu i w wyszukiwarce oraz uzupełnienie tabeli o typy z listy brakujących.
 - Alerty „samolot w pobliżu” (wojskowy, wybrany typ, linia) w promieniu wybranym przez użytkownika.

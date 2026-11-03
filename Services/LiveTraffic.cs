@@ -49,11 +49,6 @@ namespace AdsbCarMap.Services
         private static DateTime pendingFocusUtc = DateTime.MinValue;
 
         /// <summary>
-        /// Moment until which the server asked not to send requests, in UTC. Shared, because both maps use the same server limit.
-        /// </summary>
-        private static DateTime rateLimitedUntilUtc = DateTime.MinValue;
-
-        /// <summary>
         /// Event raised when the user picks an aircraft to follow. The argument is the ICAO address.
         /// </summary>
         public static event Action<string>? FocusRequested;
@@ -130,37 +125,6 @@ namespace AdsbCarMap.Services
             }
 
             AppServices.MissingTypes.Record(fetched);
-        }
-
-        /// <summary>
-        /// Remembers that the server refused requests, so that no map sends a request until the given time passes.
-        /// </summary>
-        /// <param name="retryAfter">Time after which requests may be sent again.</param>
-        public static void ReportRateLimited(TimeSpan retryAfter)
-        {
-            DateTime until = DateTime.UtcNow + retryAfter;
-
-            lock (SyncRoot)
-            {
-                if (until > rateLimitedUntilUtc)
-                {
-                    rateLimitedUntilUtc = until;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Returns how long requests to the server should still be withheld.
-        /// </summary>
-        /// <returns>Remaining time, or zero when requests are allowed.</returns>
-        public static TimeSpan GetRateLimitRemaining()
-        {
-            lock (SyncRoot)
-            {
-                TimeSpan remaining = rateLimitedUntilUtc - DateTime.UtcNow;
-
-                return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
-            }
         }
 
         /// <summary>

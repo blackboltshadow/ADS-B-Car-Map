@@ -196,6 +196,16 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition AircraftOutlineWidthSetting = SettingDefinition.CreateSlider("aircraft_outline_dp", "Obwódka samolotów", 1.2, 0.0, 6.0, 0.1);
 
         /// <summary>
+        /// Strength of the soft shadow cast by the aircraft icons, in percent.
+        /// </summary>
+        public static readonly SettingDefinition AircraftShadowSetting = SettingDefinition.CreateSlider("aircraft_shadow_percent", "Cień samolotów", 40.0, 0.0, 100.0, 5.0, " %", "Siła miękkiego cienia, który ikona samolotu rzuca na mapę w prawo i w dół. Cień oddziela ikonę od tła i nadaje jej głębi. Wartość 0 wyłącza cień. Obowiązuje na telefonie i w Android Auto.");
+
+        /// <summary>
+        /// Strength of the dark cockpit accent drawn on the aircraft icons, in percent.
+        /// </summary>
+        public static readonly SettingDefinition AircraftCockpitSetting = SettingDefinition.CreateSlider("aircraft_cockpit_percent", "Akcent kabiny", 60.0, 0.0, 100.0, 5.0, " %", "Siła ciemnego akcentu w miejscu kabiny pilotów (szyba kokpitu) na ikonie samolotu, śmigłowca i drona. Akcent pokazuje, w którą stronę leci samolot, nawet gdy ikona jest mała. Wartość 0 wyłącza akcent. Ikony bez kabiny (balon, obiekt naziemny, strzałka) nie mają akcentu.");
+
+        /// <summary>
         /// Switch for the visibility of the aircraft labels.
         /// </summary>
         public static readonly SettingDefinition ShowLabelsSetting = SettingDefinition.CreateSwitch("show_labels", "Etykiety samolotów", false, "Pokazuje przy każdym samolocie na mapie etykietę: znak wywoławczy lotu i wysokość w wybranej jednostce, a pod spodem typ samolotu i trasę, jeśli są znane. Etykiety włącza się też przyciskiem na mapie (telefon i Android Auto). Zaznaczony samolot zawsze ma etykietę, nawet gdy ta opcja jest wyłączona. Wielkość liter ustawia suwak niżej.");
@@ -324,6 +334,8 @@ namespace AdsbCarMap.Settings
             AirportToZoomSetting,
             IconScaleSetting,
             AircraftOutlineWidthSetting,
+            AircraftShadowSetting,
+            AircraftCockpitSetting,
             TrailDurationSetting,
             MaxTrailPointsSetting,
             TrailWidthSetting,
@@ -671,6 +683,16 @@ namespace AdsbCarMap.Settings
         /// Width of the dark outline of the aircraft icons on each side in dp.
         /// </summary>
         public static float AircraftOutlineWidth => (float)Get(AircraftOutlineWidthSetting);
+
+        /// <summary>
+        /// Strength of the aircraft icon shadow from 0 to 1.
+        /// </summary>
+        public static float AircraftShadowStrength => (float)(Get(AircraftShadowSetting) / 100.0);
+
+        /// <summary>
+        /// Strength of the aircraft icon cockpit accent from 0 to 1.
+        /// </summary>
+        public static float AircraftCockpitStrength => (float)(Get(AircraftCockpitSetting) / 100.0);
 
         /// <summary>
         /// Whether the aircraft labels are visible on the map.

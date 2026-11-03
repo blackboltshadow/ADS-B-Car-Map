@@ -8,7 +8,7 @@ namespace AdsbCarMap.DataSources.Management.Selection
     /// <summary>
     /// Aircraft source that queries the sources in the order chosen by the user and, when a source gives no data (limit response, network or server error, invalid answer), asks the next one.
     /// </summary>
-    public sealed class FallbackAircraftSource : IAircraftSource
+    public sealed class FallbackAircraftSource : IAircraftSource, IRateLimitedSource
     {
         /// <summary>
         /// Sources in the order of registration.

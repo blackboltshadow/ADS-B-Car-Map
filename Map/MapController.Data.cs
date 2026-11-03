@@ -1,183 +1,78 @@
-using AdsbCarMap.DataSources.Models;
-using AdsbCarMap.DataSources.Interfaces;
-using AdsbCarMap.DataSources.Management.Caching;
-using AdsbCarMap.DataSources.Management.Enrichment;
-using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Globalization;
-using System.Text.Json;
 using AdsbCarMap.Data;
-using AdsbCarMap.Services;
+using AdsbCarMap.DataSources.Models;
+using AdsbCarMap.DataSources.Management.Enrichment;
 using AdsbCarMap.Settings;
-using Android.Graphics;
-using Android.Util;
-using Android.Views;
-using AndroidPath = Android.Graphics.Path;
 
 namespace AdsbCarMap.Map
 {
     /// <summary>
-    /// Aircraft download loop, trails and selected aircraft details of the map controller.
+    /// Connection of the map controller to the aircraft download loop: the query area, the stored aircraft and trails.
     /// </summary>
     public sealed partial class MapController
     {
         /// <summary>
-        /// Starts asking the other sources for the type, the registration and the category of the selected aircraft when the main source did not give them. The answer is merged into the current list of aircraft.
+        /// Returns the center and the radius in nautical miles of the area visible on the map.
         /// </summary>
-        /// <param name="fetched">Aircraft just downloaded from the main source.</param>
-        /// <param name="cancellationToken">Token that stops the request.</param>
-        private void RequestSelectedAircraftDetails(IReadOnlyList<Aircraft> fetched, CancellationToken cancellationToken)
+        /// <returns>Center and radius of the area to download.</returns>
+        private (double Latitude, double Longitude, double RadiusNauticalMiles) GetQueryArea()
         {
-            AircraftEnricher? source = enricher;
-            string? hex;
-
             lock (stateLock)
             {
-                hex = primaryHex;
+                return (centerLatitude, centerLongitude, MapMath.CalculateRadiusNauticalMiles(centerLatitude, zoom, surfaceWidth, surfaceHeight));
             }
-
-            if (source == null || hex == null)
-            {
-                return;
-            }
-
-            Aircraft? aircraft = fetched.FirstOrDefault(item => item.Hex == hex);
-
-            if (aircraft == null || !source.NeedsLookup(aircraft))
-            {
-                return;
-            }
-
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    Aircraft? filled = await source.LookupAsync(aircraft, cancellationToken);
-
-                    if (filled == null)
-                    {
-                        return;
-                    }
-
-                    lock (stateLock)
-                    {
-                        List<Aircraft> list = new List<Aircraft>(latestAircraft);
-                        int index = list.FindIndex(item => item.Hex == filled.Hex);
-
-                        if (index >= 0)
-                        {
-                            list[index] = AircraftMerger.FillMissing(list[index], new AircraftDetails(filled.Hex, filled.TypeCode, filled.Registration, filled.Category));
-                            latestAircraft = list;
-                        }
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                }
-                catch (Exception exception)
-                {
-                    DevLogger.Warn(LogTag, "Uzupełnianie danych samolotu nie powiodło się", exception);
-                }
-            }, cancellationToken);
         }
 
         /// <summary>
-        /// Loop that downloads the aircraft within the range of the visible area.
+        /// Returns the hex code of the primary selected aircraft.
         /// </summary>
-        /// <param name="cancellationToken">Token that stops the loop.</param>
-        /// <returns>Task representing the loop.</returns>
-        private async Task DataLoopAsync(CancellationToken cancellationToken)
+        /// <returns>Hex code, or null when nothing is selected.</returns>
+        private string? GetPrimaryHex()
         {
-            while (!cancellationToken.IsCancellationRequested)
+            lock (stateLock)
             {
-                TimeSpan rateLimitRemaining = LiveTraffic.GetRateLimitRemaining();
+                return primaryHex;
+            }
+        }
 
-                if (rateLimitRemaining > TimeSpan.Zero)
+        /// <summary>
+        /// Stores the downloaded aircraft and updates their trails.
+        /// </summary>
+        /// <param name="fetched">Downloaded aircraft.</param>
+        /// <param name="fetchedAtUtc">Moment of the download, in UTC.</param>
+        private void PublishAircraft(IReadOnlyList<Aircraft> fetched, DateTime fetchedAtUtc)
+        {
+            IReadOnlyDictionary<string, TrailPoint[]> previousTrails;
+
+            lock (stateLock)
+            {
+                previousTrails = latestTrails;
+            }
+
+            IReadOnlyDictionary<string, TrailPoint[]> trails = TrailTracker.Update(previousTrails, fetched, fetchedAtUtc, AppSettings.TrailDuration, AppSettings.MaxTrailPoints);
+
+            lock (stateLock)
+            {
+                latestAircraft = fetched;
+                latestAircraftTimestampUtc = fetchedAtUtc;
+                latestTrails = trails;
+            }
+        }
+
+        /// <summary>
+        /// Merges the completed data of an aircraft into the current list of aircraft.
+        /// </summary>
+        /// <param name="filled">Aircraft with the completed type, registration and category.</param>
+        private void MergeAircraftDetails(Aircraft filled)
+        {
+            lock (stateLock)
+            {
+                List<Aircraft> list = new List<Aircraft>(latestAircraft);
+                int index = list.FindIndex(item => item.Hex == filled.Hex);
+
+                if (index >= 0)
                 {
-                    try
-                    {
-                        await fetchWake.WaitAsync(rateLimitRemaining, cancellationToken);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        return;
-                    }
-
-                    continue;
-                }
-
-                double latitude;
-                double longitude;
-                double radiusNauticalMiles;
-                TimeSpan delay = AppSettings.FetchInterval;
-
-                lock (stateLock)
-                {
-                    latitude = centerLatitude;
-                    longitude = centerLongitude;
-                    radiusNauticalMiles = MapMath.CalculateRadiusNauticalMiles(centerLatitude, zoom, surfaceWidth, surfaceHeight);
-                }
-
-                Volatile.Write(ref aircraftLoading, 1);
-
-                try
-                {
-                    IReadOnlyList<Aircraft> fetched = await adsbClient.GetAircraftAsync(latitude, longitude, radiusNauticalMiles, cancellationToken);
-
-                    if (enricher != null)
-                    {
-                        fetched = enricher.Apply(fetched);
-                    }
-
-                    keeper?.Observe(fetched);
-
-                    DateTime fetchedAtUtc = DateTime.UtcNow;
-                    IReadOnlyDictionary<string, TrailPoint[]> previousTrails;
-
-                    lock (stateLock)
-                    {
-                        previousTrails = latestTrails;
-                    }
-
-                    IReadOnlyDictionary<string, TrailPoint[]> trails = TrailTracker.Update(previousTrails, fetched, fetchedAtUtc, AppSettings.TrailDuration, AppSettings.MaxTrailPoints);
-
-                    lock (stateLock)
-                    {
-                        latestAircraft = fetched;
-                        latestAircraftTimestampUtc = fetchedAtUtc;
-                        latestTrails = trails;
-                    }
-
-                    LiveTraffic.Update(fetched, fetchedAtUtc, latitude, longitude);
-                    RequestSelectedAircraftDetails(fetched, cancellationToken);
-                    Volatile.Write(ref aircraftFailed, 0);
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-                catch (RateLimitedException exception)
-                {
-                    DevLogger.Warn(LogTag, "Pobieranie samolotów wstrzymane przez źródło (limit zapytań lub odmowa dostępu)");
-                    delay = exception.RetryAfter > delay ? exception.RetryAfter : delay;
-                    LiveTraffic.ReportRateLimited(delay);
-                }
-                catch (Exception exception)
-                {
-                    DevLogger.Warn(LogTag, "Pobieranie samolotów nie powiodło się", exception);
-                    Volatile.Write(ref aircraftFailed, 1);
-                }
-
-                Volatile.Write(ref aircraftLoadEndedTicks, DateTime.UtcNow.Ticks);
-                Volatile.Write(ref aircraftLoading, 0);
-
-                try
-                {
-                    await fetchWake.WaitAsync(delay, cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
+                    list[index] = AircraftMerger.FillMissing(list[index], new AircraftDetails(filled.Hex, filled.TypeCode, filled.Registration, filled.Category));
+                    latestAircraft = list;
                 }
             }
         }

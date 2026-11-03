@@ -85,10 +85,7 @@ namespace AdsbCarMap.Map
                 followLocation = false;
             }
 
-            if (fetchWake.CurrentCount == 0)
-            {
-                fetchWake.Release();
-            }
+            dataLoop.Wake();
         }
 
         /// <summary>

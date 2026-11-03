@@ -319,7 +319,7 @@ namespace AdsbCarMap.Activities
 
             if (aircraftIconCard != null)
             {
-                aircraftIconCard.AddView(CreateResetButton("Przywróć domyślne ikony i etykiety", new List<SettingDefinition> { AppSettings.IconScaleSetting, AppSettings.AircraftOutlineWidthSetting, AppSettings.ShowLabelsSetting, AppSettings.LabelTextSizeSetting }, "Przywrócono domyślne ustawienia ikon i etykiet"));
+                aircraftIconCard.AddView(CreateResetButton("Przywróć domyślne ikony i etykiety", new List<SettingDefinition> { AppSettings.IconScaleSetting, AppSettings.AircraftOutlineWidthSetting, AppSettings.AircraftShadowSetting, AppSettings.AircraftCockpitSetting, AppSettings.ShowLabelsSetting, AppSettings.LabelTextSizeSetting }, "Przywrócono domyślne ustawienia ikon i etykiet"));
             }
 
             if (airportSettingsCard != null)
@@ -616,7 +616,7 @@ namespace AdsbCarMap.Activities
                 return GetAirportSettingsCard(container);
             }
 
-            if (definition == AppSettings.IconScaleSetting || definition == AppSettings.AircraftOutlineWidthSetting || definition == AppSettings.ShowLabelsSetting || definition == AppSettings.LabelTextSizeSetting)
+            if (definition == AppSettings.IconScaleSetting || definition == AppSettings.AircraftOutlineWidthSetting || definition == AppSettings.AircraftShadowSetting || definition == AppSettings.AircraftCockpitSetting || definition == AppSettings.ShowLabelsSetting || definition == AppSettings.LabelTextSizeSetting)
             {
                 return GetAircraftIconCard(container);
             }
@@ -1256,6 +1256,16 @@ namespace AdsbCarMap.Activities
                 if (aircraftIconsPreview != null && definition == AppSettings.AircraftOutlineWidthSetting)
                 {
                     aircraftIconsPreview.OutlineWidth = (float)value;
+                }
+
+                if (aircraftIconsPreview != null && definition == AppSettings.AircraftShadowSetting)
+                {
+                    aircraftIconsPreview.ShadowStrength = (float)(value / 100.0);
+                }
+
+                if (aircraftIconsPreview != null && definition == AppSettings.AircraftCockpitSetting)
+                {
+                    aircraftIconsPreview.CockpitStrength = (float)(value / 100.0);
                 }
 
                 preview?.SetTextSize(Android.Util.ComplexUnitType.Dip, (float)value);

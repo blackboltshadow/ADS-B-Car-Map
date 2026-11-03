@@ -292,15 +292,15 @@ namespace AdsbCarMap.Map
         /// <returns>State of the application.</returns>
         private StatusKind GetStatusKind()
         {
-            bool aircraftBusy = Volatile.Read(ref aircraftLoading) != 0
-                || DateTime.UtcNow - new DateTime(Volatile.Read(ref aircraftLoadEndedTicks), DateTimeKind.Utc) < LoadingIndicatorMinimumVisible;
+            bool aircraftBusy = dataLoop.IsLoading
+                || DateTime.UtcNow - dataLoop.LoadEndedUtc < LoadingIndicatorMinimumVisible;
 
-            if (LiveTraffic.GetRateLimitRemaining() > TimeSpan.Zero)
+            if (dataLoop.RateLimitRemaining > TimeSpan.Zero)
             {
                 return StatusKind.RateLimited;
             }
 
-            if (Volatile.Read(ref aircraftFailed) != 0)
+            if (dataLoop.HasFailed)
             {
                 return StatusKind.Offline;
             }
@@ -333,14 +333,14 @@ namespace AdsbCarMap.Map
         /// </summary>
         /// <param name="status">State of the application.</param>
         /// <returns>Text, or null when the state needs no description.</returns>
-        private static string? GetStatusText(StatusKind status)
+        private string? GetStatusText(StatusKind status)
         {
             switch (status)
             {
                 case StatusKind.Offline:
                     return "Brak połączenia z siecią – samoloty niedostępne";
                 case StatusKind.RateLimited:
-                    return "Limit zapytań – ponowienie za " + Math.Ceiling(LiveTraffic.GetRateLimitRemaining().TotalSeconds).ToString(CultureInfo.InvariantCulture) + " s";
+                    return "Limit zapytań – ponowienie za " + Math.Ceiling(dataLoop.RateLimitRemaining.TotalSeconds).ToString(CultureInfo.InvariantCulture) + " s";
                 case StatusKind.SearchingAircraft:
                     return "Wyszukiwanie samolotów…";
                 case StatusKind.FetchingDetails:
@@ -363,28 +363,11 @@ namespace AdsbCarMap.Map
         /// <param name="forceLabel">Whether the label is drawn even when the labels are hidden in the settings.</param>
         private void DrawAircraft(Canvas canvas, Aircraft item, float x, float y, float screenDensity, bool forceLabel)
         {
-            aircraftPaint.Color = GetAltitudeColor(item.OnGround, item.AltitudeFeet);
-
             AircraftKind kind = item.GetKind();
-            (AndroidPath Path, float Scale) shape = aircraftShapes.Get(kind);
             float rotation = kind == AircraftKind.Ground || kind == AircraftKind.Balloon ? 0f : (float)(item.TrackDegrees ?? 0.0);
-
-            canvas.Save();
-            canvas.Translate(x, y);
-            canvas.Rotate(rotation);
             float iconScale = AppSettings.IconScale;
-            canvas.Scale(screenDensity * shape.Scale * iconScale, screenDensity * shape.Scale * iconScale);
 
-            float outlineWidth = AppSettings.AircraftOutlineWidth;
-
-            if (outlineWidth > 0.0f)
-            {
-                aircraftOutlinePaint.StrokeWidth = 2.0f * outlineWidth / (shape.Scale * iconScale);
-                canvas.DrawPath(shape.Path, aircraftOutlinePaint);
-            }
-
-            canvas.DrawPath(shape.Path, aircraftPaint);
-            canvas.Restore();
+            aircraftIconPainter.Draw(canvas, kind, x, y, rotation, GetAltitudeColor(item.OnGround, item.AltitudeFeet), screenDensity, iconScale, AppSettings.AircraftOutlineWidth, AppSettings.AircraftShadowStrength, AppSettings.AircraftCockpitStrength);
 
             if (kind == AircraftKind.Ground || !(AppSettings.ShowLabels || forceLabel))
             {

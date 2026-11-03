@@ -29,13 +29,32 @@ Sprawdzone zapytaniem `GET https://api.airplanes.live/v2/point/52.2/21.0/50`, ta
 - Jako **zapasowe źródło** nic nie psuje (adsb.lol jest pytany pierwszy), ale też niczego nie ratuje, bo przy awarii adsb.lol drugie źródło zwróci 403.
 - Do zrobienia po stronie autora aplikacji: napisać na contact@airplanes.live z opisem projektu i linkiem do repozytorium, i zapytać o dopuszczenie ruchu aplikacji (z kontaktem w User-Agencie). Do tego czasu zostawić adsb.lol jako główne źródło (jest domyślne).
 
+## Warunki użycia (sprawdzone 2026-11-03)
+
+Sprawdzono strony dostawców (nie umowy ani korespondencję). Wynik jest jednoznaczny tylko dla adsb.fi; adsb.lol i hexdb.io nie publikują warunków użycia danych.
+
+| Serwis | Co jest opublikowane | Wniosek |
+|---|---|---|
+| adsb.lol | Repozytorium API ma licencję BSD-3-Clause, ale dotyczy **kodu**, nie danych. Strony `api.adsb.lol/docs` nie dało się odczytać (treść generowana w przeglądarce). README: „Rate limits are dynamic based on the environment load”, „If you get 4xx errors, you are doing something wrong” oraz zapowiedź: „In the future, you will require an API key which you can obtain by feeding adsb.lol”. Nie znaleziono licencji danych, zasad użytku komercyjnego ani wymogu atrybucji. | Brak podstawy do użytku komercyjnego i brak zakazu. **Ryzyko: wymóg klucza dla karmiących w przyszłości**, co dla aplikacji bez własnego odbiornika oznaczałoby utratę domyślnego źródła. Nie sprawdzono stron `/sponsor` (plany API) i `/about`. |
+| hexdb.io | Brak strony warunków, polityki prywatności i licencji (`/about`, `/terms`, `/privacy` zwracają 404). Strona główna: „Free · No API key”, bez limitów. Dane pochodzą z PlaneBase/PlanePlotter, Jima Masona, Steve'a Hibberda, ip2location i Airport-Data, a licencji tych źródeł nie sprawdzono. Kontakt: adres e-mail na stronie głównej. | Warunki nie istnieją, więc nie wiadomo, czy użytek poza własnym jest dozwolony. Licencje danych źródłowych mogą być bardziej restrykcyjne niż sam serwis. Przed dystrybucją napisać do autora. |
+| adsb.fi | README repozytorium `adsbfi/opendata`: „for personal, non-commercial use only. You may not license, sell, rent, or lease any part of the data or the service.” Wymaga atrybucji: „You must cite adsb.fi and include a link to our home page.” Limit: 1 zapytanie/s na publiczne endpointy; odpowiedzi 400, 401, 403, 404 i 429 wliczają się do limitu, a nadmiar błędnych zapytań daje tymczasową blokadę IP. Brak licencji danych (ODbL, CC). „Please contact us if you have commercial or higher request rate requirements.” | Użytek osobisty niekomercyjny, atrybucja obowiązkowa. Dla `AboutActivity` dodać nazwę i link do adsb.fi razem z dodaniem źródła. |
+| airplanes.live | Patrz niżej: użytek osobisty niekomercyjny, dostęp po uzgodnieniu e-mailowym. | Czeka na odpowiedź autora aplikacji (e-mail do contact@airplanes.live jeszcze niewysłany). |
+
+Wnioski:
+
+- Do dystrybucji komercyjnej nie nadaje się żaden z darmowych serwisów bez osobnej zgody. FlyItalyADSB (darmowy klucz, użytek komercyjny, CC BY-SA 4.0) jest jedynym źródłem z jawnie dozwolonym użytkiem komercyjnym.
+- Przy dystrybucji niekomercyjnej (np. publiczne repozytorium i sideload) obowiązuje atrybucja z adsb.fi; dla pozostałych nie ma jawnego wymogu, ale ekran „O aplikacji” już je wymienia.
+- Zapytania aplikacji idą z telefonów użytkowników, a nie z jednego serwera, więc limity (adsb.fi: 1 zapytanie/s) dotyczą każdego użytkownika osobno; tym ważniejsze jest, że `BackoffRateLimiter` nie ponawia zapytań po 4xx.
+- **Nie sprawdzono**: `adsb.lol/sponsor`, `adsb.lol/about`, strony `adsb.fi` (403 dla automatycznego pobrania), licencji źródeł danych hexdb.io, treści `api.adsb.lol/docs`. Do ręcznego przejrzenia w przeglądarce.
+- Ścieżka punktu w adsb.fi to `/v3/lat/{lat}/lon/{lon}/dist/{nm}` (do 250 NM) w bazie `https://opendata.adsb.fi/api/`; wariant `/v2/lat/.../lon/.../dist/...` jest oznaczony jako przestarzały i zwraca inny format niż pozostałe punkty v2. Przy dodawaniu źródła użyć v3 i sprawdzić format na żywym zapytaniu.
+
 ## Źródła tras lotów i danych samolotu (sprawdzone 2026-11-02 żywymi zapytaniami)
 
 | Źródło | Trasa po znaku wywoławczym | Dane samolotu po kodzie ICAO | Uwagi |
 |---|---|---|---|
 | **adsbdb.com** | tak: linia (nazwa i kody), lotniska z nazwą, miastem i współrzędnymi | tak: pełna nazwa typu, kod typu, producent, rejestracja, właściciel, zdjęcie | 404 dla nieznanych; domyślnie pierwsze |
 | **adsb.lol** `/api/0/route/{znak}` | tak: lotniska z nazwą, kodami ICAO i IATA, miastem, współrzędnymi; z linii tylko kod (np. LOT) | (przez `/v2/hex` w źródle pozycji) | zapytanie jest przekierowywane (302) do statycznego pliku danych (VRS standing data, aktualizowany co godzinę wg opisu repozytorium adsb.lol); bez klucza; 404 dla nieznanych; tylko GET |
-| **hexdb.io** | tylko para lotnisk ICAO, np. `EPWA-EGLL`; w odpowiedzi znacznik czasu z 2012 roku, więc dane mogą być stare | tak: nazwa typu, producent, rejestracja, właściciel, kod operatora; bez zdjęcia | 404 dla nieznanych; warunków użycia nie sprawdzono; aplikacja uzupełnia trasę kodami IATA, miastami i współrzędnymi z własnej bazy lotnisk |
+| **hexdb.io** | tylko para lotnisk ICAO, np. `EPWA-EGLL`; w odpowiedzi znacznik czasu z 2012 roku, więc dane mogą być stare | tak: nazwa typu, producent, rejestracja, właściciel, kod operatora; bez zdjęcia | 404 dla nieznanych; brak opublikowanych warunków użycia (patrz „Warunki użycia”); aplikacja uzupełnia trasę kodami IATA, miastami i współrzędnymi z własnej bazy lotnisk |
 | OpenSky, Aviationstack, AirLabs, FlightAware | nie | nie | odrzucone: OpenSky pyta po przedziale czasu i samolocie, nie po znaku wywoławczym (konto OAuth2, 400 do 4000 kredytów dziennie); Aviationstack ma około 100 zapytań miesięcznie i tylko HTTP; AirLabs bez potwierdzonych limitów; FlightAware płatne |
 
 Trasy są przypisane do znaku wywoławczego (dane standardowe), a nie do bieżącego przelotu, więc żadne z tych źródeł nie zastępuje danych na żywo.
@@ -97,7 +116,6 @@ Pozycje samolotów zmieniają się co kilka sekund, więc ich nie zapamiętujemy
 
 - adsb.fi (ścieżka punktu do sprawdzenia na żywym zapytaniu, limit 1 zapytanie/s).
 - Pokazanie użytkownikowi, które źródło aktualnie odpowiada (`LastUsedSourceName` jest gotowe, brakuje miejsca w UI).
-- Ikona limitu 429 nadal opiera się na `LiveTraffic.ReportRateLimited`, a nie na stanie z `IDataSource`.
 - Pokazanie użytkownikowi, które źródło tras odpowiedziało.
-- Licencje: przed udostępnieniem aplikacji poza własny użytek ponownie sprawdzić warunki airplanes.live, adsb.lol i adsb.fi; ewentualnie przejść na FlyItalyADSB lub umowę z dostawcą.
+- Licencje: warunki adsb.lol, hexdb.io i adsb.fi sprawdzone 2026-11-03 (sekcja „Warunki użycia”); zostaje airplanes.live po uzgodnieniu, ręczne przejrzenie stron niedostępnych automatycznie oraz decyzja przed udostępnieniem poza własny użytek (napisać do hexdb.io, ewentualnie przejść na FlyItalyADSB lub umowę z dostawcą).
 - Nie potwierdzono limitów zapytań airplanes.live ani adsb.lol. Strona porównawcza podaje je jako „nie podano”.

@@ -1,5 +1,6 @@
 using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.Privacy;
+using AdsbCarMap.DataSources.Management.RateLimiting;
 using AdsbCarMap.DataSources.Management.Selection;
 using AdsbCarMap.DataSources.Models;
 using Xunit;
@@ -52,6 +53,50 @@ namespace AdsbCarMap.DataSources.Management.Tests
         public void Name_IsTheNameOfTheWrappedSource()
         {
             Assert.Equal("capture", new PrivacyAircraftSource(new CapturingSource(), () => PrivacyOptions.Exact).Name);
+        }
+
+        /// <summary>
+        /// Source that tracks limits and reports a fixed state.
+        /// </summary>
+        private sealed class LimitedSource : IAircraftSource, IRateLimitedSource
+        {
+            /// <inheritdoc />
+            public string Name => "limited";
+
+            /// <inheritdoc />
+            public RateLimitStatus GetRateLimitStatus()
+            {
+                return new RateLimitStatus(DateTime.MinValue, TimeSpan.FromSeconds(30), 1);
+            }
+
+            /// <inheritdoc />
+            public Task<IReadOnlyList<Aircraft>> GetAircraftAsync(double latitude, double longitude, double radiusNauticalMiles, CancellationToken cancellationToken)
+            {
+                throw new NotSupportedException();
+            }
+        }
+
+        /// <summary>
+        /// The state of the limits comes from the wrapped source.
+        /// </summary>
+        [Fact]
+        public void GetRateLimitStatus_ComesFromTheWrappedSource()
+        {
+            PrivacyAircraftSource source = new PrivacyAircraftSource(new LimitedSource(), () => PrivacyOptions.Exact);
+
+            Assert.False(source.GetRateLimitStatus().CanQuery);
+            Assert.Equal(TimeSpan.FromSeconds(30), source.GetRateLimitStatus().RemainingBlock);
+        }
+
+        /// <summary>
+        /// A wrapped source that does not track limits is never reported as paused.
+        /// </summary>
+        [Fact]
+        public void GetRateLimitStatus_UntrackedSource_CanQuery()
+        {
+            PrivacyAircraftSource source = new PrivacyAircraftSource(new CapturingSource(), () => PrivacyOptions.Exact);
+
+            Assert.True(source.GetRateLimitStatus().CanQuery);
         }
 
         /// <summary>

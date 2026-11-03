@@ -112,19 +112,9 @@ namespace AdsbCarMap.Map
         private static readonly Color FollowedAircraftColor = Color.White;
 
         /// <summary>
-        /// ADS-B API client.
+        /// Loop that downloads the aircraft and completes the data of the selected aircraft.
         /// </summary>
-        private readonly IAircraftSource adsbClient;
-
-        /// <summary>
-        /// Completes the data of the selected aircraft from the other sources, or null when it is not used.
-        /// </summary>
-        private readonly AircraftEnricher? enricher;
-
-        /// <summary>
-        /// Keeps the memory of the flight information in line with the visible aircraft, or null when it is not used.
-        /// </summary>
-        private readonly FlightCacheKeeper? keeper;
+        private readonly AircraftDataLoop dataLoop;
 
         /// <summary>
         /// Flight route cache.
@@ -157,19 +147,9 @@ namespace AdsbCarMap.Map
         private readonly object renderLock = new object();
 
         /// <summary>
-        /// Paint used to draw the dark outline of the aircraft icons.
-        /// </summary>
-        private readonly Paint aircraftOutlinePaint = new Paint(PaintFlags.AntiAlias);
-
-        /// <summary>
         /// Paint used to draw the ring around the selected aircraft.
         /// </summary>
         private readonly Paint selectedPaint = new Paint(PaintFlags.AntiAlias);
-
-        /// <summary>
-        /// Paint used to draw the aircraft silhouettes.
-        /// </summary>
-        private readonly Paint aircraftPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
         /// Draws the aircraft trails, the same way as the trail preview on the settings screen.
@@ -204,7 +184,12 @@ namespace AdsbCarMap.Map
         /// <summary>
         /// Aircraft icon shapes by kind.
         /// </summary>
-        private readonly AircraftShapes aircraftShapes = new AircraftShapes();
+        private readonly AircraftShapes aircraftShapes;
+
+        /// <summary>
+        /// Draws the aircraft icons with the shadow, outline and cockpit accent.
+        /// </summary>
+        private readonly AircraftIconPainter aircraftIconPainter;
 
         /// <summary>
         /// Latitude of the map center.
@@ -402,26 +387,6 @@ namespace AdsbCarMap.Map
         private string? popupPrioritizedCallsign;
 
         /// <summary>
-        /// Released to start the next aircraft download before the regular interval ends.
-        /// </summary>
-        private readonly SemaphoreSlim fetchWake = new SemaphoreSlim(0, 1);
-
-        /// <summary>
-        /// Non-zero while the aircraft download is in progress.
-        /// </summary>
-        private int aircraftLoading;
-
-        /// <summary>
-        /// Moment the last aircraft download ended, in UTC ticks.
-        /// </summary>
-        private long aircraftLoadEndedTicks;
-
-        /// <summary>
-        /// Non-zero when the last aircraft download failed, for example because the network is unavailable.
-        /// </summary>
-        private int aircraftFailed;
-
-        /// <summary>
         /// Area covered by the popup in the last frame, or null when no popup was drawn. The object is replaced every frame and is not modified after publication.
         /// </summary>
         private RectF? popupBounds;
@@ -452,23 +417,19 @@ namespace AdsbCarMap.Map
         /// <param name="keeper">Marks the visible flights as seen and closes the landed ones in the memory of the flight information, or null when it is not used.</param>
         public MapController(IAircraftSource adsbClient, TileProvider tileProvider, RouteCache routeCache, SelectionState selectionState, AircraftEnricher? enricher = null, FlightCacheKeeper? keeper = null)
         {
-            this.adsbClient = adsbClient;
-            this.enricher = enricher;
-            this.keeper = keeper;
+            dataLoop = new AircraftDataLoop(adsbClient, enricher, keeper, GetQueryArea, GetPrimaryHex, PublishAircraft, MergeAircraftDetails);
             tileLayer = new TileLayer(tileProvider);
             this.routeCache = routeCache;
             this.selectionState = selectionState;
             locationTracker = new LocationTracker(SetUserLocation);
+            aircraftShapes = new AircraftShapes();
+            aircraftIconPainter = new AircraftIconPainter(aircraftShapes);
 
             followedPaint.SetStyle(Paint.Style.Stroke);
             followedPaint.Color = FollowedAircraftColor;
 
             selectedPaint.SetStyle(Paint.Style.Stroke);
             selectedPaint.Color = SelectedAircraftColor;
-
-            aircraftOutlinePaint.SetStyle(Paint.Style.Stroke);
-            aircraftOutlinePaint.StrokeJoin = Paint.Join.Round;
-            aircraftOutlinePaint.Color = Color.Argb(235, 0, 0, 0);
 
             labelPaint.Color = Color.White;
             labelPaint.SetShadowLayer(3f, 0f, 0f, Color.Black);
@@ -551,7 +512,7 @@ namespace AdsbCarMap.Map
             }
 
             _ = Task.Run(() => RenderLoopAsync(source.Token));
-            _ = Task.Run(() => DataLoopAsync(source.Token));
+            _ = Task.Run(() => dataLoop.RunAsync(source.Token));
         }
 
         /// <summary>

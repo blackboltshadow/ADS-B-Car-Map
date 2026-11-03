@@ -1,5 +1,6 @@
 using System.Globalization;
 using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Management.RateLimiting;
 using AdsbCarMap.DataSources.Management.Selection;
 using AdsbCarMap.DataSources.Models;
 
@@ -8,7 +9,7 @@ namespace AdsbCarMap.DataSources.Management.Privacy
     /// <summary>
     /// Source of the aircraft that sends the wrapped source the center of a query rounded to a grid, with the radius enlarged so that the real area stays covered. The options are read at every query, so a changed setting takes effect at once.
     /// </summary>
-    public sealed class PrivacyAircraftSource : IAircraftSource
+    public sealed class PrivacyAircraftSource : IAircraftSource, IRateLimitedSource
     {
         /// <summary>
         /// Wrapped source.
@@ -43,6 +44,15 @@ namespace AdsbCarMap.DataSources.Management.Privacy
 
         /// <inheritdoc />
         public string Name => inner.Name;
+
+        /// <summary>
+        /// Reads the state of the limits of the wrapped source.
+        /// </summary>
+        /// <returns>The state of the limits, or the state without any limit when the wrapped source does not track them.</returns>
+        public RateLimitStatus GetRateLimitStatus()
+        {
+            return inner is IRateLimitedSource limited ? limited.GetRateLimitStatus() : RateLimitStatus.None;
+        }
 
         /// <inheritdoc />
         public Task<IReadOnlyList<Aircraft>> GetAircraftAsync(double latitude, double longitude, double radiusNauticalMiles, CancellationToken cancellationToken)
