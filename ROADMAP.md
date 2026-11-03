@@ -33,6 +33,8 @@ Zasada kolejności: najpierw rzeczy, które pomagają ocenić to, co już dodano
 
 - Tłumaczenie pozostałych komentarzy na angielski (przy okazji edycji plików).
 - Zrzuty ekranu do README.
+- GitHub Actions: testy już działają (`.github/workflows/tests.yml`); zostaje build aplikacji bez podpisu (klucz jest poza repozytorium).
+- Uzupełnianie tabeli typów samolotów o typy z dziennika brakujących typów (pełne nazwy są już na karcie i w wyszukiwarce).
 
 ## P5 – pomysły
 

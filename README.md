@@ -16,7 +16,6 @@ Aplikacja na Androida, która pokazuje na mapie OpenStreetMap samoloty w powietr
 - [Prywatność](#prywatność)
 - [Znane ograniczenia](#znane-ograniczenia)
 - [Struktura projektu](#struktura-projektu)
-- [Plany](#plany)
 - [Ważna uwaga](#ważna-uwaga)
 - [Licencja](#licencja)
 
@@ -296,8 +295,9 @@ Zapoznaj się z warunkami użycia tych serwisów, zanim udostępnisz własną ko
 
 - **Android Auto:** aplikacja nie zawsze pojawia się lub działa w Android Auto. Z usługą mogą się połączyć tylko znane hosty z listy w `Resources\values\allowed_hosts.xml`: build Debug używa listy `hosts_allowlist_dev`, a Release listy `hosts_allowlist_release`. Obecnie na obu jest Android Auto z Google Play (`com.google.android.projection.gearhead`, skrót certyfikatu sprawdzony na wersji 17.9). Jeśli Twój Android Auto ma inny podpis, aplikacja się w samochodzie nie pokaże; w logu pojawi się wtedy ostrzeżenie biblioteki (tag `CarApp.Val`) z dokładną linią do dopisania, a build Debug zapisuje też w logu (tag `AdsbCarMap`), czy zainstalowany host pasuje do listy.
 - **Alerty:** bez trybu w tle sprawdzanie działa tylko, gdy aplikacja pobiera samoloty (mapa na telefonie lub w Android Auto) i obejmuje obszar aktualnie pobieranych danych, więc po przesunięciu mapy daleko od obszaru alertu nie zostanie on sprawdzony. Tryb w tle wymaga zgody na lokalizację i powiadomienia (Android 13+), zużywa baterię i dane, a po ponownym uruchomieniu telefonu albo zabiciu aplikacji przez system rusza dopiero po otwarciu aplikacji. Producenci telefonów (oszczędzanie baterii) mogą zatrzymywać usługę, wtedy trzeba wyłączyć optymalizację baterii dla aplikacji. Alerty związane z trasą (np. „do Rzeszowa”) działają dopiero po pobraniu trasy lotu, więc mogą się spóźnić. Gdy tryb w tle jest włączony, tylko on sprawdza alerty (mapa w tym nie uczestniczy), więc aktywne alerty ponad limit nie są wtedy sprawdzane wcale. Przy pierwszym pobraniu po uruchomieniu samoloty już będące w obszarze zgłaszają „pojawienie się”. Wielokąty i powiadomienia w Android Auto są planowane.
-- **Zaokrąglanie współrzędnych:** ukrywa dokładny punkt tylko w zapytaniach o samoloty. Nie ukrywa adresu IP, obszaru widocznego z numerów kafelków pobieranych z serwerów mapy ani tego, o który lot lub samolot pytasz (znak wywoławczy i kod ICAO idą do serwisów tras i danych). Większa siatka oznacza większą odpowiedź serwera, a przy dużej siatce i dużym oddaleniu promień może dojść do limitu 250 mil morskich, wtedy przy brzegu ekranu mogą brakować samolotów. Przy szerokościach powyżej około 85° zapas promienia nie jest gwarantowany.- **Limity API:** zbyt częste zapytania kończą się odpowiedzią 429. Aplikacja wtedy wstrzymuje zapytania z wydłużanym odstępem (5, 10, 20, 40, 60 s, albo według `Retry-After`).
-- **Typ samolotu:** na liście i w wyszukiwarce pokazywany jest kod ICAO (np. `A21N`); pełną nazwę, producenta i właściciela ma tylko karta zaznaczonego samolotu. Ikona jest dobierana heurystycznie, więc rzadkie typy mogą dostać ogólną ikonę. Znacznik „wojskowy” w bazie bywa niedokładny.
+- **Zaokrąglanie współrzędnych:** ukrywa dokładny punkt tylko w zapytaniach o samoloty. Nie ukrywa adresu IP, obszaru widocznego z numerów kafelków pobieranych z serwerów mapy ani tego, o który lot lub samolot pytasz (znak wywoławczy i kod ICAO idą do serwisów tras i danych). Większa siatka oznacza większą odpowiedź serwera, a przy dużej siatce i dużym oddaleniu promień może dojść do limitu 250 mil morskich, wtedy przy brzegu ekranu mogą brakować samolotów. Przy szerokościach powyżej około 85° zapas promienia nie jest gwarantowany.
+- **Limity API:** zbyt częste zapytania kończą się odpowiedzią 429. Aplikacja wtedy wstrzymuje zapytania z wydłużanym odstępem (5, 10, 20, 40, 60 s, albo według `Retry-After`).
+- **Typ samolotu:** na liście pokazywany jest kod ICAO (np. `A21N`); pełną nazwę typu pokazuje karta i wyszukiwarka (z tabeli typów, a dla zaznaczonego samolotu ze źródeł danych), a producenta i właściciela tylko karta zaznaczonego samolotu. Ikona jest dobierana heurystycznie, więc rzadkie typy mogą dostać ogólną ikonę. Znacznik „wojskowy” w bazie bywa niedokładny.
 - **Dane ADS-B:** nie obejmują wszystkich samolotów (część wojskowych, część nieużywających transpondera lub zakłócona). Opóźnienia i błędy pozycji są możliwe.
 - **Cache kafelków:** kafelki na dysku leżą w katalogu cache aplikacji, który Android może opróżnić przy braku miejsca. Starsze kafelki są usuwane według czasu zapisu, a nie ostatniego użycia. Aplikacja nie pobiera kafelków na zapas dla całych obszarów (zakazuje tego polityka OpenStreetMap).
 - **Minimalna wersja Androida:** 7.0 (API 24). Aplikacja była sprawdzana tylko na jednym telefonie z nowym Androidem.
@@ -360,14 +360,6 @@ release-history.csv  wersja, commit i SHA-256 każdej zbudowanej paczki
 ```
 
 Mapa na telefonie i w Android Auto używa tego samego `MapController`, więc zmiany w rysowaniu dotyczą obu. Klasa jest podzielona na pliki `MapController.*.cs` (gesty, zaznaczanie, połączenie z danymi, rysowanie, popup), a rysowanie kafelków, popupu, legendy i ikony stanu oraz cykliczne pobieranie samolotów wykonują osobne klasy (`TileLayer`, `PopupRenderer`, `AltitudeLegendRenderer`, `StatusIconRenderer`, `AircraftDataLoop`); czyste obliczenia (`MapMath`, `TrailTracker`) mają testy jednostkowe.
-
-## Plany
-
-- Filtry samolotów: wysokość w wybranej jednostce (dziś w metrach), kody IATA linii lotniczych i nazwy linii (potrzebna tabela linii), kod ICAO lotniska wylotu i przylotu obok IATA, podpowiedzi przy wpisywaniu typu i lotniska, kolejność pobierania tras od samolotów najbliższych środka mapy, zapis tekstowy filtru (np. `Boeing + LOT - WAW`).
-- Pełne nazwy typów samolotów (np. A21N jako Airbus A321neo) są już w tabeli typów; zostaje pokazanie ich na karcie samolotu i w wyszukiwarce oraz uzupełnienie tabeli o typy z listy brakujących.
-- Alerty: obszary rysowane na mapie (wielokąty, prostokąty), powiadomienia w Android Auto.
-- Kolejne źródła danych (adsb.fi). Własny odbiornik tar1090 nie jest planowany (patrz `DATA_SOURCES.md`).
-- GitHub Actions z buildem i testami, zrzuty ekranu w README.
 
 ## Ważna uwaga
 

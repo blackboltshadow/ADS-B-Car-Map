@@ -33,12 +33,4 @@ Wydanie 0.4.0 jest zbudowane jako podpisany AAB, a użytkownik sprawdził, że p
 - Telefon musi być odblokowany, żeby zrobić zrzut ekranu (adb exec-out screencap -p). Instalację na telefonie robimy tylko po potwierdzeniu użytkownika (nadpisuje aplikację).
 - Pliki .editorconfig wyłączają IDE0290, IDE0090, IDE0028, IDE0330, IDE0300 (styl projektu: jawne typy, pełne new, zwykłe konstruktory, zwykłe obiekty w lock).
 
-Plany na przyszłość:
-- Lotniska (zrobione w 0.3.1): warstwa OurAirports z pasami, karta i popup, wyszukiwarka, ulubione, ustawienia. Sprawdzone w DHU i na telefonie.
-- Filtry samolotów: zakres wysokości, rodzaj, linia lotnicza, ukrycie samolotów na ziemi.
-- Pełne nazwy typów samolotów (np. A21N jako Airbus A321neo): zrobione dla zaznaczonego samolotu przez adsbdb i hexdb (Aircraft.TypeName, pokazywane na karcie), zostaje ewentualnie tabela wbudowana dla niezaznaczonych samolotów i wyszukiwarki. API ADS-B nie zwraca pola desc.
-- Cache kafelków mapy na dysku, aby po uruchomieniu nie pobierać ich od nowa.
-- Źródła danych: zrobione adsb.lol, airplanes.live, wybór źródła i zapas w ustawieniach zaawansowanych; zostaje adsb.fi (bez własnego odbiornika tar1090: aplikacja ma być szeroko dostępna, tylko telefon i samochód, decyzja 2026-11-02; szczegóły w DATA_SOURCES.md); opcja zaokrąglania współrzędnych wysyłanych do API (prywatność).
-- Kolejność z 2026-11-01 (sprawdzenie 0.3.1 w DHU i na telefonie jest zrobione): (1) wydanie z poprawką wyszukiwania bez znaków diakrytycznych; (2) cache kafelków na dysku; (3) filtry samolotów; (4) zapasowe źródło danych przy 429; (5) alerty „samolot w pobliżu” (wojskowy, typ, linia, promień).
-- Prywatność i bezpieczeństwo: zaokrąglanie współrzędnych wysyłanych do API.
-- Porządki: tłumaczenie reszty komentarzy z polskiego na angielski (przy okazji edycji plików), ujednolicenie końców linii (.gitattributes: * text=auto), GitHub Actions z buildem i testami (klucz podpisu jest poza repo, więc bez podpisu), zrzuty ekranu do README, rozszerzenie testów jednostkowych (indeks lotnisk, wyszukiwanie, formatowanie tekstów kart).
+Plany na przyszłość: tylko w ROADMAP.md (README ich nie powtarza). Zrobione i usunięte z planów: lotniska, cache kafelków na dysku, pełne nazwy typów (karta i wyszukiwarka), źródła adsb.lol/airplanes.live/adsbdb/hexdb, zaokrąglanie współrzędnych, testy w GitHub Actions (.github/workflows/tests.yml).
