@@ -26,14 +26,7 @@ namespace AdsbCarMap.Map
             {
                 if (meters <= stops[index])
                 {
-                    double span = stops[index] - stops[index - 1];
-
-                    if (span <= 0.0)
-                    {
-                        return new AltitudeBlend(index, index, 0.0);
-                    }
-
-                    return new AltitudeBlend(index - 1, index, (meters - stops[index - 1]) / span);
+                    return new AltitudeBlend(index - 1, index, (meters - stops[index - 1]) / (stops[index] - stops[index - 1]));
                 }
             }
 

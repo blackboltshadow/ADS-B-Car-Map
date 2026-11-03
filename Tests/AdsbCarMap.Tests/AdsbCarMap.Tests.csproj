@@ -81,6 +81,7 @@
     <Compile Include="..\..\Data\AircraftSearch.cs" Link="Linked\AircraftSearch.cs" />
     <Compile Include="..\..\Data\SearchResult.cs" Link="Linked\SearchResult.cs" />
     <Compile Include="..\..\Data\RouteLookupState.cs" Link="Linked\RouteLookupState.cs" />
+    <Compile Include="..\..\Data\RouteCache.cs" Link="Linked\RouteCache.cs" />
     <Compile Include="..\..\Settings\AltitudeFormatter.cs" Link="Linked\AltitudeFormatter.cs" />
     <Compile Include="..\..\Map\AltitudeBlend.cs" Link="Linked\AltitudeBlend.cs" />
     <Compile Include="..\..\Map\SelectedAircraftInfo.cs" Link="Linked\SelectedAircraftInfo.cs" />

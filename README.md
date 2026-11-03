@@ -315,7 +315,7 @@ Kod w `Sources` testują osobne projekty, więc jeden raport pokazuje tylko czę
 
 Workflow GitHub Actions `.github/workflows/tests.yml` uruchamia wszystkie projekty `*.Tests.csproj` przy każdym pushu na `main` i w pull requestach, zapisuje raporty pokrycia jako artefakt i nie buduje aplikacji ani nie podpisuje paczki (klucz jest poza repozytorium).
 
-Testy obejmują odległość i kierunek, ekstrapolację pozycji samolotu i promień pobierania (`MapMath`), historię śladów (`TrailTracker`), projekcję Web Mercator i dobór kafelków, klasyfikację rodzajów samolotów, wspólny stan zaznaczenia telefonu i samochodu oraz definicje ustawień z historią zmian. Kod zależny od Androida jest rozdzielony na pliki `*.Android.cs` i `*.App.cs` (klasy `partial`), a część czysta dostaje stan z zewnątrz: `AirportDatabase.LoadFrom` przyjmuje linie plików, a `AircraftSearch` odczyt tras, ulubione i formatowanie wysokości jako parametry. Jednostka wysokości jest parametrem metod formatujących (`AltitudeFormatter`, teksty kart), a obliczenia koloru po wysokości są w `AltitudeBlend`, bez `Android.Graphics.Color`. `RouteCache` nadal wymaga wydzielenia logowania Androida. Nowa logika niezależna od Androida powinna dostać test, a jej plik trzeba dopisać jako `Compile Include` w pliku csproj testów.
+Testy obejmują odległość i kierunek, ekstrapolację pozycji samolotu i promień pobierania (`MapMath`), historię śladów (`TrailTracker`), projekcję Web Mercator i dobór kafelków, klasyfikację rodzajów samolotów, wspólny stan zaznaczenia telefonu i samochodu oraz definicje ustawień z historią zmian. Kod zależny od Androida jest rozdzielony na pliki `*.Android.cs` i `*.App.cs` (klasy `partial`), a część czysta dostaje stan z zewnątrz: `AirportDatabase.LoadFrom` przyjmuje linie plików, a `AircraftSearch` odczyt tras, ulubione i formatowanie wysokości jako parametry. Jednostka wysokości jest parametrem metod formatujących (`AltitudeFormatter`, teksty kart), a obliczenia koloru po wysokości są w `AltitudeBlend`, bez `Android.Graphics.Color`. `RouteCache` nie zależy od Androida: błędy pobierania zgłasza przez callback (w aplikacji do `DevLogger`), a odstęp między zapytaniami jest parametrem, więc testy nie czekają. Nowa logika niezależna od Androida powinna dostać test, a jej plik trzeba dopisać jako `Compile Include` w pliku csproj testów.
 
 ### Projekty źródeł danych
 
@@ -343,13 +343,13 @@ dotnet test Tests\AdsbCarMap.DataSources.Management.Tests\AdsbCarMap.DataSources
 Activities/   ekrany telefonu: mapa (MainActivity), wyszukiwarka, ustawienia
 Auto/         część Android Auto: usługa Car App, ekran mapy, ekran wyszukiwania
 Data/         dane aplikacji: klasyfikacja rodzajów, filtry, alerty (silnik, obszary, planowanie zapytań), wyszukiwanie, lotniska, cache tras
-Map/          renderowanie mapy: kontroler (MapController.*.cs), kafelki (TileLayer), popup, legenda i ikona stanu (PopupRenderer, AltitudeLegendRenderer, StatusIconRenderer), pętla pobierania samolotów (AircraftDataLoop), projekcja, kształty ikon, widok telefonu, MapMath
-Services/     współdzielone usługi: klienci HTTP, pozycja GPS, usługa pierwszoplanowa, ruch na żywo, alerty (reguły, powiadomienia, tryb w tle)
+Map/          renderowanie mapy: kontroler (MapController.*.cs), kafelki (TileLayer), popup, legenda i ikona stanu (PopupRenderer, AltitudeLegendRenderer, StatusIconRenderer), pętla pobierania samolotów (AircraftDataLoop), zapamiętany widok (MapViewState), projekcja, kształty ikon, widok telefonu, MapMath
+Services/     współdzielone usługi: klienci HTTP, pozycja GPS, usługa pierwszoplanowa, ruch na żywo, zapis widoku mapy (MapViewStore), alerty (reguły, powiadomienia, tryb w tle)
 Settings/     definicje i zapis ustawień
 Resources/    ikony i zasoby graficzne
 Sources/      dane zewnętrzne: AdsbCarMap.DataSources (Core: interfejsy i modele), AdsbCarMap.DataSources.Management (limity, wybór źródła, zapas) i katalog na każde źródło (AdsbLol/, AirplanesLive/, Adsbdb/, Hexdb/) z jego testami
 Tests/        projekty testowe (xUnit): AdsbCarMap.Tests (aplikacja) i AdsbCarMap.DataSources.Management.Tests (zarządca źródeł)
-Scripts/      skrypty PowerShell: konfiguracja komputera, build Release, Android Auto DHU
+Scripts/      skrypty PowerShell: konfiguracja komputera, build Release, pokrycie testami (Coverage.ps1), Android Auto DHU
 RELEASE_NOTES.md  historia wersji: co zostało wydane w kolejnych wydaniach
 release-history.csv  wersja, commit i SHA-256 każdej zbudowanej paczki
 ```

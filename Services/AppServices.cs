@@ -38,7 +38,7 @@ namespace AdsbCarMap.Services
         /// <summary>
         /// Cache of the flight routes downloaded from the route sources, created at the first use.
         /// </summary>
-        private static readonly Lazy<RouteCache> RouteCacheInstance = new Lazy<RouteCache>(() => new RouteCache(Composition.Value.RouteSources, Composition.Value.RouteMemory));
+        private static readonly Lazy<RouteCache> RouteCacheInstance = new Lazy<RouteCache>(() => new RouteCache(Composition.Value.RouteSources, Composition.Value.RouteMemory, exception => DevLogger.Warn("AdsbCarMap", "Pobieranie trasy lotu nie powiodło się", exception)));
 
         /// <summary>
         /// Aircraft source used by the maps: the sources in the order chosen in the settings, the next one asked when the previous one gives no data.

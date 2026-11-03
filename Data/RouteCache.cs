@@ -1,11 +1,9 @@
-using AdsbCarMap.Services;
 using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Models;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
-using Android.Util;
 
 namespace AdsbCarMap.Data
 {
@@ -15,14 +13,9 @@ namespace AdsbCarMap.Data
     public sealed class RouteCache
     {
         /// <summary>
-        /// Tag used in the Android logs.
+        /// Default interval between two route requests in milliseconds.
         /// </summary>
-        private const string LogTag = "AdsbCarMap";
-
-        /// <summary>
-        /// Interval between two route requests in milliseconds.
-        /// </summary>
-        private const int RequestIntervalMilliseconds = 1000;
+        public const int DefaultRequestIntervalMilliseconds = 1000;
 
         /// <summary>
         /// Maximum number of callsigns waiting for their route to be downloaded.
@@ -70,6 +63,16 @@ namespace AdsbCarMap.Data
         private readonly ConcurrentDictionary<string, byte> priorityQueued = new ConcurrentDictionary<string, byte>();
 
         /// <summary>
+        /// Interval between two route requests in milliseconds.
+        /// </summary>
+        private readonly int requestIntervalMilliseconds;
+
+        /// <summary>
+        /// Called with the exception when a route download fails, or null.
+        /// </summary>
+        private readonly Action<Exception>? onFailure;
+
+        /// <summary>
         /// Marker of the running download worker: 1 when it runs, 0 otherwise.
         /// </summary>
         private int workerRunning;
@@ -79,11 +82,15 @@ namespace AdsbCarMap.Data
         /// </summary>
         /// <param name="client">Route API client.</param>
         /// <param name="routes">Memory in which the routes are kept for the time chosen in the settings.</param>
-        public RouteCache(IRouteSource client, TimedCache<FlightRoute> routes)
+        /// <param name="onFailure">Called with the exception when a route download fails, or null.</param>
+        /// <param name="requestIntervalMilliseconds">Interval between two route requests in milliseconds.</param>
+        public RouteCache(IRouteSource client, TimedCache<FlightRoute> routes, Action<Exception>? onFailure = null, int requestIntervalMilliseconds = DefaultRequestIntervalMilliseconds)
         {
             ArgumentNullException.ThrowIfNull(routes);
             this.client = client;
             this.routes = routes;
+            this.onFailure = onFailure;
+            this.requestIntervalMilliseconds = requestIntervalMilliseconds;
         }
 
         /// <summary>
@@ -275,14 +282,14 @@ namespace AdsbCarMap.Data
                     catch (Exception exception) when (exception is HttpRequestException || exception is OperationCanceledException || exception is JsonException)
                     {
                         retryAfterUtc[key] = DateTime.UtcNow + RetryDelay;
-                        DevLogger.Warn(LogTag, "Pobieranie trasy lotu nie powiodło się", exception);
+                        onFailure?.Invoke(exception);
                     }
                     finally
                     {
                         queued.TryRemove(key, out byte removedMarker);
                     }
 
-                    await Task.Delay(RequestIntervalMilliseconds);
+                    await Task.Delay(requestIntervalMilliseconds);
                 }
 
                 Interlocked.Exchange(ref workerRunning, 0);
