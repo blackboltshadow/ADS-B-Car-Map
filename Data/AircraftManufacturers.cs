@@ -72,14 +72,14 @@ namespace AdsbCarMap.Data
             AddExact(table, "Airbus", "A20N", "A21N", "A400", "A3ST", "BCS1", "BCS3", "C295", "CN35");
             AddExact(table, "Airbus Helicopters", "B105", "PUMA", "AS32", "AS35", "AS50", "AS55", "AS65", "EC20", "EC25", "EC30", "EC35", "EC45", "EC55", "EC75");
             AddExact(table, "Antonov", "A124", "A225", "A140", "A148");
-            AddExact(table, "Embraer", "E50P", "E55P");
+            AddExact(table, "Embraer", "E50P", "E55P", "E35L", "E550", "E390");
             AddExact(table, "Beechcraft", "B190", "B350", "PRM1", "T6", "TEX2");
-            AddExact(table, "Bell", "B06", "B407", "B412", "B429", "B430", "B47G", "UH1");
+            AddExact(table, "Bell", "B505", "B06", "B407", "B412", "B429", "B430", "B47G", "UH1");
             AddExact(table, "Sikorsky", "S61", "S64", "S70", "S76", "S92", "H60");
             AddExact(table, "Robinson", "R22", "R44", "R66");
             AddExact(table, "Leonardo", "A109", "A119", "A139", "A189", "C27J", "M346", "M339", "LYNX");
             AddExact(table, "NHIndustries", "NH90");
-            AddExact(table, "MD Helicopters", "H500");
+            AddExact(table, "MD Helicopters", "H500", "EXPL");
             AddExact(table, "Enstrom", "EN28", "EN48");
             AddExact(table, "Lockheed Martin", "C130", "C30J", "C5", "C5M", "F16", "F22", "F35");
             AddExact(table, "Lockheed", "L101");
@@ -94,7 +94,7 @@ namespace AdsbCarMap.Data
             AddExact(table, "Aero Vodochody", "L39", "L159");
             AddExact(table, "Transall", "C160");
             AddExact(table, "Chengdu", "J10", "J20");
-            AddExact(table, "Gulfstream", "G150", "G280", "GALX");
+            AddExact(table, "Gulfstream", "G150", "G280", "GALX", "GA6C", "GA7C");
             AddExact(table, "Bombardier", "GLEX");
             AddExact(table, "Hawker", "H25B", "H25C");
             AddExact(table, "Honda", "HDJT");
@@ -102,7 +102,7 @@ namespace AdsbCarMap.Data
             AddExact(table, "Pilatus", "PC12");
             AddExact(table, "Daher", "TBM7", "TBM8", "TBM9", "TB10", "TB20", "TB21", "TOBA");
             AddExact(table, "Piaggio", "P180");
-            AddExact(table, "Tecnam", "P208");
+            AddExact(table, "Tecnam", "P208", "IMPU");
             AddExact(table, "Fokker", "F27", "F28", "F50", "F70", "F100");
             AddExact(table, "Dornier", "D228", "D328");
             AddExact(table, "Let", "L410");
@@ -119,6 +119,25 @@ namespace AdsbCarMap.Data
             AddExact(table, "Piper", "J3");
             AddExact(table, "Tupolev", "T134", "T154", "T204");
             AddExact(table, "Kamov", "KA27", "KA32");
+            AddExact(table, "Van's", "YK12");
+            AddExact(table, "Aeroprakt", "AP22", "AP32");
+            AddExact(table, "Tomark", "SD4");
+            AddExact(table, "BRM Aero", "BR23");
+            AddExact(table, "Pipistrel", "PIVI");
+            AddExact(table, "Direct Fly", "ALTO");
+            AddExact(table, "Blackshape", "PRIM");
+            AddExact(table, "PZL-Swidnik", "W3");
+            AddExact(table, "Aerospool", "WT9");
+            AddExact(table, "AutoGyro", "CLON");
+            AddExact(table, "Aquila", "A210");
+            AddExact(table, "MBB/Kawasaki", "BK17");
+            AddExact(table, "Aerostyle", "BREZ");
+            AddExact(table, "Ikarus", "C42");
+            AddExact(table, "Robin", "DR40");
+            AddExact(table, "Evektor", "EVSS");
+            AddExact(table, "FK Lightplanes", "FK9");
+            AddExact(table, "Aviat", "HUSK");
+            AddExact(table, "Partenavia", "P68");
 
             return table;
         }

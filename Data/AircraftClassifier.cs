@@ -30,7 +30,7 @@ namespace AdsbCarMap.Data
         private static readonly HashSet<string> HelicopterTypes = CreateSet(
             "R22", "R44", "R66", "EC20", "EC25", "EC30", "EC35", "EC45", "EC55", "EC75", "EN48", "EN28", "AS32", "AS35", "AS50", "AS55", "AS65",
             "B06", "B105", "B407", "B412", "B429", "B430", "B47G", "A109", "A119", "A139", "A189", "S61", "S76", "S92", "H60", "H47", "H64", "H500",
-            "NH90", "MI8", "MI24", "MI26", "KA32", "KA27", "UH1", "AW09", "G2CA", "SA34", "LYNX", "PUMA");
+            "NH90", "MI8", "MI24", "MI26", "KA32", "KA27", "UH1", "AW09", "G2CA", "SA34", "LYNX", "PUMA", "EXPL", "W3", "BK17");
 
         /// <summary>
         /// Type codes of military fighter and trainer-fighter aircraft.
@@ -50,7 +50,7 @@ namespace AdsbCarMap.Data
         /// </summary>
         private static readonly HashSet<string> TurbopropTypes = CreateSet(
             "AT43", "AT44", "AT45", "AT46", "AT72", "AT73", "AT75", "AT76", "DH8A", "DH8B", "DH8C", "DH8D", "SF34", "E120", "JS31", "JS32", "JS41",
-            "L410", "PC12", "B190", "SW4", "SW3", "C208", "AN28", "AN24", "AN26", "D228", "D328", "BE20", "BE9L", "BE99", "PC6", "TBM7", "TBM8", "TBM9", "P180", "DHC6", "DHC7", "F50", "F27");
+            "L410", "PC12", "B190", "SW4", "SW3", "C208", "AN28", "AN24", "AN26", "AN30", "D228", "D328", "BE20", "BE9L", "BE99", "PC6", "PC6T", "TBM7", "TBM8", "TBM9", "P180", "DHC6", "DHC7", "F50", "F27");
 
         /// <summary>
         /// Type codes of heavy wide-body aircraft.
@@ -64,7 +64,7 @@ namespace AdsbCarMap.Data
         /// </summary>
         private static readonly HashSet<string> SmallJetTypes = CreateSet(
             "C25A", "C25B", "C25C", "C510", "C525", "C550", "C560", "C56X", "C680", "C700", "C750", "E50P", "E55P", "FA10", "FA20", "FA50", "FA7X", "FA8X",
-            "F900", "F2TH", "LJ31", "LJ35", "LJ40", "LJ45", "LJ55", "LJ60", "LJ75", "GLF2", "GLF3", "GLF4", "GLF5", "GLF6", "GL5T", "GL7T", "GLEX", "CL30", "CL35",
+            "F900", "F2TH", "LJ31", "LJ35", "LJ40", "LJ45", "LJ55", "LJ60", "LJ75", "GLF2", "GLF3", "GLF4", "GLF5", "GLF6", "GL5T", "GL7T", "GA6C", "GA7C", "GLEX", "CL30", "CL35",
             "CL60", "H25B", "H25C", "PRM1", "E135", "E145", "E170", "E175", "CRJ1", "CRJ2", "CRJ7", "CRJ9", "SF50", "EA50", "HDJT", "ASTR");
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace AdsbCarMap.Data
         private static readonly HashSet<string> LightPlaneTypes = CreateSet(
             "C150", "C152", "C162", "C170", "C172", "C177", "C180", "C182", "C185", "C206", "C210", "C310", "C340", "C414", "C421", "PA18", "PA22", "PA24", "PA28",
             "PA32", "PA34", "PA44", "PA46", "P28A", "P28B", "P28R", "P32R", "SR20", "SR22", "S22T", "DA20", "DA40", "DA42", "DA62", "AA5", "AT3T", "BE23", "BE24",
-            "BE33", "BE35", "BE36", "BE58", "M20P", "M20T", "RV7", "RV8", "RV10", "RV12", "TOBA", "TB10", "TB20", "TB21", "G115", "CH7A", "CH7B", "JAB4", "J3", "P208", "YK52", "YK18");
+            "BE33", "BE35", "BE36", "BE58", "M20P", "M20T", "RV7", "RV8", "RV10", "RV12", "TOBA", "TB10", "TB20", "TB21", "G115", "CH7A", "CH7B", "JAB4", "J3", "P208", "YK52", "YK18", "PA38", "A210", "BREZ", "C42", "DR40", "IMPU", "P68");
 
         /// <summary>
         /// Determines the aircraft kind. The rules go from the most specific: ground objects, balloons, gliders, drones, helicopters, military, then by size.

@@ -116,5 +116,42 @@ namespace AdsbCarMap.Tests
             sorted.Sort(StringComparer.OrdinalIgnoreCase);
             Assert.Equal(sorted, new List<string>(names));
         }
+
+        /// <summary>
+        /// Types completed from the missing type log resolve to the expected manufacturer.
+        /// </summary>
+        [Theory]
+        [InlineData("GA7C", "Gulfstream")]
+        [InlineData("GA6C", "Gulfstream")]
+        [InlineData("E35L", "Embraer")]
+        [InlineData("E550", "Embraer")]
+        [InlineData("E390", "Embraer")]
+        [InlineData("AP22", "Aeroprakt")]
+        [InlineData("AP32", "Aeroprakt")]
+        [InlineData("YK12", "Van's")]
+        [InlineData("B505", "Bell")]
+        [InlineData("IMPU", "Tecnam")]
+        [InlineData("EXPL", "MD Helicopters")]
+        [InlineData("SD4", "Tomark")]
+        [InlineData("BR23", "BRM Aero")]
+        [InlineData("PIVI", "Pipistrel")]
+        [InlineData("ALTO", "Direct Fly")]
+        [InlineData("PRIM", "Blackshape")]
+        [InlineData("W3", "PZL-Swidnik")]
+        [InlineData("WT9", "Aerospool")]
+        [InlineData("CLON", "AutoGyro")]
+        [InlineData("A210", "Aquila")]
+        [InlineData("BK17", "MBB/Kawasaki")]
+        [InlineData("BREZ", "Aerostyle")]
+        [InlineData("C42", "Ikarus")]
+        [InlineData("DR40", "Robin")]
+        [InlineData("EVSS", "Evektor")]
+        [InlineData("FK9", "FK Lightplanes")]
+        [InlineData("HUSK", "Aviat")]
+        [InlineData("P68", "Partenavia")]
+        public void Find_CompletedTypes_ReturnsManufacturer(string typeCode, string expected)
+        {
+            Assert.Equal(expected, AircraftManufacturers.Find(typeCode));
+        }
     }
 }

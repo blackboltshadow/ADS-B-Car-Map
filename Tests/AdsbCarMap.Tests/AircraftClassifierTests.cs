@@ -123,5 +123,28 @@ namespace AdsbCarMap.Tests
                 }
             }
         }
+
+        /// <summary>
+        /// Types completed from the missing type log get the expected kind even with a missing or misleading category.
+        /// </summary>
+        [Theory]
+        [InlineData("EXPL", "", true, AircraftKind.Helicopter)]
+        [InlineData("W3", "", true, AircraftKind.Helicopter)]
+        [InlineData("BK17", "", false, AircraftKind.Helicopter)]
+        [InlineData("GA6C", "A3", false, AircraftKind.SmallJet)]
+        [InlineData("GA7C", "A3", false, AircraftKind.SmallJet)]
+        [InlineData("AN30", "A2", true, AircraftKind.Turboprop)]
+        [InlineData("PC6T", "", true, AircraftKind.Turboprop)]
+        [InlineData("PA38", "", false, AircraftKind.LightPlane)]
+        [InlineData("A210", "", false, AircraftKind.LightPlane)]
+        [InlineData("C42", "A0", false, AircraftKind.LightPlane)]
+        [InlineData("DR40", "", false, AircraftKind.LightPlane)]
+        [InlineData("IMPU", "", false, AircraftKind.LightPlane)]
+        [InlineData("P68", "", false, AircraftKind.LightPlane)]
+        [InlineData("BREZ", "A2", false, AircraftKind.LightPlane)]
+        public void Classify_CompletedTypes_ReturnsKind(string typeCode, string category, bool isMilitary, AircraftKind expected)
+        {
+            Assert.Equal(expected, AircraftClassifier.Classify(Create(typeCode, category.Length == 0 ? null : category, isMilitary)));
+        }
     }
 }
