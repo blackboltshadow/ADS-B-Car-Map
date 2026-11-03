@@ -14515,6 +14515,7 @@ BR-3264		H	Val de Cães Naval Base Heliport	Belém	BR	-1.393556	-48.491587	4	0	0
 BR-3275		S	Andrea Airstrip	São Gabriel da Cachoeira,	BR	0.322621	-67.343575	256	0	0
 BR-3299		S	Fazenda Jaburú Airport	Formoso	BR	-13.803651	-48.894319	1506	0	0
 BR-3300		H	Base Arpão Heliport	Coari	BR	-3.94781	-63.15682	89	0	0
+BR-3307		S	Pontalina de Goiás Airport	Pontalina	BR	-17.505782	-49.406429	625	0	0
 BS-0004		S	Cave Cay Airstrip	Cave Cay	BS	23.911301835800003	-76.27444982530001	8	0	0
 BS-0007		H	Big Grand Cay Heliport	Grand Cay	BS	27.22029	-78.31317		0	0
 BS-0008		H	Nassau Helicopters Heliport	Nassau	BS	25.07765	-77.33321		0	0
@@ -26867,6 +26868,7 @@ HU-0081		H	Miskolc Heliport	Miskolc	HU	48.13071	20.792152	380	0	0
 HU-0082		H	Szentes Heliport	Szentes	HU	46.616714	20.28359	259	0	0
 HU-0083		S	Jabapuszta Airstrip		HU	46.8025	18.0257		0	0
 HU-0084		H	Sétarepülés (seaonal)		HU	46.92375	17.84326		0	0
+HUAD		S	Amudat Airstrip	Amudat	UG	1.942043	34.933207	4163	0	0
 HUAJ		S	Adjumani Airport	Adjumani	UG	3.339239	31.763854	2611	0	0
 HUAR	RUA	M	Arua Airport	Arua	UG	3.049152	30.911714	3951	1	0
 HUBU		S	Bundibugyo Airport	Bundibugyo	UG	0.67349	30.025483	3100	0	0
@@ -26875,7 +26877,7 @@ HUFP		S	Fort Portal Airport	Fort Portal	UG	0.7063	30.2493	5255	0	0
 HUGG		S	Bugungu Airport	Bujenje	UG	2.202788	31.554341	2472	0	0
 HUGU	ULU	M	Gulu Airport	Gulu	UG	2.8055601119995117	32.27180099487305	3510	1	0
 HUJI	JIN	S	Jinja Airport	Jinja	UG	0.453094	33.19356	3855	0	0
-HUKB		S	Kabale Airport		UG	-1.226111	29.96	6000	0	0
+HUKB		S	Kabale Airport		UG	-1.221689	29.956973	6000	0	0
 HUKD		S	Kidepo Airport	Kidepo Valley National Park	UG	3.7176	33.7487	4033	0	0
 HUKI	KXO	S	Kisoro Airport	Kisoro	UG	-1.2837	29.7197	6200	1	0
 HUKJ	KJJ	S	Kajjansi Airfield	Kampala	UG	0.1968	32.55297	3743	0	0
@@ -26883,7 +26885,7 @@ HUKK		S	Kakira Airport	Kakira	UG	0.4933	33.281	3962	0	0
 HUKO		S	Kotido Airport	Kotido	UG	2.953	34.1232	4020	0	0
 HUKS	KSE	S	Kasese Airport	Kasese	UG	0.183	30.1	3146	0	0
 HUKT		S	Kitgum Airport	Kitgum	UG	3.2817	32.8882	3130	0	0
-HULI		S	Lira Airport	Lira	UG	2.25	32.9169998169	3580	0	0
+HULI		S	Lira Airport	Lira	UG	2.247866	32.909938	3580	0	0
 HUMA	MBQ	S	Mbarara Airport	Mbarara	UG	-0.555278	30.5994	4600	0	0
 HUMI	KCU	S	Masindi Airport	Masindi	UG	1.75806	31.7367	3850	0	0
 HUMO		S	Moroto Airport	Moroto	UG	2.5051	34.5946	4170	0	0
@@ -33839,7 +33841,7 @@ KCII		S	Choteau Airport	Choteau	US	47.8283	-112.167999	3947	0	0
 KCIN	CIN	S	Arthur N Neu Airport	Carroll	US	42.0461997986	-94.78900146480001	1204	0	0
 KCIR	CIR	S	Cairo Regional Airport	Cairo	US	37.064499	-89.219597	321	0	0
 KCIU	CIU	M	Chippewa County International Airport	Kincheloe	US	46.242038	-84.462082	800	1	0
-KCJJ		S	Ellen Church Field	Cresco	US	43.3652992249	-92.133102417	1279	0	0
+KCJJ		S	Ellen Church Field	Cresco	US	43.365299	-92.133102	1279	0	0
 KCJR		S	Culpeper Regional Airport	Culpeper	US	38.526699	-77.858902	316	0	0
 KCKA	CKA	S	Kegelman AF Aux Field	Cherokee	US	36.734348	-98.123531	1202	0	0
 KCKB	CKB	M	North Central West Virginia Airport	Bridgeport	US	39.2966	-80.228104	1217	1	0
@@ -34626,7 +34628,7 @@ KGEU		S	Glendale Municipal Airport	Glendale	US	33.52690124511719	-112.2949981689
 KGEV		S	Ashe County Airport	Jefferson	US	36.432418	-81.418519	3180	0	0
 KGEY	GEY	S	South Big Horn County Airport	Greybull	US	44.51679993	-108.0830002	3939	0	0
 KGEZ		S	Shelbyville Municipal Airport	Shelbyville	US	39.586044	-85.804024	803	0	0
-KGFA	GFA	H	Malmstrom Air Force Base	Great Falls	US	47.504699707	-111.18699646	3472	0	1
+KGFA	GFA	H	Malmstrom Air Force Base	Great Falls	US	47.5047	-111.186996	3472	0	1
 KGFD	GFD	S	Pope Field	Greenfield	US	39.790715	-85.735019	895	0	0
 KGFK	GFK	M	Grand Forks International Airport	Grand Forks	US	47.949299	-97.176102	845	1	0
 KGFL	GFL	M	Floyd Bennett Memorial Airport	Glens Falls	US	43.3412017822	-73.6102981567	328	0	0
@@ -41179,7 +41181,7 @@ MPMG	PAC	M	Marcos A. Gelabert International Airport	Albrook	PA	8.97334	-79.55560
 MPMI	NMG	S	San Miguel Airport	Isla del Rey	PA	8.456507	-78.934214	70	0	0
 MPMU	MPP	S	Mulatupo Airport	Mulatupo	PA	8.945487	-77.733486	15	0	0
 MPOA	PUE	S	Puerto Obaldía Airport	Puerto Obaldía	PA	8.668813	-77.417399	223	0	0
-MPPA	BLB	S	Panamá Pacífico International Airport	Panamá City	PA	8.91479	-79.599602	52	1	0
+MPPA	BLB	M	Panamá Pacífico International Airport	Panamá City	PA	8.91479	-79.599602	52	1	0
 MPPD	PDM	S	Capt. J. Montenegro Airport	Pedasí	PA	7.534801	-80.043347	148	1	0
 MPPH	PYC	S	Playón Chico Airport	Ukupseni	PA	9.30692	-78.235273	18	0	0
 MPPI	BFQ	S	Bahia Piña Airport	Puerto Piña	PA	7.58737	-78.179939	14	1	0
@@ -48831,7 +48833,7 @@ RKTN	TAE	L	Daegu International Airport	Daegu	KR	35.894394	128.656989	116	1	0
 RKTP	HMY	S	Seosan Air Base	Seosan	KR	36.703999	126.486	39	0	1
 RKTS		H	POSCO Heliport	Pohang	KR	35.999759	129.384915	19	0	0
 RKTS		S	Sangju Airfield	Sangju	KR	36.407451	128.177158	492	0	0
-RKTU	CJJ	L	Cheongju International Airport/Cheongju Air Base (K-59/G-513)	Cheongju	KR	36.71556	127.500289	191	1	1
+RKTU	CJJ	L	Cheongju International Airport	Cheongju	KR	36.71556	127.500289	191	1	0
 RKTW		H	Woong Cheon Heliport	Sohwang	KR	36.219321	126.54962	53	0	0
 RKTY	YEC	M	Yecheon Airbase	Yecheon-ri	KR	36.630373	128.34971	354	0	1
 RKUC		S	Jochiwon (G-505) Airfield	Jochiwon	KR	36.571949	127.296067	82	0	0

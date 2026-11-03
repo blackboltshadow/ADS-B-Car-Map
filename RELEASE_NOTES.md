@@ -2,6 +2,37 @@
 
 Opis tego, co zostało wydane w kolejnych wersjach, od najnowszej. Wersja ma postać `0.<druga>.<trzecia>` i jest w pliku `Version.txt`: przy nowym wydaniu rośnie druga cyfra, a trzecia wraca do 0 (0.3.0), przy poprawce rośnie tylko trzecia (0.3.1); decyduje o tym osoba przygotowująca wydanie. Numer kompilacji (`versionCode`) nigdy nie jest zerowany. Do wersji 0.2.163 trzecia cyfra była numerem kompilacji. Od wersji 0.2.163 każdej wersji odpowiada tag w git (`v<wersja>`) i wiersz w `release-history.csv` (commit, rozmiar i SHA-256 paczki). Podsumowanie commitów dla wersji można wygenerować skryptem `Scripts\Release-Notes.ps1`. Wcześniejsze wersje nie mają tagów.
 
+## 0.5.0 (2026-11-03)
+
+Zmiany od wersji 0.4.0.
+
+**Jednostki**
+- Nowy dział „Jednostki” na górze ustawień z czterema niezależnymi listami: wysokość (m, ft, FL), odległość (km, mile morskie, mile lądowe), prędkość (km/h, kt, mph) i prędkość pionowa (ft/min, m/s). Każde ustawienie ma opis, gdzie się pokazuje. Karta samolotu pokazuje tylko wybraną jednostkę. Jednostki obejmują kartę i popup samolotu i lotniska, wyszukiwarkę, alerty (promień i powiadomienia) oraz filtry (granice wysokości wpisuje się w wybranej jednostce). Długość pasów przy poziomie lotu jest w stopach.
+
+**Alerty**
+- Alerty „samolot w pobliżu”: reguły z obszarem (wokół mojej pozycji, lotniska albo wybranego środka), filtrem jako warunkiem, zdarzeniami wlotu i pojawienia się oraz czasem ciszy dla każdego alertu. Powiadomienia lokalne otwierają mapę z samolotem. Tryb w tle sprawdza obszary także przy wyłączonej mapie.
+
+**Mapa**
+- Aplikacja pamięta środek, zoom i tryb podążania między uruchomieniami.
+- Ikony samolotów z nowymi sylwetkami, cieniem i akcentem kokpitu. Ślady rysowane tylko dla zaznaczonych i izolowanych samolotów. Ekran startowy z ikoną aplikacji.
+- Nazwa typu z wbudowanej tabeli na karcie i w wyszukiwarce, gdy źródła jej nie podają.
+
+**Prywatność i diagnostyka**
+- Zaokrąglanie położenia wysyłanego do serwerów samolotów (ustawienie „Prywatność”).
+- Dev log nieprzewidzianych zdarzeń, karta „Stan źródeł” i ekran „Log zapytań”.
+
+**Pod maską**
+- Rozbicie `MapController`, nowe testy (m.in. jednostki, alerty, `RouteCache`), skrypt łączący pokrycie testów.
+
+Tekst „Co nowego” w Google Play dla tej wersji:
+
+```
+Jednostki: osobne ustawienia wysokości, odległości, prędkości i prędkości pionowej (m, ft, FL, km, NM, mi, km/h, kt, mph, m/s).
+Alerty: powiadomienie, gdy wybrany samolot wleci w obszar, także w tle.
+Mapa: pamiętany widok, nowe ikony samolotów, nazwy typów.
+Prywatność: zaokrąglanie położenia wysyłanego do serwerów.
+```
+
 ## 0.4.0 (2026-11-02)
 
 Zmiany od wersji 0.3.1.
