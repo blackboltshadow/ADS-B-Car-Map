@@ -2,6 +2,38 @@
 
 Opis tego, co zostało wydane w kolejnych wersjach, od najnowszej. Wersja ma postać `0.<druga>.<trzecia>` i jest w pliku `Build/Version.txt`: przy nowym wydaniu rośnie druga cyfra, a trzecia wraca do 0 (0.3.0), przy poprawce rośnie tylko trzecia (0.3.1); decyduje o tym osoba przygotowująca wydanie. Numer kompilacji (`versionCode`) nigdy nie jest zerowany. Do wersji 0.2.163 trzecia cyfra była numerem kompilacji. Od wersji 0.2.163 każdej wersji odpowiada tag w git (`v<wersja>`) i wiersz w `Build/release-history.csv` (commit, rozmiar i SHA-256 paczki). Podsumowanie commitów dla wersji można wygenerować skryptem `Scripts\Release-Notes.ps1`. Wcześniejsze wersje nie mają tagów.
 
+## 0.6.0 (2026-11-03)
+
+Zmiany od wersji 0.5.0.
+
+**Język**
+- Interfejs po polsku i po angielsku. Język wybiera się na górze ustawień i zmienia od razu.
+
+**Źródła danych**
+- Nowe źródło samolotów adsb.fi (trzecie obok adsb.lol i airplanes.live), także z pełną nazwą typu.
+- Tabela typów uzupełniona o 61 typów z listy brakujących, z ikonami według rodzaju i producentami.
+
+**Alerty**
+- Obszary wielokąt i prostokąt rysowane na mapie (tylko telefon), wybór środka okręgu dotknięciem.
+- Harmonogram alertu: dni tygodnia i godziny ciszy, możliwość pominięcia samolotów już obecnych przy pierwszym sprawdzeniu.
+- Grupowanie powiadomień, historia alertów, osobna ważność powiadomień, przyciski „Pokaż na mapie” i „Wycisz na godzinę”, powiadomienia w Android Auto.
+- Tryb w tle uruchamia się po restarcie telefonu (ustawienie „Uruchamiaj po starcie telefonu”).
+
+**Mapa**
+- Mapa zawsze zaczyna od podążania za pozycją GPS, a zapamiętany widok jest pokazany tylko do pierwszej pozycji.
+
+**Dokumentacja**
+- Zrzuty ekranu w README, pliki wersji przeniesione do katalogu Build.
+
+Tekst „Co nowego” w Google Play dla tej wersji:
+
+```
+Język: interfejs po polsku i po angielsku.
+Źródła: nowe źródło samolotów adsb.fi, więcej rozpoznawanych typów.
+Alerty: obszary rysowane na mapie, harmonogram, grupowanie powiadomień, historia i start po restarcie telefonu.
+Mapa: start od pozycji GPS.
+```
+
 ## 0.5.0 (2026-11-03)
 
 Zmiany od wersji 0.4.0.
