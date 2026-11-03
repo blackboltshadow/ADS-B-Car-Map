@@ -69,6 +69,34 @@ namespace AdsbCarMap.Services
         public MissingTypeLog Missing { get; } = new MissingTypeLog();
 
         /// <summary>
+        /// Removes from the log the types that the current type table describes and marks the log for saving. Does nothing while the table is not loaded yet.
+        /// </summary>
+        /// <returns>Number of the removed types.</returns>
+        public int Prune()
+        {
+            AircraftTypeTable table = AircraftTypeTable.Current;
+
+            if (table.TypeCount == 0)
+            {
+                return 0;
+            }
+
+            int removed = Missing.RemoveKnown(table);
+
+            if (removed > 0)
+            {
+                lock (syncRoot)
+                {
+                    dirty = true;
+                }
+
+                SaveIfDue(DateTime.UtcNow);
+            }
+
+            return removed;
+        }
+
+        /// <summary>
         /// Adds the aircraft of types missing from the current type table to the log and saves it when it is time. Does nothing while the table is not loaded yet, because every type would look missing.
         /// </summary>
         /// <param name="aircraft">Aircraft from the last download.</param>
@@ -82,6 +110,8 @@ namespace AdsbCarMap.Services
             }
 
             DateTime now = DateTime.UtcNow;
+
+            Prune();
 
             if (Missing.Record(aircraft, table, now))
             {

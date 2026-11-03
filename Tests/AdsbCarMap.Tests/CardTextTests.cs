@@ -9,8 +9,30 @@ namespace AdsbCarMap.Tests
     /// <summary>
     /// Tests of the texts of the aircraft card and the airport card.
     /// </summary>
+    [Collection("TypeTable")]
     public class CardTextTests
     {
+        /// <summary>
+        /// Without a name from the data sources the type text uses the name from the built-in type table.
+        /// </summary>
+        [Fact]
+        public void BuildTypeText_FallsBackToTypeTableName()
+        {
+            AircraftTypeTable previous = AircraftTypeTable.Current;
+
+            try
+            {
+                AircraftTypeTable.Current = AircraftTypeTable.Parse(new string[] { "iata\ticao\tfamily\tname", "32Q\tA21N\tA320\tAirbus A321neo" });
+                Aircraft neo = new Aircraft("abc125", "LOT2", 0.0, 1.0, 5000, false, 200.0, 90.0, 1.0, "A21N", "SP-XYZ");
+
+                Assert.Equal("Airbus A321neo (A21N)", AircraftCardText.BuildTypeText(neo));
+            }
+            finally
+            {
+                AircraftTypeTable.Current = previous;
+            }
+        }
+
         /// <summary>
         /// Replaces the non-breaking spaces used as digit group separators with plain spaces.
         /// </summary>

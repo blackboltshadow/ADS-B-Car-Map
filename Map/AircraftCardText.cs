@@ -73,7 +73,7 @@ namespace AdsbCarMap.Map
         public static string BuildTypeText(Aircraft aircraft)
         {
             string code = aircraft.TypeCode?.Trim() ?? string.Empty;
-            string name = aircraft.TypeName?.Trim() ?? string.Empty;
+            string name = aircraft.TypeName?.Trim() ?? AircraftTypeTable.Current.FindName(code) ?? string.Empty;
 
             if (name.Length == 0)
             {

@@ -146,6 +146,27 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
+        /// Removes the entries of the types that the table describes by now, for example after an update added them to the table.
+        /// </summary>
+        /// <param name="table">Table of the known types.</param>
+        /// <returns>Number of the removed entries.</returns>
+        public int RemoveKnown(AircraftTypeTable table)
+        {
+            lock (syncRoot)
+            {
+                List<string> known = entries.Keys.Where((string icao) => table.IsKnown(icao)).ToList();
+
+                foreach (string icao in known)
+                {
+                    entries.Remove(icao);
+                    countedAircraft.Remove(icao);
+                }
+
+                return known.Count;
+            }
+        }
+
+        /// <summary>
         /// Removes every entry.
         /// </summary>
         public void Clear()

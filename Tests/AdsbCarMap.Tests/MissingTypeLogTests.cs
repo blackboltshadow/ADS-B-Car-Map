@@ -33,6 +33,23 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// Entries of the types that a newer table describes are removed and the others stay.
+        /// </summary>
+        [Fact]
+        public void RemoveKnown_DropsTypesNowInTable()
+        {
+            MissingTypeLog log = new MissingTypeLog();
+            AircraftTypeTable empty = AircraftTypeTable.Parse(new string[] { "iata	icao	family	name", "738	B738	B737	Boeing 737-800" });
+            AircraftTypeTable newer = AircraftTypeTable.Parse(new string[] { "iata	icao	family	name", "738	B738	B737	Boeing 737-800", "	AS55	AS55	Eurocopter AS355" });
+
+            log.Record(new Aircraft[] { CreateAircraft("a", "AS55"), CreateAircraft("b", "TAMP") }, empty, Now);
+
+            Assert.Equal(1, log.RemoveKnown(newer));
+            Assert.Equal("TAMP", Assert.Single(log.GetEntries()).Icao);
+            Assert.Equal(0, log.RemoveKnown(newer));
+        }
+
+        /// <summary>
         /// Known types and aircraft without a type are not logged.
         /// </summary>
         [Fact]

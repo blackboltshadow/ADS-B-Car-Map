@@ -82,6 +82,8 @@ namespace AdsbCarMap.Activities
 
             root.RemoveAllViews();
 
+            AppServices.MissingTypes.Prune();
+
             List<MissingTypeEntry> entries = AppServices.MissingTypes.Missing.GetEntries();
             AircraftTypeTable table = AircraftTypeTable.Current;
 

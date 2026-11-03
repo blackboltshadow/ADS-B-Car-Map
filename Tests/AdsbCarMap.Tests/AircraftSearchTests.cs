@@ -7,8 +7,28 @@ namespace AdsbCarMap.Tests
     /// <summary>
     /// Tests of the combined search of aircraft and airports and of the row texts.
     /// </summary>
+    [Collection("TypeTable")]
     public class AircraftSearchTests
     {
+        /// <summary>
+        /// Runs an action with a type table containing one Airbus row installed as the current table.
+        /// </summary>
+        /// <param name="action">Action to run.</param>
+        private static void WithTypeTable(Action action)
+        {
+            AircraftTypeTable previous = AircraftTypeTable.Current;
+
+            try
+            {
+                AircraftTypeTable.Current = AircraftTypeTable.Parse(new string[] { "iata\ticao\tfamily\tname", "32Q\tA21N\tA320\tAirbus A321neo" });
+                action();
+            }
+            finally
+            {
+                AircraftTypeTable.Current = previous;
+            }
+        }
+
         /// <summary>
         /// Formats altitude the way the tests expect.
         /// </summary>
@@ -121,6 +141,28 @@ namespace AdsbCarMap.Tests
             Assert.Equal("B738 · na ziemi", AircraftSearch.Describe(Create("a", "LOT1", "B738", null, true, null), null, FormatFeet));
             Assert.Equal("10000 ft", AircraftSearch.Describe(Create("a", "LOT1"), null, FormatFeet));
             Assert.Equal(string.Empty, AircraftSearch.Describe(Create("a", "LOT1", null, null, false, null), null, FormatFeet));
+        }
+
+        /// <summary>
+        /// The description shows the full type name from the built-in table when the type is known, and the search finds the aircraft by that name.
+        /// </summary>
+        [Fact]
+        public void TypeNameFromTable_IsDescribedAndSearchable()
+        {
+            WithTypeTable(() =>
+            {
+                Aircraft neo = Create("a", "LOT1", "A21N");
+                Aircraft other = Create("b", "LOT2", "B738");
+
+                Assert.Equal("Airbus A321neo (A21N) · 10000 ft", AircraftSearch.Describe(neo, null, FormatFeet));
+                Assert.Equal("B738 · 10000 ft", AircraftSearch.Describe(other, null, FormatFeet));
+
+                List<SearchResult> rows = SearchAll(new Aircraft[] { neo, other }, "airbus neo");
+
+                Assert.Single(rows);
+                Assert.Same(neo, rows[0].Aircraft);
+                Assert.Single(AircraftSearch.Search(new Aircraft[] { neo, other }, callsign => null, "airbus", 10));
+            });
         }
 
         /// <summary>

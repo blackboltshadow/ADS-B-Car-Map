@@ -112,6 +112,25 @@ Pozycje samolotów zmieniają się co kilka sekund, więc ich nie zapamiętujemy
 - Przycisk „Wyczyść teraz” zapomina wszystko. Przycisk odświeżenia trasy na karcie samolotu nadal wymusza pobranie jednej trasy.
 - Ograniczenie: gdy karta nadal pokazuje samolot, który wylądował i został zamknięty, aplikacja po wygaśnięciu wpisu zapyta o jego trasę jeszcze raz, i potem co N minut, dopóki karta jest otwarta.
 
+## Przyloty i odloty lotniska (rozpoznanie z 2026-11-03, na przyszłość)
+
+Obecne źródła (adsb.lol, airplanes.live, adsbdb, hexdb) nie dają listy lotów lotniska: pozycje są chwilowe, trasy odpowiadają tylko na pytanie „jaka trasa dla tego znaku wywoławczego”. Dane z wyszukiwania w sieci, warunki trzeba sprawdzić na oficjalnych stronach przed użyciem.
+
+**Wariant A: lista „na żywo” z istniejących danych (zalecany na początek, bez kluczy).** Samoloty w promieniu wokół lotniska (`AppServices.Adsb`), trasa każdego z `AppServices.Routes` (`RouteCache`); przylot = lotnisko jest celem, odlot = jest początkiem. Ograniczenia: tylko loty w zasięgu odbiorników (bez planowanych i niewystartowanych), jedno zapytanie o trasę na znak wywoławczy (limity i 429), trasy bywają błędne lub puste (general aviation, wojskowe). Miejsce w UI: karta lotniska na telefonie, w samochodzie prosty popup z najbliższymi przylotami.
+
+**Wariant B: prawdziwy rozkład z zewnętrznego API (opcjonalne źródło za interfejsem w `Sources/`).** Każde wymaga klucza API użytkownika. Repozytorium jest publiczne, więc klucz tylko jako ustawienie poza kodem (jak kontakt User-Agent). Aplikacja ma działać bez niego.
+
+| Źródło | Koszt | Limity | Uwagi |
+|---|---|---|---|
+| OpenSky `/flights/arrival`, `/flights/departure` | darmowe | anonimowo 400 kredytów/dzień, konto 4000/dzień, licencjonowane 14 400 odnawianych co godzinę; osobna pula dla `/flights/*` | tylko loty już zakończone (bez rozkładu), OAuth2, użycie komercyjne wymaga pisemnej licencji, anonimowa historia może dawać 403. Odpada |
+| AeroDataBox (RapidAPI / API.Market) | plan Basic 0 USD: 400 jednostek i 1600 zapytań miesięcznie (starsze źródła 600/2400); płatne od ok. 7,50 USD (inne źródła 5,35) | twarde limity miesięczne; endpointy kosztują 1, 2 lub 6 jednostek | rozkład lotniska (FIDS), najlepiej pasuje. Darmowy plan: atrybucja, bez użytku komercyjnego, zakaz przekazywania danych dalej. Nieustalone: kategoria kosztu FIDS |
+| AviationStack | darmowy 100 zapytań/mies. (starsze źródła 500); 49,99 USD za 10 000; 499,99 USD za 250 000 | darmowy: 1 zapytanie/60 s, maks. 100 wyników; `/timetable` i `/flightsfuture` jak wyżej | loty przyszłe, historia i trasy tylko w płatnych. Darmowy za mały. Brak oficjalnego cennika w wynikach |
+| FlightAware AeroAPI | Personal: kredyt ok. 5 USD/mies. (feederzy ADS-B 10–20 USD), od ok. 0,002 USD za zapytanie; Standard od ok. 100 USD/mies. | Personal: 10 zestawów wyników/min | nie potwierdzono, czy Personal obsługuje endpointy lotniskowe (zgłoszono 401 na części endpointów); komercyjnie tylko Standard |
+
+**Do sprawdzenia przed decyzją:** kategoria kosztu FIDS w AeroDataBox ([aerodatabox.com/pricing](https://aerodatabox.com/pricing)); czy FlightAware Personal daje dostęp do endpointów lotniskowych (potrzebny testowy klucz); aktualny limit darmowego AviationStack.
+
+**Decyzja robocza:** najpierw wariant A, potem ewentualnie AeroDataBox jako opcjonalne źródło rozkładu.
+
 ## Czego jeszcze brakuje
 
 - adsb.fi (ścieżka punktu do sprawdzenia na żywym zapytaniu, limit 1 zapytanie/s).

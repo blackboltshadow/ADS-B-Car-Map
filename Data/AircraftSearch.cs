@@ -107,9 +107,11 @@ namespace AdsbCarMap.Data
         {
             List<string> parts = new List<string>();
 
-            if (!string.IsNullOrEmpty(item.TypeCode))
+            string typeLabel = GetTypeLabel(item);
+
+            if (typeLabel.Length > 0)
             {
-                parts.Add(item.TypeCode);
+                parts.Add(typeLabel);
             }
 
             if (route != null)
@@ -127,6 +129,34 @@ namespace AdsbCarMap.Data
             }
 
             return string.Join(" · ", parts);
+        }
+
+        /// <summary>
+        /// Returns the full type name of an aircraft: the name received from the data sources, or else the name from the built-in type table.
+        /// </summary>
+        /// <param name="item">Aircraft.</param>
+        /// <returns>The type name, or null when it is not known.</returns>
+        private static string? GetTypeName(Aircraft item)
+        {
+            return string.IsNullOrWhiteSpace(item.TypeName) ? AircraftTypeTable.Current.FindName(item.TypeCode) : item.TypeName.Trim();
+        }
+
+        /// <summary>
+        /// Returns the type of an aircraft for result lists: the full name followed by the type code in brackets, or only the code when the name is not known.
+        /// </summary>
+        /// <param name="item">Aircraft.</param>
+        /// <returns>The type label, empty when neither the name nor the code is known.</returns>
+        private static string GetTypeLabel(Aircraft item)
+        {
+            string code = item.TypeCode?.Trim() ?? string.Empty;
+            string? name = GetTypeName(item);
+
+            if (string.IsNullOrEmpty(name))
+            {
+                return code;
+            }
+
+            return code.Length > 0 && !name.Contains(code, StringComparison.OrdinalIgnoreCase) ? name + " (" + code + ")" : name;
         }
 
         /// <summary>
@@ -290,6 +320,7 @@ namespace AdsbCarMap.Data
                 item.Hex,
                 item.Registration,
                 item.TypeCode,
+                GetTypeName(item),
                 route?.OriginCode,
                 route?.OriginCity,
                 route?.DestinationCode,
@@ -347,6 +378,7 @@ namespace AdsbCarMap.Data
                 item.Hex,
                 item.Registration,
                 item.TypeCode,
+                GetTypeName(item),
                 route?.OriginCode,
                 route?.OriginCity,
                 route?.DestinationCode,
