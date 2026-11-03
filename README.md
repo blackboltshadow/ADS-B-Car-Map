@@ -311,6 +311,8 @@ Pokrycie testami liczy się z plikiem `coverage.runsettings` (ustawia `IncludeTe
 dotnet test Tests\AdsbCarMap.Tests\AdsbCarMap.Tests.csproj --settings coverage.runsettings --collect:"XPlat Code Coverage"
 ```
 
+Kod w `Sources` testują osobne projekty, więc jeden raport pokazuje tylko część pokrycia. `Scripts\Coverage.ps1` uruchamia wszystkie projekty `*.Tests.csproj`, łączy raporty po plikach i liniach i wypisuje łączne pokrycie oraz najsłabiej pokryte pliki (wyniki trafiają do katalogu `coverage-results`, ignorowanego przez git).
+
 Workflow GitHub Actions `.github/workflows/tests.yml` uruchamia wszystkie projekty `*.Tests.csproj` przy każdym pushu na `main` i w pull requestach, zapisuje raporty pokrycia jako artefakt i nie buduje aplikacji ani nie podpisuje paczki (klucz jest poza repozytorium).
 
 Testy obejmują odległość i kierunek, ekstrapolację pozycji samolotu i promień pobierania (`MapMath`), historię śladów (`TrailTracker`), projekcję Web Mercator i dobór kafelków, klasyfikację rodzajów samolotów, wspólny stan zaznaczenia telefonu i samochodu oraz definicje ustawień z historią zmian. Kod zależny od Androida jest rozdzielony na pliki `*.Android.cs` i `*.App.cs` (klasy `partial`), a część czysta dostaje stan z zewnątrz: `AirportDatabase.LoadFrom` przyjmuje linie plików, a `AircraftSearch` odczyt tras, ulubione i formatowanie wysokości jako parametry. Jednostka wysokości jest parametrem metod formatujących (`AltitudeFormatter`, teksty kart), a obliczenia koloru po wysokości są w `AltitudeBlend`, bez `Android.Graphics.Color`. `RouteCache` nadal wymaga wydzielenia logowania Androida. Nowa logika niezależna od Androida powinna dostać test, a jej plik trzeba dopisać jako `Compile Include` w pliku csproj testów.

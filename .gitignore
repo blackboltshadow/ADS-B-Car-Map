@@ -15,3 +15,4 @@ obj/
 logs/
 
 release-notes/
+coverage-results/
