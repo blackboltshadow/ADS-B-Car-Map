@@ -2,6 +2,38 @@
 
 Opis tego, co zostało wydane w kolejnych wersjach, od najnowszej. Wersja ma postać `0.<druga>.<trzecia>` i jest w pliku `Build/Version.txt`: przy nowym wydaniu rośnie druga cyfra, a trzecia wraca do 0 (0.3.0), przy poprawce rośnie tylko trzecia (0.3.1); decyduje o tym osoba przygotowująca wydanie. Numer kompilacji (`versionCode`) nigdy nie jest zerowany. Do wersji 0.2.163 trzecia cyfra była numerem kompilacji. Od wersji 0.2.163 każdej wersji odpowiada tag w git (`v<wersja>`) i wiersz w `Build/release-history.csv` (commit, rozmiar i SHA-256 paczki). Podsumowanie commitów dla wersji można wygenerować skryptem `Scripts\Release-Notes.ps1`. Wcześniejsze wersje nie mają tagów.
 
+## 0.7.0 (2026-11-03)
+
+Zmiany od wersji 0.6.0.
+
+**Zagrożenia powietrzne (NEPTUN)**
+- Nowa, domyślnie wyłączona warstwa mapy tylko na telefonie: drony, rakiety, KAB i inne zagrożenia z serwisu NEPTUN (neptun.in.ua), z kierunkiem lotu, śladem, kołem niepewności położenia i opisem po dotknięciu. Włącza ją przycisk z ikoną ostrzeżenia na mapie albo ustawienie.
+- Ikony zagrożeń w stylu ikon samolotów (dron, dron FPV, dron rozpoznawczy, rakieta, rakieta balistyczna, KAB, MiG-31K), z osobnym rozmiarem i obwódką oraz podglądem w ustawieniach. Kierunek, którego serwis nie podaje (np. dla dronów FPV), jest wyliczany z ruchu.
+- Zgodnie z warunkami serwisu na mapie jest klikalne „Dane: NEPTUN” i ostrzeżenie, że to nie jest oficjalny system ostrzegania. Obserwacje nie są rysowane na czerwono, a pozycje znane tylko do obwodu nie są rysowane jako punkt.
+- Dane przez stałe połączenie WebSocket z zapasowym pobieraniem co 5 s; sposób pobierania wybiera się w Ustawienia → Zaawansowane, a stan połączenia widać w karcie „Stan źródeł”.
+
+**Alerty**
+- Zdarzenie „wylot z obszaru” obok wlotu i pojawienia się.
+- Przycisk „Obserwuj” na karcie samolotu tworzy alert na jeden samolot.
+- Kopiowanie alertu oraz eksport i import alertów do pliku (razem z używanymi filtrami).
+- Nowe wbudowane filtry „Squawk awaryjny” i „Szybko opadające”, pola squawk i prędkość pionowa w kreatorze filtrów.
+
+**Ustawienia**
+- Ustawienia otwierają się z wszystkimi działami zwiniętymi. Ustawienie języka jest prostsze: dział „Język / Language” z polem wyboru „Język aplikacji”.
+- Lotniska wojskowe są domyślnie ukryte (nie dotyczy zapisanych już ustawień).
+
+**Pod maską**
+- Nowe źródło `Sources\Neptun` z testami (w tym prawdziwego połączenia WebSocket), model `Threat` i interfejs `IThreatFeed` w Core, ponad 1000 testów w ośmiu projektach.
+
+Tekst „Co nowego” w Google Play dla tej wersji:
+
+```
+Zagrożenia: opcjonalna warstwa mapy z dronami i rakietami z serwisu NEPTUN (tylko telefon).
+Alerty: wylot z obszaru, obserwowanie jednego samolotu, kopiowanie oraz eksport i import.
+Filtry: squawk awaryjny i szybkie opadanie.
+Ustawienia: prostsze ustawienie języka, zwinięte działy po wejściu.
+```
+
 ## 0.6.0 (2026-11-03)
 
 Zmiany od wersji 0.5.0.
