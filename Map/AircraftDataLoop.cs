@@ -199,6 +199,7 @@ namespace AdsbCarMap.Map
 
                     publish(fetched, fetchedAtUtc);
                     LiveTraffic.Update(fetched, fetchedAtUtc, latitude, longitude);
+                    AlertMonitor.Process(fetched);
                     RequestSelectedAircraftDetails(fetched, cancellationToken);
                     Volatile.Write(ref failed, 0);
                 }

@@ -20,6 +20,17 @@
 
   <ItemGroup>
     <Compile Include="..\..\Data\GeoMath.cs" Link="Linked\GeoMath.cs" />
+    <Compile Include="..\..\Data\GeoPoint.cs" Link="Linked\GeoPoint.cs" />
+    <Compile Include="..\..\Data\AlertAreaKind.cs" Link="Linked\AlertAreaKind.cs" />
+    <Compile Include="..\..\Data\AlertTrigger.cs" Link="Linked\AlertTrigger.cs" />
+    <Compile Include="..\..\Data\AlertArea.cs" Link="Linked\AlertArea.cs" />
+    <Compile Include="..\..\Data\AlertRule.cs" Link="Linked\AlertRule.cs" />
+    <Compile Include="..\..\Data\AlertMatch.cs" Link="Linked\AlertMatch.cs" />
+    <Compile Include="..\..\Data\AlertEngine.cs" Link="Linked\AlertEngine.cs" />
+    <Compile Include="..\..\Data\AlertRuleJson.cs" Link="Linked\AlertRuleJson.cs" />
+    <Compile Include="..\..\Data\AlertText.cs" Link="Linked\AlertText.cs" />
+    <Compile Include="..\..\Data\AlertCircle.cs" Link="Linked\AlertCircle.cs" />
+    <Compile Include="..\..\Data\AlertQueryPlanner.cs" Link="Linked\AlertQueryPlanner.cs" />
     <Compile Include="..\..\Data\AircraftKind.cs" Link="Linked\AircraftKind.cs" />
     <Compile Include="..\..\Data\AircraftClassifier.cs" Link="Linked\AircraftClassifier.cs" />
     <Compile Include="../../Data/AircraftKindExtensions.cs" Link="Linked/AircraftKindExtensions.cs" />

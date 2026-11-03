@@ -69,6 +69,11 @@ namespace AdsbCarMap.Activities
         private const int MenuDevLogId = 6;
 
         /// <summary>
+        /// Identifier of the menu item that opens the alerts.
+        /// </summary>
+        private const int MenuAlertsId = 7;
+
+        /// <summary>
         /// Diameter of the badge with the number of filters in dp.
         /// </summary>
         private const int BadgeSizeDp = 20;
@@ -167,9 +172,11 @@ namespace AdsbCarMap.Activities
             base.OnCreate(savedInstanceState);
             DevLogger.InstallGlobalHandlers();
             Log.Info(LogTag, "MainActivity.OnCreate");
+            AlertBackgroundRunner.Initialize();
 
             controller.SelectionChanged += () => RunOnUiThread(OnSelectionChanged);
             SetContentView(BuildContent());
+            HandleAlertIntent(Intent);
 
             List<string> missingPermissions = new List<string>();
 
@@ -188,6 +195,31 @@ namespace AdsbCarMap.Activities
             if (missingPermissions.Count > 0)
             {
                 RequestPermissions(missingPermissions.ToArray(), PermissionRequestCode);
+            }
+        }
+
+        /// <summary>
+        /// Handles a tap on an alert notification when the activity is already running.
+        /// </summary>
+        /// <param name="intent">New intent.</param>
+        protected override void OnNewIntent(Intent? intent)
+        {
+            base.OnNewIntent(intent);
+            HandleAlertIntent(intent);
+        }
+
+        /// <summary>
+        /// Asks the map to follow the aircraft from an alert notification.
+        /// </summary>
+        /// <param name="intent">Intent that started or resumed the activity.</param>
+        private static void HandleAlertIntent(Intent? intent)
+        {
+            string? hex = intent?.GetStringExtra(AlertMonitor.FocusHexExtra);
+
+            if (!string.IsNullOrEmpty(hex))
+            {
+                intent?.RemoveExtra(AlertMonitor.FocusHexExtra);
+                LiveTraffic.RequestFocus(hex);
             }
         }
 
@@ -365,6 +397,7 @@ namespace AdsbCarMap.Activities
             if (requestCode == PermissionRequestCode && LocationTracker.HasPermission())
             {
                 controller.StartLocationUpdates();
+                AlertBackgroundRunner.Refresh();
             }
         }
 
@@ -695,12 +728,13 @@ namespace AdsbCarMap.Activities
             popup.Menu?.Add(0, MenuSearchId, 0, "Wyszukaj");
             popup.Menu?.Add(0, MenuFavoritesId, 1, "Ulubione lotniska");
             popup.Menu?.Add(0, MenuFiltersId, 2, "Filtry samolotów");
-            popup.Menu?.Add(0, MenuSettingsId, 3, "Ustawienia");
-            popup.Menu?.Add(0, MenuAboutId, 4, "O aplikacji");
+            popup.Menu?.Add(0, MenuAlertsId, 3, "Alerty");
+            popup.Menu?.Add(0, MenuSettingsId, 4, "Ustawienia");
+            popup.Menu?.Add(0, MenuAboutId, 5, "O aplikacji");
 
             if (AppSettings.ShowDevLog)
             {
-                popup.Menu?.Add(0, MenuDevLogId, 5, "Dev log");
+                popup.Menu?.Add(0, MenuDevLogId, 6, "Dev log");
             }
 
             popup.MenuItemClick += (sender, args) =>
@@ -722,6 +756,10 @@ namespace AdsbCarMap.Activities
                 else if (args.Item?.ItemId == MenuFiltersId)
                 {
                     StartActivity(new Intent(this, typeof(FiltersActivity)));
+                }
+                else if (args.Item?.ItemId == MenuAlertsId)
+                {
+                    StartActivity(new Intent(this, typeof(AlertsActivity)));
                 }
                 else if (args.Item?.ItemId == MenuAboutId)
                 {

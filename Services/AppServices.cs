@@ -101,6 +101,11 @@ namespace AdsbCarMap.Services
         public static AircraftFilterStore Filters { get; } = new AircraftFilterStore();
 
         /// <summary>
+        /// Alert rules with the global switch of alerts.
+        /// </summary>
+        public static AlertRuleStore Alerts { get; } = new AlertRuleStore();
+
+        /// <summary>
         /// Number of flights and aircraft whose information is kept in the memory, including the answers that nothing is known.
         /// </summary>
         public static int FlightInfoCount => Composition.Value.FlightInfoCount;

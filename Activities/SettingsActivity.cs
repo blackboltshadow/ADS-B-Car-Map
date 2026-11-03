@@ -260,6 +260,9 @@ namespace AdsbCarMap.Activities
             GetAirportSettingsCard(appearance);
             GetTitledCard("map", "Mapa", appearance);
 
+            LinearLayout alerts = CreateAggregate(root, "Alerty", "alertsSection", 20f);
+            GetTitledCard("alerts", "Sprawdzanie w tle", alerts);
+
             LinearLayout advanced = CreateAggregate(root, "Zaawansowane", "advanced", 20f);
             GetTitledCard("dataSource", "Źródło danych", advanced);
             GetTitledCard("routeSources", "Źródła tras", advanced);
@@ -336,6 +339,8 @@ namespace AdsbCarMap.Activities
             {
                 flightCacheCard.AddView(CreateResetButton("Przywróć domyślny czas przechowywania", AppSettings.FlightCacheSettings, "Przywrócono domyślny czas przechowywania informacji o lotach"));
             }
+
+            titledCards["alerts"].AddView(CreateResetButton("Przywróć domyślne alerty", AppSettings.AlertSettings, "Przywrócono domyślne ustawienia alertów"));
 
             if (devLogCard != null)
             {
@@ -599,6 +604,11 @@ namespace AdsbCarMap.Activities
             if (AppSettings.DataSourceSettings.Contains(definition))
             {
                 return titledCards["dataSource"];
+            }
+
+            if (AppSettings.AlertSettings.Contains(definition))
+            {
+                return titledCards["alerts"];
             }
 
             if (AppSettings.PrivacySettings.Contains(definition))

@@ -311,6 +311,16 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition PrivacyLogSetting = SettingDefinition.CreateSwitch("privacy_log_requests", "Loguj wysyłane współrzędne w Dev logu", false, "Każde zapytanie o samoloty trafia do Dev logu jako informacja z prawdziwym położeniem i położeniem wysłanym do serwera. Pozwala sprawdzić działanie zaokrąglania. Uwaga: log zawiera wtedy Twoje prawdziwe położenie, więc nie udostępniaj go innym, dopóki ten przełącznik jest włączony. Wpisy widać przy poziomie logowania „Wszystko”.");
 
         /// <summary>
+        /// Time between two checks of the alerts made without the map.
+        /// </summary>
+        public static readonly SettingDefinition AlertIntervalSetting = SettingDefinition.CreateSlider("alert_interval_s", "Sprawdzanie alertów w tle co", 60.0, 30.0, 600.0, 30.0, " s", "Co ile sekund tryb w tle alertów pobiera samoloty wokół obszarów alertów i je sprawdza. Krótszy odstęp daje szybsze powiadomienia, ale więcej zapytań do serwera (przy zbyt częstych serwer może odpowiedzieć kodem 429) i większe zużycie baterii i danych. Dotyczy tylko trybu w tle, który włącza się na ekranie „Alerty”. Zmiana działa od następnego sprawdzenia.");
+
+        /// <summary>
+        /// Number of alerts checked by the background mode.
+        /// </summary>
+        public static readonly SettingDefinition AlertMaxBackgroundSetting = SettingDefinition.CreateSlider("alert_max_background", "Maksymalna liczba alertów w tle", 5.0, 1.0, 20.0, 1.0, "", "Ile aktywnych alertów (licząc od góry listy) sprawdza tryb w tle. Każdy dodatkowy alert w innym miejscu to kolejne zapytanie do serwera w każdym sprawdzeniu; alerty leżące blisko siebie dzielą jedno zapytanie. Aktywne alerty ponad limit nie są sprawdzane, dopóki tryb w tle jest włączony.");
+
+        /// <summary>
         /// All settings in display order.
         /// </summary>
         public static readonly IReadOnlyList<SettingDefinition> All = new List<SettingDefinition>
@@ -367,6 +377,8 @@ namespace AdsbCarMap.Settings
             PrivacyRadiusStepSetting,
             PrivacyExpandRadiusSetting,
             PrivacyLogSetting,
+            AlertIntervalSetting,
+            AlertMaxBackgroundSetting,
         };
 
         /// <summary>
@@ -398,6 +410,15 @@ namespace AdsbCarMap.Settings
             DevLogLevelSetting,
             DevLogMaxEntriesSetting,
             DevLogDeduplicateSetting,
+        };
+
+        /// <summary>
+        /// Settings of the alerts checked without the map. They share one section on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> AlertSettings = new List<SettingDefinition>
+        {
+            AlertIntervalSetting,
+            AlertMaxBackgroundSetting,
         };
 
         /// <summary>
@@ -565,6 +586,16 @@ namespace AdsbCarMap.Settings
         /// Maximum number of entries kept in the developer log.
         /// </summary>
         public static int DevLogMaxEntries => DevLog.GetMaxEntries((int)Get(DevLogMaxEntriesSetting));
+
+        /// <summary>
+        /// Time between two checks of the alerts made without the map.
+        /// </summary>
+        public static TimeSpan AlertInterval => TimeSpan.FromSeconds(Get(AlertIntervalSetting));
+
+        /// <summary>
+        /// Number of alerts checked by the background mode.
+        /// </summary>
+        public static int AlertMaxBackground => (int)Math.Round(Get(AlertMaxBackgroundSetting));
 
         /// <summary>
         /// Whether identical events of the developer log are merged into one entry.
