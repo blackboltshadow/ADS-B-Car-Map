@@ -3,6 +3,9 @@ using AdsbCarMap.DataSources.Management.Enrichment;
 using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Management.Selection;
 using AdsbCarMap.DataSources.Neptun;
+using AdsbCarMap.DataSources.Models;
+using AdsbCarMap.DataSources.Pansa;
+using AdsbCarMap.DataSources.Rso;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Settings;
@@ -47,6 +50,26 @@ namespace AdsbCarMap.Services
         private static readonly Lazy<IThreatFeed> ThreatFeedInstance = new Lazy<IThreatFeed>(CreateThreatFeed);
 
         /// <summary>
+        /// Feed of the airspace areas from PAŻP, created at the first use. It does nothing until it is started, which only the phone map does, and only while the airspace layer is switched on.
+        /// </summary>
+        private static readonly Lazy<AirspaceFeed> AirspaceFeedInstance = new Lazy<AirspaceFeed>(CreateAirspaceFeed);
+
+        /// <summary>
+        /// Choice of the kinds and states of the airspace areas that the layer shows, read from the device at the first use.
+        /// </summary>
+        private static readonly Lazy<AirspaceConfigStore> AirspaceConfigInstance = new Lazy<AirspaceConfigStore>(() => new AirspaceConfigStore());
+
+        /// <summary>
+        /// Feed of the official notices of the regional warning system, created at the first use. It does nothing until it is started, which only the screen of the notices does.
+        /// </summary>
+        private static readonly Lazy<PollingFeed<Warning>> WarningFeedInstance = new Lazy<PollingFeed<Warning>>(CreateWarningFeed);
+
+        /// <summary>
+        /// Choice of the categories and voivodeships of the notices, read from the device at the first use.
+        /// </summary>
+        private static readonly Lazy<WarningConfigStore> WarningConfigInstance = new Lazy<WarningConfigStore>(() => new WarningConfigStore());
+
+        /// <summary>
         /// Aircraft source used by the maps: the sources in the order chosen in the settings, the next one asked when the previous one gives no data.
         /// </summary>
         public static IAircraftSource Adsb => Composition.Value.PositionSource;
@@ -55,6 +78,26 @@ namespace AdsbCarMap.Services
         /// Feed of the airborne threats from NEPTUN, used by the layer on the phone map.
         /// </summary>
         public static IThreatFeed Threats => ThreatFeedInstance.Value;
+
+        /// <summary>
+        /// Feed of the airspace areas from PAŻP, used by the layer on the phone map.
+        /// </summary>
+        public static AirspaceFeed Airspace => AirspaceFeedInstance.Value;
+
+        /// <summary>
+        /// Choice of the kinds and states of the airspace areas that the layer shows.
+        /// </summary>
+        public static AirspaceConfigStore AirspaceConfig => AirspaceConfigInstance.Value;
+
+        /// <summary>
+        /// Feed of the official notices of the regional warning system, used by the screen of the notices.
+        /// </summary>
+        public static PollingFeed<Warning> Warnings => WarningFeedInstance.Value;
+
+        /// <summary>
+        /// Choice of the categories and voivodeships of the notices.
+        /// </summary>
+        public static WarningConfigStore WarningConfig => WarningConfigInstance.Value;
 
         /// <summary>
         /// Completes the type, the full type name and the registration of the selected aircraft from the other sources.
@@ -167,6 +210,47 @@ namespace AdsbCarMap.Services
                 () => new WebSocketThreatConnection(new Uri(NeptunThreatFeed.DefaultStreamAddress), UserAgent),
                 GetThreatTransport,
                 (string message, Exception? exception) => DevLogger.Warn("Threats", message, exception));
+        }
+
+        /// <summary>
+        /// Creates the feed of the airspace areas. The map is bigger than a typical answer of the other servers, so the client waits longer for it.
+        /// </summary>
+        /// <returns>The feed, stopped.</returns>
+        private static AirspaceFeed CreateAirspaceFeed()
+        {
+            HttpClient client = CreateHttpClient(PansaClient.DefaultBaseAddress);
+            client.Timeout = TimeSpan.FromSeconds(30);
+
+            return new AirspaceFeed(
+                new PansaClient(client),
+                () => DateTime.UtcNow,
+                (TimeSpan time, CancellationToken token) => Task.Delay(time, token),
+                () => TimeSpan.FromMinutes(AppSettings.AirspaceRefreshMinutes),
+                ReportSourceEvent);
+        }
+
+        /// <summary>
+        /// Creates the feed of the official notices. What it downloads follows the choice of the categories and voivodeships at every download.
+        /// </summary>
+        /// <returns>The feed, stopped.</returns>
+        private static PollingFeed<Warning> CreateWarningFeed()
+        {
+            HttpClient client = CreateHttpClient(RsoClient.DefaultBaseAddress);
+            client.Timeout = TimeSpan.FromSeconds(20);
+            RsoClient source = new RsoClient(client);
+
+            return new PollingFeed<Warning>(
+                source.Name,
+                (CancellationToken token) =>
+                {
+                    WarningFilterConfig config = WarningConfig.Config;
+
+                    return source.GetWarningsAsync(config.ShownCategories, config.Provinces, token);
+                },
+                () => DateTime.UtcNow,
+                (TimeSpan time, CancellationToken token) => Task.Delay(time, token),
+                () => TimeSpan.FromMinutes(AppSettings.WarningsRefreshMinutes),
+                ReportSourceEvent);
         }
 
         /// <summary>

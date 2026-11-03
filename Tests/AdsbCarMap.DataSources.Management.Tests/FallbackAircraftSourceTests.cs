@@ -205,7 +205,7 @@ namespace AdsbCarMap.DataSources.Management.Tests
         }
 
         /// <summary>
-        /// Cancellation is not treated as a failure of the source.
+        /// A cancellation that the caller asked for is not treated as a failure of the source.
         /// </summary>
         [Fact]
         public async Task Cancellation_IsNotSwallowed()
@@ -213,10 +213,42 @@ namespace AdsbCarMap.DataSources.Management.Tests
             StubSource first = new StubSource("a") { Failure = new OperationCanceledException() };
             StubSource second = new StubSource("b");
             FallbackAircraftSource source = Create(first, second, "a");
+            using CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
 
-            await Assert.ThrowsAsync<OperationCanceledException>(() => source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None));
+            await Assert.ThrowsAsync<OperationCanceledException>(() => source.GetAircraftAsync(1.0, 2.0, 10.0, cancellation.Token));
 
             Assert.Equal(0, second.Calls);
+        }
+
+        /// <summary>
+        /// A timeout, which the HTTP client reports as a cancellation that nobody asked for, is a failure of the source, so the next source is asked.
+        /// </summary>
+        [Fact]
+        public async Task Timeout_FallsBackToNextSource()
+        {
+            StubSource first = new StubSource("a") { Failure = new TaskCanceledException("timeout") };
+            StubSource second = new StubSource("b");
+            FallbackAircraftSource source = Create(first, second, "a");
+
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+
+            Assert.Equal(1, second.Calls);
+        }
+
+        /// <summary>
+        /// An error that is not an HTTP exception, such as the closed socket that the Android handler can report as a platform exception, is also a failure of the source and the next source is asked.
+        /// </summary>
+        [Fact]
+        public async Task PlatformError_FallsBackToNextSource()
+        {
+            StubSource first = new StubSource("a") { Failure = new IOException("Socket closed") };
+            StubSource second = new StubSource("b");
+            FallbackAircraftSource source = Create(first, second, "a");
+
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+
+            Assert.Equal(1, second.Calls);
         }
 
         /// <summary>

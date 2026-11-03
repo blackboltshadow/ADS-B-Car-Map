@@ -1,4 +1,5 @@
 using AdsbCarMap.DataSources.Interfaces;
+using AdsbCarMap.DataSources.Management;
 using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Models;
 using System.Collections.Concurrent;
@@ -159,7 +160,7 @@ namespace AdsbCarMap.Data
         {
             if (Interlocked.CompareExchange(ref workerRunning, 1, 0) == 0)
             {
-                _ = Task.Run(WorkerAsync);
+                _ = Task.Run(RunWorkerAsync);
             }
         }
 
@@ -257,6 +258,28 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
+        /// Runs the worker so that nothing that goes wrong in it can leave the marker of a running worker set: a worker that ended with an exception would otherwise stay "running" for good and no route would be downloaded until the application restarts.
+        /// </summary>
+        /// <returns>Task representing the work of the worker.</returns>
+        private async Task RunWorkerAsync()
+        {
+            try
+            {
+                await WorkerAsync();
+            }
+            catch (Exception exception)
+            {
+                Interlocked.Exchange(ref workerRunning, 0);
+                onFailure?.Invoke(exception);
+
+                if (!queue.IsEmpty || !priorityQueue.IsEmpty)
+                {
+                    EnsureWorker();
+                }
+            }
+        }
+
+        /// <summary>
         /// Downloads the routes from the queue one by one, with a pause between the requests, until the queue is empty.
         /// </summary>
         /// <returns>Task representing the work of the worker.</returns>
@@ -279,7 +302,7 @@ namespace AdsbCarMap.Data
                         routes.Set(key, route);
                         retryAfterUtc.TryRemove(key, out DateTime removedRetry);
                     }
-                    catch (Exception exception) when (exception is HttpRequestException || exception is OperationCanceledException || exception is JsonException)
+                    catch (Exception exception) when (SourceFailures.IsFailure(exception, CancellationToken.None))
                     {
                         retryAfterUtc[key] = DateTime.UtcNow + RetryDelay;
                         onFailure?.Invoke(exception);

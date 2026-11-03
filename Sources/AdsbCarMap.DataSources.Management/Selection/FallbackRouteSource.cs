@@ -112,7 +112,7 @@ namespace AdsbCarMap.DataSources.Management.Selection
                     shortestWait = Shorter(shortestWait, exception.RetryAfter);
                     report?.Invoke(SourceEventKind.Failure, "Route source " + source.Name + " answered with a limit response (429), paused", null);
                 }
-                catch (Exception exception) when (exception is HttpRequestException || exception is JsonException)
+                catch (Exception exception) when (SourceFailures.IsFailure(exception, cancellationToken))
                 {
                     hardFailure = exception;
                     report?.Invoke(SourceEventKind.Failure, "Route source " + source.Name + " failed (" + exception.GetType().Name + ")", exception);

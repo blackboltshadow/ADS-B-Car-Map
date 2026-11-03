@@ -128,11 +128,11 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
         /// <summary>
         /// Remembers a failure that was not a limit response, so that it can be shown. It does not pause the requests.
         /// </summary>
-        /// <param name="exception">The failure: an HTTP error (with its status code, if any) or an invalid answer.</param>
+        /// <param name="exception">The failure: an HTTP error (with its status code, if any), an invalid answer or another error of the connection.</param>
         public void RegisterFailure(Exception exception)
         {
             int? statusCode = exception is HttpRequestException http && http.StatusCode.HasValue ? (int)http.StatusCode.Value : null;
-            string description = statusCode.HasValue ? "Błąd HTTP " + statusCode.Value : exception is HttpRequestException ? "Błąd sieci" : "Nieprawidłowa odpowiedź";
+            string description = statusCode.HasValue ? "Błąd HTTP " + statusCode.Value : exception is System.Text.Json.JsonException ? "Nieprawidłowa odpowiedź" : "Błąd sieci";
 
             lock (stateLock)
             {

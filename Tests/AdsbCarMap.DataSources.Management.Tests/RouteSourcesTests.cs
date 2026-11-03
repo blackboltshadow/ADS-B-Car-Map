@@ -220,6 +220,39 @@ namespace AdsbCarMap.DataSources.Management.Tests
         }
 
         /// <summary>
+        /// An error that is not an HTTP exception, such as the closed socket that the Android handler reports as a platform exception, or a timeout, makes the source fail like any other failure: it is skipped and the next source answers.
+        /// </summary>
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        public async Task Fallback_PlatformErrorOrTimeout_NextOneAnswers(int kind)
+        {
+            Exception failure = kind == 0 ? new IOException("Socket closed") : new TaskCanceledException("timeout");
+            StubRouteSource first = new StubRouteSource("a") { Failure = failure };
+            StubRouteSource second = new StubRouteSource("b") { Route = Route("KRK") };
+            FallbackRouteSource source = Create(new List<string> { "a", "b" }, true, Wrap(first), Wrap(second));
+
+            Assert.Equal("KRK", (await source.GetRouteAsync("LOT1", CancellationToken.None))!.OriginCode);
+        }
+
+        /// <summary>
+        /// A cancellation that the caller asked for is not turned into a failure of the source.
+        /// </summary>
+        [Fact]
+        public async Task Fallback_RequestedCancellation_IsNotAFailure()
+        {
+            StubRouteSource first = new StubRouteSource("a") { Failure = new OperationCanceledException() };
+            StubRouteSource second = new StubRouteSource("b") { Route = Route("KRK") };
+            FallbackRouteSource source = Create(new List<string> { "a", "b" }, true, Wrap(first), Wrap(second));
+            using CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => source.GetRouteAsync("LOT1", cancellation.Token));
+
+            Assert.Equal(0, second.Calls);
+        }
+
+        /// <summary>
         /// When one source answered that it does not know the flight and the others failed, the result is null and not an error.
         /// </summary>
         [Fact]

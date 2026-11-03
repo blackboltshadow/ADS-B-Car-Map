@@ -131,7 +131,7 @@ namespace AdsbCarMap.DataSources.Management.Enrichment
                             merged = AircraftMerger.FillMissing(merged, details);
                         }
                     }
-                    catch (Exception exception) when (exception is HttpRequestException || exception is JsonException)
+                    catch (Exception exception) when (SourceFailures.IsFailure(exception, cancellationToken))
                     {
                     }
                 }

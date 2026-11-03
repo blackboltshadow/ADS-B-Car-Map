@@ -184,6 +184,8 @@ namespace AdsbCarMap.Services
         /// <returns>Task completed when the check ends.</returns>
         private static async Task CheckAsync(CancellationToken token)
         {
+            await AirspaceAlertMonitor.CheckAsync(token);
+
             List<AlertRule> rules = AppServices.Alerts.GetActiveRules();
 
             if (rules.Count > AppSettings.AlertMaxBackground)

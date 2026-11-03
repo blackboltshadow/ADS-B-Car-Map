@@ -89,6 +89,62 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
+        /// Describes the airspace feed in the same form as the other sources: a group with one line for the source and lines for the last update and the last failure.
+        /// </summary>
+        /// <param name="layerOn">Whether the airspace layer is switched on in the settings.</param>
+        /// <param name="state">State of the feed.</param>
+        /// <param name="count">Number of the areas the feed holds.</param>
+        /// <param name="lastUpdateUtc">Time of the last successful download, or null when there was none.</param>
+        /// <param name="failure">The last failure, or null when there was none.</param>
+        /// <param name="utcNow">Current time in UTC, used for the age of the update and of the failure.</param>
+        /// <returns>The text of the group, without a trailing new line.</returns>
+        public static string FormatAirspaceFeed(bool layerOn, AirspaceFeedState state, int count, DateTime? lastUpdateUtc, AirspaceFeedFailure? failure, DateTime utcNow)
+        {
+            StringBuilder builder = new StringBuilder();
+
+            builder.Append(Loc.T("Strefy przestrzeni powietrznej")).Append(":\n• PAŻP — ").Append(DescribeAirspaceFeed(layerOn, state, count)).Append('\n');
+
+            if (lastUpdateUtc != null)
+            {
+                builder.Append(Loc.T("   ostatnia aktualizacja: ")).Append(DescribeAge(utcNow - lastUpdateUtc.Value)).Append('\n');
+            }
+
+            if (failure != null)
+            {
+                builder.Append(Loc.T("   ostatni błąd: ")).Append(Loc.T(failure.Description)).Append(", ").Append(DescribeAge(utcNow - failure.OccurredUtc)).Append('\n');
+            }
+
+            return builder.ToString().TrimEnd('\n');
+        }
+
+        /// <summary>
+        /// Describes the state of the airspace feed.
+        /// </summary>
+        /// <param name="layerOn">Whether the airspace layer is switched on in the settings.</param>
+        /// <param name="state">State of the feed.</param>
+        /// <param name="count">Number of the areas the feed holds.</param>
+        /// <returns>The description.</returns>
+        public static string DescribeAirspaceFeed(bool layerOn, AirspaceFeedState state, int count)
+        {
+            if (!layerOn)
+            {
+                return Loc.T("warstwa wyłączona, brak połączenia z serwisem");
+            }
+
+            switch (state)
+            {
+                case AirspaceFeedState.Loading:
+                    return Loc.T("pobieranie…");
+                case AirspaceFeedState.Ready:
+                    return Loc.F("działa, stref: {0}", count);
+                case AirspaceFeedState.Offline:
+                    return Loc.T("brak połączenia, aplikacja ponawia próby");
+                default:
+                    return Loc.T("wstrzymane, mapa jest w tle");
+            }
+        }
+
+        /// <summary>
         /// Describes the state of the threat feed.
         /// </summary>
         /// <param name="layerOn">Whether the threat layer is switched on in the settings.</param>

@@ -336,6 +336,21 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition ThreatTransportSetting = SettingDefinition.CreateChoice("threat_transport", "Sposób pobierania zagrożeń", 0, "WebSocket z zapasowym pobieraniem (domyślnie): aplikacja trzyma jedno stałe połączenie ze strumieniem NEPTUN, a gdy ono nie działa, pobiera listę co 5 s i co jakiś czas próbuje połączyć się ponownie. Tylko WebSocket: po błędzie czeka (1, 2, 4… do 60 s) i łączy się ponownie, bez pobierania listy. Tylko pobieranie (REST): lista jest pobierana co 5 s, bez stałego połączenia. Zmiana działa od następnego kroku, bez wyłączania warstwy.", "WebSocket z zapasowym pobieraniem", "Tylko WebSocket", "Tylko pobieranie (REST)");
 
         /// <summary>
+        /// Whether the layer with the restricted and reserved areas of the airspace is shown on the phone map.
+        /// </summary>
+        public static readonly SettingDefinition ShowAirspaceSetting = SettingDefinition.CreateSwitch("show_airspace", "Warstwa stref przestrzeni powietrznej (PAŻP)", false, "Pokazuje na mapie telefonu strefy przestrzeni powietrznej z mapy PAŻP (airspace.pansa.pl): strefy zakazane, ograniczone, niebezpieczne, czasowo wydzielone i inne rezerwacje, z wysokościami i czasem obowiązywania po dotknięciu. Warstwa jest domyślnie wyłączona i tylko na telefonie, nie ma jej w Android Auto. Gdy jest wyłączona, aplikacja nie łączy się z serwisem. Dane są nieoficjalne i mogą być spóźnione lub niepełne, więc nie służą do planowania ani wykonywania lotów. Rodzaje stref i ich stany (aktywne, planowane, nieaktywne) wybierasz na osobnym ekranie, który otwiera przycisk poniżej, a przycisk na mapie włącza i wyłącza tę samą warstwę.");
+
+        /// <summary>
+        /// Time between two downloads of the airspace areas while the layer is on.
+        /// </summary>
+        public static readonly SettingDefinition AirspaceRefreshMinutesSetting = SettingDefinition.CreateSlider("airspace_refresh_minutes", "Odświeżanie stref", 5.0, 1.0, 60.0, 1.0, " min", "Co ile minut aplikacja pobiera listę stref z serwisu PAŻP, gdy warstwa jest włączona. Strefy zmieniają się wolno (rezerwacje ogłasza się z wyprzedzeniem), więc rzadsze pobieranie wystarcza i oszczędza serwis. Po błędzie aplikacja ponawia próbę coraz później, a po odpowiedzi 429 czeka tyle, ile poprosił serwer.");
+
+        /// <summary>
+        /// Time between two downloads of the official notices while the screen of the notices is open.
+        /// </summary>
+        public static readonly SettingDefinition WarningsRefreshMinutesSetting = SettingDefinition.CreateSlider("warnings_refresh_minutes", "Odświeżanie ostrzeżeń", 10.0, 5.0, 60.0, 1.0, " min", "Co ile minut aplikacja pobiera komunikaty Regionalnego Systemu Ostrzegania (publiczny kanał udostępniany przez TVP), gdy ekran „Ostrzeżenia” jest otwarty. Komunikaty zmieniają się powoli, więc rzadsze pobieranie wystarcza i oszczędza serwis. Po błędzie aplikacja ponawia próbę coraz później, a po odpowiedzi 429 czeka tyle, ile poprosił serwer. Gdy ekran jest zamknięty, aplikacja nie łączy się z serwisem.");
+
+        /// <summary>
         /// Switch that makes the privacy settings of the Dev section replace the choice of the user.
         /// </summary>
         public static readonly SettingDefinition PrivacyDevOverrideSetting = SettingDefinition.CreateSwitch("privacy_dev_override", "Ustawienia Dev nadpisują ustawienia użytkownika", false, "Gdy włączone, o zaokrąglaniu położenia decydują wyłącznie ustawienia z tej karty (rozmiar siatki, zaokrąglanie promienia, powiększanie promienia i logowanie), a wybór z sekcji Prywatność w Zaawansowanych jest ignorowany. Gdy wyłączone, ustawienia z tej karty nie mają żadnego wpływu i obowiązuje tylko wybór użytkownika.");
@@ -449,6 +464,9 @@ namespace AdsbCarMap.Settings
             ThreatIconScaleSetting,
             ThreatOutlineWidthSetting,
             ThreatTransportSetting,
+            ShowAirspaceSetting,
+            AirspaceRefreshMinutesSetting,
+            WarningsRefreshMinutesSetting,
             PrivacyPrecisionSetting,
             PrivacyDevOverrideSetting,
             PrivacyCustomGridSetting,
@@ -500,6 +518,23 @@ namespace AdsbCarMap.Settings
         public static readonly IReadOnlyList<SettingDefinition> ThreatSettings = new List<SettingDefinition>
         {
             ShowThreatsSetting,
+        };
+
+        /// <summary>
+        /// Settings of the airspace layer that the user sees. They share one card on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> AirspaceSettings = new List<SettingDefinition>
+        {
+            ShowAirspaceSetting,
+            AirspaceRefreshMinutesSetting,
+        };
+
+        /// <summary>
+        /// Settings of the official notices. They share one card on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> WarningSettings = new List<SettingDefinition>
+        {
+            WarningsRefreshMinutesSetting,
         };
 
         /// <summary>
@@ -698,6 +733,21 @@ namespace AdsbCarMap.Settings
         /// Whether the layer with the threats is shown on the phone map.
         /// </summary>
         public static bool ShowThreats => Get(ShowThreatsSetting) >= 0.5;
+
+        /// <summary>
+        /// Whether the airspace layer is shown.
+        /// </summary>
+        public static bool ShowAirspace => Get(ShowAirspaceSetting) >= 0.5;
+
+        /// <summary>
+        /// Time between two downloads of the airspace areas, in minutes.
+        /// </summary>
+        public static int AirspaceRefreshMinutes => (int)Get(AirspaceRefreshMinutesSetting);
+
+        /// <summary>
+        /// Time between two downloads of the official notices, in minutes.
+        /// </summary>
+        public static int WarningsRefreshMinutes => (int)Get(WarningsRefreshMinutesSetting);
 
         /// <summary>
         /// Size of the threat icons as a multiple of the default size.

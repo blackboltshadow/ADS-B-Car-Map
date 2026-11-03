@@ -19,6 +19,14 @@
     <Project Path="Sources/Neptun/AdsbCarMap.DataSources.Neptun/AdsbCarMap.DataSources.Neptun.csproj" />
     <Project Path="Sources/Neptun/AdsbCarMap.DataSources.Neptun.Tests/AdsbCarMap.DataSources.Neptun.Tests.csproj" />
   </Folder>
+  <Folder Name="/Sources/Rso/">
+    <Project Path="Sources/Rso/AdsbCarMap.DataSources.Rso/AdsbCarMap.DataSources.Rso.csproj" />
+    <Project Path="Sources/Rso/AdsbCarMap.DataSources.Rso.Tests/AdsbCarMap.DataSources.Rso.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Sources/Pansa/">
+    <Project Path="Sources/Pansa/AdsbCarMap.DataSources.Pansa/AdsbCarMap.DataSources.Pansa.csproj" />
+    <Project Path="Sources/Pansa/AdsbCarMap.DataSources.Pansa.Tests/AdsbCarMap.DataSources.Pansa.Tests.csproj" />
+  </Folder>
   <Folder Name="/Sources/Adsbdb/">
     <Project Path="Sources/Adsbdb/AdsbCarMap.DataSources.Adsbdb/AdsbCarMap.DataSources.Adsbdb.csproj" />
     <Project Path="Sources/Adsbdb/AdsbCarMap.DataSources.Adsbdb.Tests/AdsbCarMap.DataSources.Adsbdb.Tests.csproj" />

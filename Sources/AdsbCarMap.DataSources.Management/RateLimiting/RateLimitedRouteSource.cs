@@ -54,7 +54,7 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
         /// <exception cref="RateLimitedException">The source is paused or has just answered with a limit response.</exception>
         public Task<FlightRoute?> GetRouteAsync(string callsign, CancellationToken cancellationToken)
         {
-            return RunAsync(() => inner.GetRouteAsync(callsign, cancellationToken));
+            return RunAsync(() => inner.GetRouteAsync(callsign, cancellationToken), cancellationToken);
         }
 
         /// <inheritdoc />
@@ -66,7 +66,7 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
                 return Task.FromResult<AircraftDetails?>(null);
             }
 
-            return RunAsync(() => lookup.GetAircraftDetailsAsync(hex, cancellationToken));
+            return RunAsync(() => lookup.GetAircraftDetailsAsync(hex, cancellationToken), cancellationToken);
         }
 
         /// <summary>
@@ -74,8 +74,9 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
         /// </summary>
         /// <typeparam name="T">Kind of the answer.</typeparam>
         /// <param name="request">The request.</param>
+        /// <param name="cancellationToken">Token of the request.</param>
         /// <returns>The answer of the source.</returns>
-        private async Task<T> RunAsync<T>(Func<Task<T>> request)
+        private async Task<T> RunAsync<T>(Func<Task<T>> request, CancellationToken cancellationToken)
         {
             TimeSpan remainingBlock = limiter.GetRemainingBlock();
 
@@ -95,7 +96,7 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
             {
                 throw new RateLimitedException(limiter.RegisterRateLimit(exception.RetryAfter));
             }
-            catch (Exception exception) when (exception is HttpRequestException || exception is JsonException)
+            catch (Exception exception) when (SourceFailures.IsFailure(exception, cancellationToken))
             {
                 limiter.RegisterFailure(exception);
 

@@ -175,6 +175,15 @@ namespace AdsbCarMap.Map
                 canvas.DrawColor(Color.Argb(mapDim, 0, 0, 0));
             }
 
+            if (AirspacesAllowed && AppSettings.ShowAirspace)
+            {
+                airspaceLayer.Draw(canvas, GetAirspaceViews(), latitude, longitude, zoomLevel, width, height, screenDensity);
+            }
+            else
+            {
+                ClearAirspaceViews();
+            }
+
             Volatile.Write(ref airportHits, airportLayer.Draw(canvas, AppServices.Airports, drawnAirport, latitude, longitude, zoomLevel, width, height, screenDensity));
 
             labelPaint.TextSize = AppSettings.LabelTextSize * screenDensity;

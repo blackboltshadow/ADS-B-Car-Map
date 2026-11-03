@@ -100,6 +100,20 @@
     <Compile Include="..\..\Map\SelectedAircraftInfo.cs" Link="Linked\SelectedAircraftInfo.cs" />
     <Compile Include="..\..\Map\AircraftCardText.cs" Link="Linked\AircraftCardText.cs" />
     <Compile Include="..\..\Map\ThreatText.cs" Link="Linked\ThreatText.cs" />
+    <Compile Include="..\..\Data\AirspaceZoneState.cs" Link="Linked\AirspaceZoneState.cs" />
+    <Compile Include="..\..\Data\AirspaceClassifier.cs" Link="Linked\AirspaceClassifier.cs" />
+    <Compile Include="..\..\Data\AirspaceTypes.cs" Link="Linked\AirspaceTypes.cs" />
+    <Compile Include="..\..\Data\AirspaceLayerConfig.cs" Link="Linked\AirspaceLayerConfig.cs" />
+    <Compile Include="..\..\Data\AirspaceGeometry.cs" Link="Linked\AirspaceGeometry.cs" />
+    <Compile Include="..\..\Data\AirspaceFeed.cs" Link="Linked\AirspaceFeed.cs" />
+    <Compile Include="..\..\Data\AirspaceAlertEngine.cs" Link="Linked\AirspaceAlertEngine.cs" />
+    <Compile Include="..\..\Data\AirspaceAltitudeScale.cs" Link="Linked\AirspaceAltitudeScale.cs" />
+    <Compile Include="..\..\Data\PollingFeed.cs" Link="Linked\PollingFeed.cs" />
+    <Compile Include="..\..\Data\WarningCategories.cs" Link="Linked\WarningCategories.cs" />
+    <Compile Include="..\..\Data\WarningProvinces.cs" Link="Linked\WarningProvinces.cs" />
+    <Compile Include="..\..\Data\WarningFilterConfig.cs" Link="Linked\WarningFilterConfig.cs" />
+    <Compile Include="..\..\Data\WarningText.cs" Link="Linked\WarningText.cs" />
+    <Compile Include="..\..\Map\AirspaceText.cs" Link="Linked\AirspaceText.cs" />
     <Compile Include="..\..\Map\AirportCardText.cs" Link="Linked\AirportCardText.cs" />
     <Compile Include="..\..\Map\SelectionState.cs" Link="Linked\SelectionState.cs" />
     <Compile Include="..\..\Settings\SettingDefinition.cs" Link="Linked\SettingDefinition.cs" />

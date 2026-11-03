@@ -575,6 +575,18 @@ namespace AdsbCarMap.Map
 
                     return;
                 }
+
+                if (!HasSelectionToClear())
+                {
+                    AirspaceZoneView? tappedAirspace = FindTappedAirspace(x, y);
+
+                    if (tappedAirspace != null)
+                    {
+                        AirspaceTapped?.Invoke(tappedAirspace);
+
+                        return;
+                    }
+                }
             }
 
             lock (stateLock)
@@ -632,6 +644,18 @@ namespace AdsbCarMap.Map
             }
 
             NotifySelectionChanged();
+        }
+
+        /// <summary>
+        /// Tells whether a tap on an empty place has something to clear: a selected airport, or selected aircraft outside the multi-select mode. Such a tap clears the selection and does not open the card of an airspace area under it.
+        /// </summary>
+        /// <returns>True when a tap on an empty place would clear the selection.</returns>
+        private bool HasSelectionToClear()
+        {
+            lock (stateLock)
+            {
+                return selectedAirport != null || (!multiSelect && selectedHexes.Count > 0);
+            }
         }
 
         /// <summary>

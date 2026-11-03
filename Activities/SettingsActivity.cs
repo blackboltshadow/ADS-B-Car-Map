@@ -295,6 +295,7 @@ namespace AdsbCarMap.Activities
             GetAltitudeCard(aircraft);
             GetAirportSettingsCard(appearance);
             GetThreatIconCard(appearance);
+            GetTitledCard("airspace", Loc.T("Strefy przestrzeni powietrznej (PAŻP)"), appearance);
             GetTitledCard("map", Loc.T("Mapa"), appearance);
 
             LinearLayout alerts = CreateAggregate(root, Loc.T("Alerty"), "alertsSection", 20f);
@@ -303,6 +304,7 @@ namespace AdsbCarMap.Activities
             LinearLayout advanced = CreateAggregate(root, Loc.T("Zaawansowane"), "advanced", 20f);
             GetTitledCard("dataSource", Loc.T("Źródło danych"), advanced);
             GetTitledCard("routeSources", Loc.T("Źródła tras"), advanced);
+            GetTitledCard("warnings", Loc.T("Ostrzeżenia (RSO)"), advanced);
             GetTitledCard("threatsDev", Loc.T("Zagrożenia (NEPTUN): sposób pobierania"), advanced);
             GetSourceStatusCard(advanced);
             GetTitledCard("privacy", Loc.T("Prywatność"), advanced);
@@ -387,6 +389,16 @@ namespace AdsbCarMap.Activities
             }
 
             threatIconCard?.AddView(CreateResetButton(Loc.T("Przywróć domyślne zagrożenia"), AppSettings.ThreatSettings.Concat(AppSettings.ThreatIconSettings).ToList(), Loc.T("Przywrócono domyślne ustawienia zagrożeń")));
+            Button airspaceChoice = new Button(this);
+            airspaceChoice.Text = Loc.T("Wybierz rodzaje i stany stref");
+            airspaceChoice.Click += (sender, args) => StartActivity(new Android.Content.Intent(this, typeof(AirspaceActivity)));
+            titledCards["airspace"].AddView(airspaceChoice);
+            titledCards["airspace"].AddView(CreateResetButton(Loc.T("Przywróć domyślne strefy"), AppSettings.AirspaceSettings, Loc.T("Przywrócono domyślne ustawienia stref")));
+            Button warningsOpen = new Button(this);
+            warningsOpen.Text = Loc.T("Otwórz ostrzeżenia");
+            warningsOpen.Click += (sender, args) => StartActivity(new Android.Content.Intent(this, typeof(WarningsActivity)));
+            titledCards["warnings"].AddView(warningsOpen);
+            titledCards["warnings"].AddView(CreateResetButton(Loc.T("Przywróć domyślne odświeżanie ostrzeżeń"), AppSettings.WarningSettings, Loc.T("Przywrócono domyślne odświeżanie ostrzeżeń")));
             titledCards["threatsDev"].AddView(CreateResetButton(Loc.T("Przywróć domyślny sposób pobierania"), AppSettings.ThreatTransportSettings, Loc.T("Przywrócono domyślny sposób pobierania zagrożeń")));
             titledCards["privacyDev"].AddView(CreateResetButton(Loc.T("Przywróć domyślną prywatność"), AppSettings.PrivacyDevSettings.Concat(AppSettings.PrivacySettings).ToList(), Loc.T("Przywrócono domyślne ustawienia prywatności")));
 
@@ -671,6 +683,16 @@ namespace AdsbCarMap.Activities
             if (AppSettings.ThreatSettings.Contains(definition))
             {
                 return GetThreatIconCard(container);
+            }
+
+            if (AppSettings.AirspaceSettings.Contains(definition))
+            {
+                return titledCards["airspace"];
+            }
+
+            if (AppSettings.WarningSettings.Contains(definition))
+            {
+                return titledCards["warnings"];
             }
 
             if (AppSettings.ThreatTransportSettings.Contains(definition))
@@ -1742,7 +1764,7 @@ namespace AdsbCarMap.Activities
             DateTime now = DateTime.UtcNow;
             DataSources.Interfaces.IThreatFeed feed = AppServices.Threats;
 
-            sourceStatusText.Text = SourceStateText.Format(AppServices.GetSourceStates(), now) + "\n\n" + SourceStateText.FormatThreatFeed(AppSettings.ShowThreats, feed.State, AppSettings.ThreatTransportIndex, feed.Threats.Count, feed.LastUpdateUtc, feed.LastFailure, now);
+            sourceStatusText.Text = SourceStateText.Format(AppServices.GetSourceStates(), now) + "\n\n" + SourceStateText.FormatThreatFeed(AppSettings.ShowThreats, feed.State, AppSettings.ThreatTransportIndex, feed.Threats.Count, feed.LastUpdateUtc, feed.LastFailure, now) + "\n\n" + SourceStateText.FormatAirspaceFeed(AppSettings.ShowAirspace, AppServices.Airspace.State, AppServices.Airspace.Zones.Count, AppServices.Airspace.LastUpdateUtc, AppServices.Airspace.LastFailure, now) + "\n\n" + WarningText.FormatFeed(true, AppServices.Warnings.State, AppServices.Warnings.Items.Count, AppServices.Warnings.LastUpdateUtc, AppServices.Warnings.LastFailure, now);
             sourceStatusText.RemoveCallbacks(sourceStatusRefresh);
             sourceStatusText.PostDelayed(sourceStatusRefresh, 1000);
         }

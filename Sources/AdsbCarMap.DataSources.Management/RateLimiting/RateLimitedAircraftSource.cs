@@ -75,7 +75,7 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
             {
                 throw new RateLimitedException(limiter.RegisterRateLimit(exception.RetryAfter));
             }
-            catch (Exception exception) when (exception is HttpRequestException || exception is JsonException)
+            catch (Exception exception) when (SourceFailures.IsFailure(exception, cancellationToken))
             {
                 limiter.RegisterFailure(exception);
 
@@ -105,7 +105,7 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
             {
                 throw new RateLimitedException(limiter.RegisterRateLimit(exception.RetryAfter));
             }
-            catch (Exception exception) when (exception is HttpRequestException || exception is JsonException)
+            catch (Exception exception) when (SourceFailures.IsFailure(exception, cancellationToken))
             {
                 limiter.RegisterFailure(exception);
 

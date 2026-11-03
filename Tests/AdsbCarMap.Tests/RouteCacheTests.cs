@@ -38,6 +38,11 @@ namespace AdsbCarMap.Tests
             public ConcurrentDictionary<string, byte> Failing { get; } = new ConcurrentDictionary<string, byte>();
 
             /// <summary>
+            /// Callsigns that make the source fail with an error that is not an HTTP exception, as the platform handler can do when a connection is closed.
+            /// </summary>
+            public ConcurrentDictionary<string, byte> PlatformFailing { get; } = new ConcurrentDictionary<string, byte>();
+
+            /// <summary>
             /// Gate that the source waits for before answering, or null to answer at once.
             /// </summary>
             public SemaphoreSlim? Gate { get; set; }
@@ -65,6 +70,11 @@ namespace AdsbCarMap.Tests
                 if (Failing.ContainsKey(callsign))
                 {
                     throw new HttpRequestException("failure");
+                }
+
+                if (PlatformFailing.ContainsKey(callsign))
+                {
+                    throw new IOException("Socket closed");
                 }
 
                 return Routes.TryGetValue(callsign, out FlightRoute? route) ? route : null;
@@ -190,6 +200,28 @@ namespace AdsbCarMap.Tests
             Assert.IsType<HttpRequestException>(Assert.Single(failures));
             Assert.Single(source.Requested);
             Assert.Equal(RouteLookupState.Failed, cache.GetState("BAD1"));
+        }
+
+        /// <summary>
+        /// An error that is not an HTTP exception, such as the closed socket that the Android handler reports as a platform exception, is handled like a failed download: it is reported, the lookup is marked as failed, and the worker goes on, so the routes that wait behind it are still downloaded. Before the fix such an error ended the worker silently and no route was downloaded until the application restarted.
+        /// </summary>
+        [Fact]
+        public void PlatformError_DoesNotStopTheWorker()
+        {
+            FakeRouteSource source = new FakeRouteSource();
+            source.PlatformFailing["BAD1"] = 0;
+            source.Routes["LOT281"] = CreateRoute();
+            ConcurrentQueue<Exception> failures = new ConcurrentQueue<Exception>();
+            RouteCache cache = new RouteCache(source, CreateMemory(), failures.Enqueue, 0);
+
+            cache.Get("BAD1");
+            cache.Get("LOT281");
+            WaitFor(() => cache.GetState("BAD1") == RouteLookupState.Failed && cache.GetState("LOT281") == RouteLookupState.Found);
+            cache.Get("LOT282");
+            source.Routes["LOT282"] = CreateRoute();
+            WaitFor(() => cache.GetState("LOT282") == RouteLookupState.Found);
+
+            Assert.IsType<IOException>(Assert.Single(failures));
         }
 
         /// <summary>

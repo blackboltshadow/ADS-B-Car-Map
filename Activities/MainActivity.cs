@@ -75,6 +75,11 @@ namespace AdsbCarMap.Activities
         private const int MenuAlertsId = 7;
 
         /// <summary>
+        /// Identifier of the menu item that opens the official notices.
+        /// </summary>
+        private const int MenuWarningsId = 8;
+
+        /// <summary>
         /// Diameter of the badge with the number of filters in dp.
         /// </summary>
         private const int BadgeSizeDp = 20;
@@ -113,6 +118,16 @@ namespace AdsbCarMap.Activities
         /// Text with the link to the source of the threats, the state of the feed and the warning. Visible only while the layer is on.
         /// </summary>
         private TextView? threatsInfo;
+
+        /// <summary>
+        /// Button that shows or hides the layer with the airspace areas. A long press opens the choice of what the layer shows.
+        /// </summary>
+        private ImageButton? airspaceButton;
+
+        /// <summary>
+        /// Text with the source of the airspace areas and the state of the feed. Visible only while the layer is on.
+        /// </summary>
+        private TextView? airspaceInfo;
 
         /// <summary>
         /// Button that opens the list of aircraft filters. It is highlighted while any filter is on.
@@ -194,6 +209,8 @@ namespace AdsbCarMap.Activities
             controller.SelectionChanged += () => RunOnUiThread(OnSelectionChanged);
             controller.ThreatsAllowed = true;
             controller.ThreatTapped += OnThreatTapped;
+            controller.AirspacesAllowed = true;
+            controller.AirspaceTapped += OnAirspaceTapped;
             SetContentView(BuildContent());
             HandleAlertIntent(Intent);
 
@@ -280,6 +297,11 @@ namespace AdsbCarMap.Activities
             AppServices.Threats.Changed -= OnThreatFeedChanged;
             AppServices.Threats.Changed += OnThreatFeedChanged;
             ApplyThreatFeed();
+            AppServices.Airspace.Changed -= OnAirspaceFeedChanged;
+            AppServices.Airspace.Changed += OnAirspaceFeedChanged;
+            AppServices.AirspaceConfig.Changed -= OnAirspaceFeedChanged;
+            AppServices.AirspaceConfig.Changed += OnAirspaceFeedChanged;
+            ApplyAirspaceFeed();
             UpdateModeButtons();
             cardRefreshRunnable = new Java.Lang.Runnable(CardRefreshTick);
             handler.Post(cardRefreshRunnable);
@@ -293,6 +315,9 @@ namespace AdsbCarMap.Activities
             controller.SurfaceBroken -= OnSurfaceBroken;
             AppServices.Threats.Changed -= OnThreatFeedChanged;
             AppServices.Threats.Stop();
+            AppServices.Airspace.Changed -= OnAirspaceFeedChanged;
+            AppServices.AirspaceConfig.Changed -= OnAirspaceFeedChanged;
+            AppServices.Airspace.Stop();
 
             if (cardRefreshRunnable != null)
             {
@@ -514,6 +539,10 @@ namespace AdsbCarMap.Activities
             threatsButton = CreateRoundButton(Resource.Drawable.ic_threat, Loc.T("Warstwa zagrożeń (NEPTUN)"));
             threatsButton.Click += (sender, args) => OnThreatsClicked();
 
+            airspaceButton = CreateRoundButton(Resource.Drawable.ic_airspace, Loc.T("Warstwa stref przestrzeni powietrznej (PAŻP)"));
+            airspaceButton.Click += (sender, args) => OnAirspaceClicked();
+            airspaceButton.LongClick += (sender, args) => StartActivity(new Intent(this, typeof(AirspaceActivity)));
+
             filtersButton = CreateRoundButton(Resource.Drawable.ic_filter, Loc.T("Filtry samolotów"));
             filtersButton.Click += (sender, args) => StartActivity(new Intent(this, typeof(FiltersActivity)));
 
@@ -523,7 +552,7 @@ namespace AdsbCarMap.Activities
             filtersHost.AddView(filtersButton, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.MatchParent));
             filtersHost.AddView(filtersBadge, new FrameLayout.LayoutParams(Dp(BadgeSizeDp), Dp(BadgeSizeDp), GravityFlags.Top | GravityFlags.End));
 
-            foreach (View button in new View[] { isolateButton, multiSelectButton, labelsButton, militaryButton, threatsButton, filtersHost })
+            foreach (View button in new View[] { isolateButton, multiSelectButton, labelsButton, militaryButton, threatsButton, airspaceButton, filtersHost })
             {
                 LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(Dp(48), Dp(48));
 
@@ -562,9 +591,26 @@ namespace AdsbCarMap.Activities
             threatsInfo.Visibility = ViewStates.Gone;
             threatsInfo.Click += (sender, args) => OpenThreatSource();
 
-            FrameLayout.LayoutParams threatsInfoParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent, GravityFlags.Top | GravityFlags.Start);
-            threatsInfoParams.SetMargins(Dp(12), Dp(12), Dp(12), Dp(12));
-            root.AddView(threatsInfo, threatsInfoParams);
+            airspaceInfo = new TextView(this);
+            airspaceInfo.TextSize = 11f;
+            airspaceInfo.SetTextColor(Color.White);
+            airspaceInfo.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
+            airspaceInfo.SetBackgroundColor(Color.Argb(150, 0, 0, 0));
+            airspaceInfo.SetMaxWidth((int)((Resources?.DisplayMetrics?.WidthPixels ?? 0) * 0.55f));
+            airspaceInfo.Clickable = true;
+            airspaceInfo.Visibility = ViewStates.Gone;
+            airspaceInfo.Click += (sender, args) => OpenAirspaceSource();
+
+            LinearLayout infoColumn = new LinearLayout(this);
+            infoColumn.Orientation = Orientation.Vertical;
+            infoColumn.AddView(threatsInfo, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
+            LinearLayout.LayoutParams airspaceInfoParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent);
+            airspaceInfoParams.SetMargins(0, Dp(6), 0, 0);
+            infoColumn.AddView(airspaceInfo, airspaceInfoParams);
+
+            FrameLayout.LayoutParams infoColumnParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent, GravityFlags.Top | GravityFlags.Start);
+            infoColumnParams.SetMargins(Dp(12), Dp(12), Dp(12), Dp(12));
+            root.AddView(infoColumn, infoColumnParams);
 
             aircraftCard = new AircraftCardView(this, landscape ? 1.0f : 1.25f);
             aircraftCard.Visibility = ViewStates.Gone;
@@ -815,6 +861,130 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
+        /// Starts or stops the feed of the airspace areas according to the setting and refreshes the button and the text of the layer.
+        /// </summary>
+        private void ApplyAirspaceFeed()
+        {
+            if (AppSettings.ShowAirspace || AppServices.AirspaceConfig.AlertOptions.Enabled)
+            {
+                AppServices.Airspace.Start();
+            }
+            else
+            {
+                AppServices.Airspace.Stop();
+            }
+
+            UpdateAirspaceUi();
+        }
+
+        /// <summary>
+        /// Refreshes the text of the layer on the main thread after the feed or the configuration of the layer changed.
+        /// </summary>
+        private void OnAirspaceFeedChanged()
+        {
+            if (!AlertMonitor.BackgroundActive)
+            {
+                Task.Run(AirspaceAlertMonitor.Check);
+            }
+
+            RunOnUiThread(UpdateAirspaceUi);
+        }
+
+        /// <summary>
+        /// Highlights the button of the layer and shows the link to the source with the state of the feed while the layer is on.
+        /// </summary>
+        private void UpdateAirspaceUi()
+        {
+            bool on = AppSettings.ShowAirspace;
+
+            airspaceButton?.SetBackgroundResource(on ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
+
+            if (airspaceInfo == null)
+            {
+                return;
+            }
+
+            airspaceInfo.Visibility = on ? ViewStates.Visible : ViewStates.Gone;
+
+            if (!on)
+            {
+                return;
+            }
+
+            AirspaceFeed feed = AppServices.Airspace;
+            int shown = AppServices.AirspaceConfig.Config.Select(feed.Zones, DateTime.UtcNow).Count;
+            string attribution = AirspaceText.Attribution;
+            SpannableString text = new SpannableString(attribution + " · " + AirspaceText.BuildStateText(feed.State, shown));
+
+            text.SetSpan(new UnderlineSpan(), 0, attribution.Length, SpanTypes.ExclusiveExclusive);
+            text.SetSpan(new ForegroundColorSpan(Color.Rgb(120, 190, 255)), 0, attribution.Length, SpanTypes.ExclusiveExclusive);
+            airspaceInfo.SetText(text, TextView.BufferType.Spannable);
+        }
+
+        /// <summary>
+        /// Opens the airspace map of the source of the areas.
+        /// </summary>
+        private void OpenAirspaceSource()
+        {
+            try
+            {
+                StartActivity(new Intent(Intent.ActionView, Android.Net.Uri.Parse(DataSources.Pansa.PansaClient.DefaultBaseAddress)));
+            }
+            catch (ActivityNotFoundException)
+            {
+                Toast.MakeText(this, DataSources.Pansa.PansaClient.DefaultBaseAddress, ToastLength.Long)?.Show();
+            }
+        }
+
+        /// <summary>
+        /// Switches the layer of the airspace areas on or off and saves the choice in the settings. Switching it on shows the warning that the data is not for planning flights.
+        /// </summary>
+        private void OnAirspaceClicked()
+        {
+            bool show = !AppSettings.ShowAirspace;
+            Dictionary<SettingDefinition, double> values = new Dictionary<SettingDefinition, double>
+            {
+                { AppSettings.ShowAirspaceSetting, show ? 1.0 : 0.0 },
+            };
+
+            AppSettings.Save(values);
+            ApplyAirspaceFeed();
+
+            if (show)
+            {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
+                builder.SetTitle(Loc.T("Strefy przestrzeni powietrznej (PAŻP)"));
+                builder.SetMessage(AirspaceText.Disclaimer + "\n\n" + Loc.T("Dłuższe przytrzymanie przycisku otwiera wybór rodzajów i stanów stref."));
+                builder.SetPositiveButton(Loc.T("Rozumiem"), (sender, args) => { });
+                builder.SetNeutralButton(Loc.T("Wybierz strefy"), (sender, args) => StartActivity(new Intent(this, typeof(AirspaceActivity))));
+                builder.Show();
+            }
+            else
+            {
+                Toast.MakeText(this, Loc.T("Warstwa stref ukryta"), ToastLength.Short)?.Show();
+            }
+        }
+
+        /// <summary>
+        /// Shows the description of an airspace area that the user tapped on the map.
+        /// </summary>
+        /// <param name="view">The tapped area with its state.</param>
+        private void OnAirspaceTapped(AirspaceZoneView view)
+        {
+            RunOnUiThread(() =>
+            {
+                IReadOnlyList<string> lines = AirspaceText.GetLines(view, AppSettings.Units, TimeZoneInfo.Local);
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
+                builder.SetTitle(AirspaceText.GetTitle(view.Zone));
+                builder.SetMessage(string.Join("\n", lines) + "\n\n" + AirspaceText.Disclaimer);
+                builder.SetPositiveButton(Loc.T("Zamknij"), (sender, args) => { });
+                builder.SetNeutralButton(AirspaceText.Attribution, (sender, args) => OpenAirspaceSource());
+                builder.Show();
+            });
+        }
+
+        /// <summary>
         /// Turns the isolation of the selected aircraft on or off, and shows a hint when nothing is selected.
         /// </summary>
         private void OnIsolateClicked()
@@ -941,6 +1111,7 @@ namespace AdsbCarMap.Activities
             popup.Menu?.Add(0, MenuFavoritesId, 1, Loc.T("Ulubione lotniska"));
             popup.Menu?.Add(0, MenuFiltersId, 2, Loc.T("Filtry samolotów"));
             popup.Menu?.Add(0, MenuAlertsId, 3, Loc.T("Alerty"));
+            popup.Menu?.Add(0, MenuWarningsId, 3, Loc.T("Ostrzeżenia"));
             popup.Menu?.Add(0, MenuSettingsId, 4, Loc.T("Ustawienia"));
             popup.Menu?.Add(0, MenuAboutId, 5, Loc.T("O aplikacji"));
 
@@ -972,6 +1143,10 @@ namespace AdsbCarMap.Activities
                 else if (args.Item?.ItemId == MenuAlertsId)
                 {
                     StartActivity(new Intent(this, typeof(AlertsActivity)));
+                }
+                else if (args.Item?.ItemId == MenuWarningsId)
+                {
+                    StartActivity(new Intent(this, typeof(WarningsActivity)));
                 }
                 else if (args.Item?.ItemId == MenuAboutId)
                 {
