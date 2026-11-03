@@ -24,7 +24,7 @@ namespace AdsbCarMap.Activities
         Label = "ADS-B Car Map",
         MainLauncher = true,
         Exported = true,
-        Theme = "@android:style/Theme.Material.NoActionBar",
+        Theme = "@style/AppTheme.Main",
         ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.SmallestScreenSize | ConfigChanges.ScreenLayout)]
     public class MainActivity : Activity
     {

@@ -172,6 +172,16 @@ namespace AdsbCarMap.Map
         private readonly Paint versionPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
+        /// Paint used to draw the message in the middle of the map before the first data arrives.
+        /// </summary>
+        private readonly Paint startupPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Paint used to draw the plate under the message in the middle of the map.
+        /// </summary>
+        private readonly Paint startupPlatePaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
         /// Paint used to draw the user position marker.
         /// </summary>
         private readonly Paint userPaint = new Paint(PaintFlags.AntiAlias);
@@ -441,6 +451,12 @@ namespace AdsbCarMap.Map
             versionPaint.Color = Color.White;
             versionPaint.TextAlign = Paint.Align.Left;
             versionPaint.SetShadowLayer(3f, 0f, 0f, Color.Black);
+
+            startupPaint.Color = Color.White;
+            startupPaint.TextAlign = Paint.Align.Center;
+            startupPaint.FakeBoldText = true;
+
+            startupPlatePaint.Color = Color.Argb(220, 24, 28, 34);
         }
 
         /// <summary>

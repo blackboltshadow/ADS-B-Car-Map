@@ -203,7 +203,7 @@ namespace AdsbCarMap.Map
                 (double Latitude, double Longitude) position = MapMath.Extrapolate(item, elapsedSeconds);
                 (float X, float Y) screen = WebMercator.ProjectToScreen(position.Latitude, position.Longitude, latitude, longitude, zoomLevel, width, height);
 
-                if (trails.TryGetValue(item.Hex, out TrailPoint[]? trail))
+                if (selection.Contains(item.Hex) && trails.TryGetValue(item.Hex, out TrailPoint[]? trail))
                 {
                     DrawTrail(canvas, trail, item, screen.X, screen.Y, latitude, longitude, zoomLevel, width, height);
                 }
@@ -261,6 +261,18 @@ namespace AdsbCarMap.Map
             if (AppSettings.ShowAltitudeLegend)
             {
                 altitudeLegendRenderer.Draw(canvas, width, height, screenDensity, frameAltitudeStops);
+            }
+
+            if (dataLoop.LoadEndedUtc.Ticks == 0 && snapshot.Count == 0)
+            {
+                const string startupText = "Wczytywanie…";
+                startupPaint.TextSize = 18.0f * screenDensity;
+                float startupHalfWidth = startupPaint.MeasureText(startupText) / 2f + 20f * screenDensity;
+                float startupHalfHeight = 24f * screenDensity;
+                float startupBaseline = height / 2f - (startupPaint.Ascent() + startupPaint.Descent()) / 2f;
+
+                canvas.DrawRoundRect(width / 2f - startupHalfWidth, height / 2f - startupHalfHeight, width / 2f + startupHalfWidth, height / 2f + startupHalfHeight, startupHalfHeight, startupHalfHeight, startupPlatePaint);
+                canvas.DrawText(startupText, width / 2f, startupBaseline, startupPaint);
             }
 
             attributionPaint.TextSize = 11.0f * screenDensity;

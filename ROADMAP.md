@@ -8,7 +8,7 @@ Zasada kolejności: najpierw rzeczy, które pomagają ocenić to, co już dodano
 
 | # | Funkcja | Uzasadnienie | Koszt |
 |---|---|---|---|
-| 2 | Sprawdzenie na telefonie i w DHU po rozbiciu `MapController` (pozycja 10): kafelki, zoom i przesuwanie, popup samolotu i lotniska, legenda wysokości oraz ikona stanu (zasilana teraz z `AircraftDataLoop`: ładowanie, brak sieci, uzupełnianie danych zaznaczonego samolotu) wyglądają i działają jak przed zmianą; do tego karta „Stan źródeł” i ekran „Log zapytań” (filtr błędów i hosta) | Testy ręczne, bez kodu, ale od nich zależy, co poprawiać | mały |
+| 2 | Sprawdzenie na telefonie i w DHU po rozbiciu `MapController` (pozycja 10): kafelki, zoom i przesuwanie, popup samolotu i lotniska, legenda wysokości oraz ikona stanu (zasilana teraz z `AircraftDataLoop`: ładowanie, brak sieci, uzupełnianie danych zaznaczonego samolotu) wyglądają i działają jak przed zmianą; do tego karta „Stan źródeł” i ekran „Log zapytań” (filtr błędów i hosta); ekran startowy (ciemne tło z ikoną zamiast białego błysku przy zimnym starcie, napis „Wczytywanie…” do pierwszej odpowiedzi samolotów). **Sprawdzone na telefonie (2026-11-03); w DHU i samochodzie jeszcze nie.** | Testy ręczne, bez kodu, ale od nich zależy, co poprawiać | mały |
 
 ## P2 – dostęp do danych i przed jakąkolwiek dystrybucją
 
