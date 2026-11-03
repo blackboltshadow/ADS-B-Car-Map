@@ -252,6 +252,9 @@ namespace AdsbCarMap.Activities
             root.SetPadding(Dp(16), Dp(16), Dp(16), Dp(32));
             scrollView.AddView(root);
 
+            LinearLayout units = CreateAggregate(root, "Jednostki", "units", 20f);
+            GetTitledCard("units", "Jednostki miary", units);
+
             LinearLayout appearance = CreateAggregate(root, "Wygląd", "appearance", 20f);
             LinearLayout aircraft = CreateAggregate(appearance, "Samoloty", "aircraft", 17f);
             GetAircraftIconCard(aircraft);
@@ -284,7 +287,7 @@ namespace AdsbCarMap.Activities
             GetDevLogCard(developer);
             GetTitledCard("privacyDev", "Prywatność (zaawansowane)", developer);
 
-            foreach (SettingDefinition definition in AppSettings.All.OrderBy(item => item == AppSettings.AltitudeUnitSetting ? 0 : 1))
+            foreach (SettingDefinition definition in AppSettings.All)
             {
                 switch (definition.Kind)
                 {
@@ -340,6 +343,7 @@ namespace AdsbCarMap.Activities
                 flightCacheCard.AddView(CreateResetButton("Przywróć domyślny czas przechowywania", AppSettings.FlightCacheSettings, "Przywrócono domyślny czas przechowywania informacji o lotach"));
             }
 
+            titledCards["units"].AddView(CreateResetButton("Przywróć domyślne jednostki", AppSettings.UnitSettings, "Przywrócono domyślne jednostki"));
             titledCards["alerts"].AddView(CreateResetButton("Przywróć domyślne alerty", AppSettings.AlertSettings, "Przywrócono domyślne ustawienia alertów"));
 
             if (devLogCard != null)
@@ -596,6 +600,11 @@ namespace AdsbCarMap.Activities
         /// <returns>The shared card, or null when the setting has a card of its own.</returns>
         private LinearLayout? GetSharedCardFor(SettingDefinition definition, LinearLayout container)
         {
+            if (AppSettings.UnitSettings.Contains(definition))
+            {
+                return titledCards["units"];
+            }
+
             if (AppSettings.RouteSourceSettings.Contains(definition))
             {
                 return titledCards["routeSources"];
@@ -651,7 +660,7 @@ namespace AdsbCarMap.Activities
                 return GetTileCacheCard(container);
             }
 
-            if (definition == AppSettings.AltitudeUnitSetting || definition == AppSettings.ShowAltitudeLegendSetting)
+            if (definition == AppSettings.ShowAltitudeLegendSetting)
             {
                 return GetAltitudeCard(container);
             }
@@ -660,7 +669,7 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Returns the card of the altitude colors, which holds the altitude unit, the color scale editor and the legend switch, creating it at the first call.
+        /// Returns the card of the altitude colors, which holds the color scale editor and the legend switch, creating it at the first call.
         /// </summary>
         /// <param name="container">Container in which the card is created.</param>
         /// <returns>The shared card.</returns>
@@ -2194,35 +2203,84 @@ namespace AdsbCarMap.Activities
 
             if (definition == AppSettings.AltitudeUnitSetting)
             {
-                LinearLayout rows = new LinearLayout(this);
-                rows.Orientation = Orientation.Vertical;
-                rows.SetBackgroundColor(Color.Rgb(40, 44, 52));
-                rows.SetPadding(Dp(12), Dp(10), Dp(12), Dp(10));
-
-                TextView heading = new TextView(this);
-                heading.Text = "Samolot na wysokości 35 000 ft:";
-                heading.TextSize = 12f;
-                heading.SetTextColor(Color.Rgb(180, 180, 180));
-                rows.AddView(heading);
-
-                string[] names = new string[] { "Metry", "Stopy", "Poziom lotu" };
                 AltitudeUnit[] units = new AltitudeUnit[] { AltitudeUnit.Metric, AltitudeUnit.Feet, AltitudeUnit.FlightLevel };
 
-                for (int index = 0; index < units.Length; index++)
-                {
-                    TextView row = new TextView(this);
-                    row.Text = names[index] + ":  " + AltitudeFormatter.Format(35000, units[index]);
-                    row.TextSize = 15f;
-                    row.SetPadding(0, Dp(6), 0, 0);
-                    row.SetTextColor(units[index] == AppSettings.AltitudeUnit ? Color.White : Color.Rgb(150, 150, 150));
-                    row.SetTypeface(null, units[index] == AppSettings.AltitudeUnit ? TypefaceStyle.Bold : TypefaceStyle.Normal);
-                    rows.AddView(row);
-                }
+                return BuildUnitExample(
+                    "Samolot na wysokości 35 000 ft:",
+                    new string[] { "Metry", "Stopy", "Poziom lotu" },
+                    units.Select(unit => AltitudeFormatter.Format(35000, unit)).ToArray(),
+                    Array.IndexOf(units, AppSettings.AltitudeUnit));
+            }
 
-                return rows;
+            if (definition == AppSettings.DistanceUnitSetting)
+            {
+                DistanceUnit[] units = new DistanceUnit[] { DistanceUnit.Kilometers, DistanceUnit.NauticalMiles, DistanceUnit.Miles };
+
+                return BuildUnitExample(
+                    "Odległość 100 km:",
+                    new string[] { "Kilometry", "Mile morskie", "Mile lądowe" },
+                    units.Select(unit => UnitFormatter.FormatDistance(100.0, unit, 0)).ToArray(),
+                    Array.IndexOf(units, AppSettings.DistanceUnit));
+            }
+
+            if (definition == AppSettings.SpeedUnitSetting)
+            {
+                SpeedUnit[] units = new SpeedUnit[] { SpeedUnit.KilometersPerHour, SpeedUnit.Knots, SpeedUnit.MilesPerHour };
+
+                return BuildUnitExample(
+                    "Prędkość 400 kt:",
+                    new string[] { "Kilometry na godzinę", "Węzły", "Mile na godzinę" },
+                    units.Select(unit => UnitFormatter.FormatSpeed(400.0, unit)).ToArray(),
+                    Array.IndexOf(units, AppSettings.SpeedUnit));
+            }
+
+            if (definition == AppSettings.VerticalSpeedUnitSetting)
+            {
+                VerticalSpeedUnit[] units = new VerticalSpeedUnit[] { VerticalSpeedUnit.FeetPerMinute, VerticalSpeedUnit.MetersPerSecond };
+
+                return BuildUnitExample(
+                    "Wznoszenie 1 500 ft/min:",
+                    new string[] { "Stopy na minutę", "Metry na sekundę" },
+                    units.Select(unit => UnitFormatter.FormatVerticalSpeed(1500.0, unit)).ToArray(),
+                    Array.IndexOf(units, AppSettings.VerticalSpeedUnit));
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Builds the example of a unit setting: the same value written in every unit, with the chosen one highlighted.
+        /// </summary>
+        /// <param name="heading">Description of the example value.</param>
+        /// <param name="names">Names of the units.</param>
+        /// <param name="values">The example value written in each unit, in the order of the names.</param>
+        /// <param name="selected">Index of the unit currently chosen.</param>
+        /// <returns>View with one row per unit.</returns>
+        private View BuildUnitExample(string heading, string[] names, string[] values, int selected)
+        {
+            LinearLayout rows = new LinearLayout(this);
+            rows.Orientation = Orientation.Vertical;
+            rows.SetBackgroundColor(Color.Rgb(40, 44, 52));
+            rows.SetPadding(Dp(12), Dp(10), Dp(12), Dp(10));
+
+            TextView headingView = new TextView(this);
+            headingView.Text = heading;
+            headingView.TextSize = 12f;
+            headingView.SetTextColor(Color.Rgb(180, 180, 180));
+            rows.AddView(headingView);
+
+            for (int index = 0; index < names.Length; index++)
+            {
+                TextView row = new TextView(this);
+                row.Text = names[index] + ":  " + values[index];
+                row.TextSize = 15f;
+                row.SetPadding(0, Dp(6), 0, 0);
+                row.SetTextColor(index == selected ? Color.White : Color.Rgb(150, 150, 150));
+                row.SetTypeface(null, index == selected ? TypefaceStyle.Bold : TypefaceStyle.Normal);
+                rows.AddView(row);
+            }
+
+            return rows;
         }
 
         /// <summary>

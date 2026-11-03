@@ -168,7 +168,7 @@ namespace AdsbCarMap.Services
             builder
                 .SetSmallIcon(Resource.Drawable.ic_alert)
                 .SetContentTitle(AlertText.Title(match))
-                .SetContentText(AlertText.Body(match, AppSettings.AltitudeUnit))
+                .SetContentText(AlertText.Body(match, AppSettings.Units))
                 .SetAutoCancel(true)
                 .SetCategory(Notification.CategoryEvent)
                 .SetContentIntent(contentIntent);

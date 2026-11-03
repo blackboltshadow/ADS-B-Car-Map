@@ -1,4 +1,5 @@
 using System.Globalization;
+using AdsbCarMap.Settings;
 
 namespace AdsbCarMap.Data
 {
@@ -16,8 +17,9 @@ namespace AdsbCarMap.Data
         /// Describes a filter as a Polish sentence, for example "Pokazuje każdy samolot, który pochodzi od producenta Boeing oraz nie leci do lotniska WAW.". Negations are moved down to the conditions (De Morgan's laws) and nested groups of the same kind are merged, so the sentence is read the same way as the filter works.
         /// </summary>
         /// <param name="filter">Filter.</param>
+        /// <param name="altitudeUnit">Unit in which altitude bounds are written; the filter stores them in meters.</param>
         /// <returns>The sentence, or null when the filter is nested deeper than <see cref="MaxSentenceDepth"/> groups.</returns>
-        public static string? DescribeSentence(AircraftFilter filter)
+        public static string? DescribeSentence(AircraftFilter filter, AltitudeUnit altitudeUnit = AltitudeUnit.Metric)
         {
             SentenceNode tree = BuildSentence(filter.Expression, false);
 
@@ -26,17 +28,18 @@ namespace AdsbCarMap.Data
                 return null;
             }
 
-            return (filter.Mode == FilterMode.Show ? "Pokazuje każdy samolot, który " : "Ukrywa każdy samolot, który ") + RenderSentence(tree, false) + ".";
+            return (filter.Mode == FilterMode.Show ? "Pokazuje każdy samolot, który " : "Ukrywa każdy samolot, który ") + RenderSentence(tree, false, altitudeUnit) + ".";
         }
 
         /// <summary>
         /// Describes a whole filter: what it does with the matching aircraft and which aircraft match.
         /// </summary>
         /// <param name="filter">Filter.</param>
+        /// <param name="altitudeUnit">Unit in which altitude bounds are written; the filter stores them in meters.</param>
         /// <returns>For example "Pokaż: producent Boeing ORAZ NIE lotnisko docelowe WAW".</returns>
-        public static string Describe(AircraftFilter filter)
+        public static string Describe(AircraftFilter filter, AltitudeUnit altitudeUnit = AltitudeUnit.Metric)
         {
-            return (filter.Mode == FilterMode.Show ? "Pokaż: " : "Ukryj: ") + DescribeNode(filter.Expression, false);
+            return (filter.Mode == FilterMode.Show ? "Pokaż: " : "Ukryj: ") + DescribeNode(filter.Expression, false, altitudeUnit);
         }
 
         /// <summary>
@@ -44,18 +47,19 @@ namespace AdsbCarMap.Data
         /// </summary>
         /// <param name="node">Node.</param>
         /// <param name="nested">True when the node is inside another group or negation.</param>
+        /// <param name="altitudeUnit">Unit in which altitude bounds are written; the filter stores them in meters.</param>
         /// <returns>Description of the node.</returns>
-        public static string DescribeNode(FilterNode node, bool nested)
+        public static string DescribeNode(FilterNode node, bool nested, AltitudeUnit altitudeUnit = AltitudeUnit.Metric)
         {
             if (node is FilterNot negation)
             {
-                return "NIE " + DescribeNode(negation.Inner, true);
+                return "NIE " + DescribeNode(negation.Inner, true, altitudeUnit);
             }
 
             if (node is FilterGroup group)
             {
                 string connector = group.Mode == FilterGroupMode.All ? " ORAZ " : " LUB ";
-                string text = string.Join(connector, group.Children.Select((FilterNode child) => DescribeNode(child, true)));
+                string text = string.Join(connector, group.Children.Select((FilterNode child) => DescribeNode(child, true, altitudeUnit)));
 
                 if (group.Children.Count == 0)
                 {
@@ -65,15 +69,16 @@ namespace AdsbCarMap.Data
                 return nested && group.Children.Count > 1 ? "(" + text + ")" : text;
             }
 
-            return node is FilterCondition condition ? DescribeCondition(condition) : string.Empty;
+            return node is FilterCondition condition ? DescribeCondition(condition, altitudeUnit) : string.Empty;
         }
 
         /// <summary>
         /// Describes a single condition.
         /// </summary>
         /// <param name="condition">Condition.</param>
+        /// <param name="altitudeUnit">Unit in which altitude bounds are written; the filter stores them in meters.</param>
         /// <returns>Description of the condition.</returns>
-        public static string DescribeCondition(FilterCondition condition)
+        public static string DescribeCondition(FilterCondition condition, AltitudeUnit altitudeUnit = AltitudeUnit.Metric)
         {
             switch (condition.Field)
             {
@@ -90,7 +95,7 @@ namespace AdsbCarMap.Data
                 case FilterField.CallsignPrefix:
                     return "linia " + condition.Text;
                 case FilterField.Altitude:
-                    return DescribeRange(condition.Minimum, condition.Maximum);
+                    return DescribeRange(condition.Minimum, condition.Maximum, altitudeUnit);
                 case FilterField.Origin:
                     return "lotnisko wylotu " + condition.Text;
                 case FilterField.Destination:
@@ -101,40 +106,63 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
-        /// Describes an altitude range in meters.
+        /// Describes an altitude range.
         /// </summary>
-        /// <param name="minimum">Lower bound or null.</param>
-        /// <param name="maximum">Upper bound or null.</param>
+        /// <param name="minimum">Lower bound in meters or null.</param>
+        /// <param name="maximum">Upper bound in meters or null.</param>
+        /// <param name="unit">Unit in which the bounds are written.</param>
         /// <returns>For example "wysokość 1000–5000 m".</returns>
-        private static string DescribeRange(double? minimum, double? maximum)
+        private static string DescribeRange(double? minimum, double? maximum, AltitudeUnit unit)
         {
-            return "wysokość " + (FormatRange(minimum, maximum) ?? "dowolna");
+            return "wysokość " + (FormatRange(minimum, maximum, unit) ?? "dowolna");
         }
 
         /// <summary>
-        /// Formats the bounds of an altitude range in meters.
+        /// Formats the bounds of an altitude range.
         /// </summary>
-        /// <param name="minimum">Lower bound or null.</param>
-        /// <param name="maximum">Upper bound or null.</param>
-        /// <returns>For example "1000–5000 m", "od 300 m" or "do 3000 m"; null when there are no bounds.</returns>
-        private static string? FormatRange(double? minimum, double? maximum)
+        /// <param name="minimum">Lower bound in meters or null.</param>
+        /// <param name="maximum">Upper bound in meters or null.</param>
+        /// <param name="unit">Unit in which the bounds are written.</param>
+        /// <returns>For example "1000–5000 m", "od 300 ft", "do FL350"; null when there are no bounds.</returns>
+        private static string? FormatRange(double? minimum, double? maximum, AltitudeUnit unit)
         {
+            string suffix = unit == AltitudeUnit.FlightLevel ? string.Empty : " " + AltitudeFormatter.Symbol(unit);
+
             if (minimum.HasValue && maximum.HasValue)
             {
-                return Format(minimum.Value) + "–" + Format(maximum.Value) + " m";
+                return FormatBound(minimum.Value, unit) + "–" + FormatBound(maximum.Value, unit) + suffix;
             }
 
             if (minimum.HasValue)
             {
-                return "od " + Format(minimum.Value) + " m";
+                return "od " + FormatBound(minimum.Value, unit) + suffix;
             }
 
             if (maximum.HasValue)
             {
-                return "do " + Format(maximum.Value) + " m";
+                return "do " + FormatBound(maximum.Value, unit) + suffix;
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Formats one bound of an altitude range.
+        /// </summary>
+        /// <param name="meters">Bound in meters.</param>
+        /// <param name="unit">Unit in which the bound is written.</param>
+        /// <returns>The number in meters or feet, or the flight level such as "FL100".</returns>
+        private static string FormatBound(double meters, AltitudeUnit unit)
+        {
+            switch (unit)
+            {
+                case AltitudeUnit.Feet:
+                    return Math.Round(AltitudeFormatter.MetersToUnit(meters, unit)).ToString("0", CultureInfo.InvariantCulture);
+                case AltitudeUnit.FlightLevel:
+                    return "FL" + Math.Round(AltitudeFormatter.MetersToUnit(meters, unit)).ToString("000", CultureInfo.InvariantCulture);
+                default:
+                    return Format(meters);
+            }
         }
 
         /// <summary>
@@ -206,12 +234,13 @@ namespace AdsbCarMap.Data
         /// </summary>
         /// <param name="node">Sentence node.</param>
         /// <param name="nested">True when the node is inside another group.</param>
+        /// <param name="altitudeUnit">Unit in which altitude bounds are written.</param>
         /// <returns>The text.</returns>
-        private static string RenderSentence(SentenceNode node, bool nested)
+        private static string RenderSentence(SentenceNode node, bool nested, AltitudeUnit altitudeUnit)
         {
             if (node is SentenceLeaf leaf)
             {
-                return DescribeLeaf(leaf.Condition, leaf.Negated);
+                return DescribeLeaf(leaf.Condition, leaf.Negated, altitudeUnit);
             }
 
             SentenceGroup group = (SentenceGroup)node;
@@ -221,7 +250,7 @@ namespace AdsbCarMap.Data
                 return "(pusta grupa)";
             }
 
-            string text = string.Join(group.All ? " oraz " : " lub ", group.Children.Select((SentenceNode child) => RenderSentence(child, true)));
+            string text = string.Join(group.All ? " oraz " : " lub ", group.Children.Select((SentenceNode child) => RenderSentence(child, true, altitudeUnit)));
 
             return nested ? "(" + text + ")" : text;
         }
@@ -231,8 +260,9 @@ namespace AdsbCarMap.Data
         /// </summary>
         /// <param name="condition">Condition.</param>
         /// <param name="negated">Whether the condition is negated.</param>
+        /// <param name="altitudeUnit">Unit in which altitude bounds are written.</param>
         /// <returns>For example "nie leci do lotniska WAW".</returns>
-        private static string DescribeLeaf(FilterCondition condition, bool negated)
+        private static string DescribeLeaf(FilterCondition condition, bool negated, AltitudeUnit altitudeUnit)
         {
             switch (condition.Field)
             {
@@ -254,7 +284,7 @@ namespace AdsbCarMap.Data
                 case FilterField.CallsignPrefix:
                     return (negated ? "nie ma znaku zaczynającego się od " : "ma znak zaczynający się od ") + condition.Text;
                 case FilterField.Altitude:
-                    string? range = FormatRange(condition.Minimum, condition.Maximum);
+                    string? range = FormatRange(condition.Minimum, condition.Maximum, altitudeUnit);
 
                     if (range == null)
                     {

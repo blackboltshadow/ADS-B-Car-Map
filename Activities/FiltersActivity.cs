@@ -1,4 +1,5 @@
 using AdsbCarMap.Data;
+using AdsbCarMap.Settings;
 using AdsbCarMap.Services;
 using Android.App;
 using Android.Content;
@@ -176,7 +177,7 @@ namespace AdsbCarMap.Activities
             texts.AddView(title);
 
             TextView details = new TextView(this);
-            details.Text = FilterDescriber.Describe(filter);
+            details.Text = FilterDescriber.Describe(filter, AppSettings.AltitudeUnit);
             details.TextSize = 13f;
             details.SetTextColor(Color.Rgb(190, 190, 190));
             texts.AddView(details);

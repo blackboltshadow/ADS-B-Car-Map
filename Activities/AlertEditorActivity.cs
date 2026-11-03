@@ -2,6 +2,7 @@ using System.Globalization;
 using AdsbCarMap.Data;
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.Services;
+using AdsbCarMap.Settings;
 using Android.App;
 using Android.Content;
 using Android.Graphics;
@@ -23,19 +24,24 @@ namespace AdsbCarMap.Activities
         public const string EditedIdExtra = "alert_edited_id";
 
         /// <summary>
-        /// Smallest radius of the area in kilometers.
+        /// Smallest radius of the area in the distance unit from the settings.
         /// </summary>
         private const int MinimumRadius = 1;
 
         /// <summary>
         /// Largest radius of the area in kilometers.
         /// </summary>
-        private const int MaximumRadius = 300;
+        private const double MaximumRadiusKilometers = 300.0;
 
         /// <summary>
         /// Default radius of a new alert in kilometers.
         /// </summary>
-        private const int DefaultRadius = 50;
+        private const double DefaultRadiusKilometers = 50.0;
+
+        /// <summary>
+        /// Distance unit in which the radius is chosen, read when the editor is created.
+        /// </summary>
+        private readonly DistanceUnit distanceUnit = AppSettings.DistanceUnit;
 
         /// <summary>
         /// Default time of silence about the same aircraft in minutes.
@@ -153,7 +159,7 @@ namespace AdsbCarMap.Activities
             else
             {
                 ruleId = AlertRuleStore.CreateId();
-                radiusBar!.Progress = DefaultRadius - MinimumRadius;
+                radiusBar!.Progress = RadiusToProgress(DefaultRadiusKilometers);
                 cooldownField!.Text = DefaultCooldown.ToString(CultureInfo.InvariantCulture);
             }
 
@@ -274,7 +280,7 @@ namespace AdsbCarMap.Activities
             radiusText.SetPadding(0, Dp(8), 0, 0);
             form.AddView(radiusText);
             radiusBar = new SeekBar(this);
-            radiusBar.Max = MaximumRadius - MinimumRadius;
+            radiusBar.Max = (int)Math.Round(UnitFormatter.KilometersToUnit(MaximumRadiusKilometers, distanceUnit)) - MinimumRadius;
             radiusBar.ProgressChanged += (sender, args) => UpdateRadiusText();
             form.AddView(radiusBar);
 
@@ -343,7 +349,7 @@ namespace AdsbCarMap.Activities
             areaKind = rule.Area.Kind;
             filterId = rule.ConditionFilterId;
             nameField!.Text = rule.Name;
-            radiusBar!.Progress = Math.Clamp((int)Math.Round(rule.Area.RadiusKilometers), MinimumRadius, MaximumRadius) - MinimumRadius;
+            radiusBar!.Progress = RadiusToProgress(rule.Area.RadiusKilometers);
             airportField!.Text = rule.Area.AirportIcao ?? string.Empty;
 
             if (rule.Area.Center != null)
@@ -429,8 +435,18 @@ namespace AdsbCarMap.Activities
         {
             if (radiusText != null && radiusBar != null)
             {
-                radiusText.Text = "Promień: " + (radiusBar.Progress + MinimumRadius).ToString(CultureInfo.InvariantCulture) + " km";
+                radiusText.Text = "Promień: " + (radiusBar.Progress + MinimumRadius).ToString(CultureInfo.InvariantCulture) + " " + UnitFormatter.DistanceSymbol(distanceUnit);
             }
+        }
+
+        /// <summary>
+        /// Converts a radius in kilometers to the position of the radius slider, which counts whole units of the distance unit from the settings.
+        /// </summary>
+        /// <param name="kilometers">Radius in kilometers.</param>
+        /// <returns>Slider position within its range.</returns>
+        private int RadiusToProgress(double kilometers)
+        {
+            return Math.Clamp((int)Math.Round(UnitFormatter.KilometersToUnit(kilometers, distanceUnit)) - MinimumRadius, 0, radiusBar!.Max);
         }
 
         /// <summary>
@@ -526,7 +542,7 @@ namespace AdsbCarMap.Activities
         /// <returns>The rule, or null when the form is invalid; the reason is shown to the user.</returns>
         private AlertRule? BuildRule(bool fillName)
         {
-            double radius = radiusBar!.Progress + MinimumRadius;
+            double radius = UnitFormatter.UnitToKilometers(radiusBar!.Progress + MinimumRadius, distanceUnit);
             AlertArea? area = null;
 
             if (areaKind == AlertAreaKind.AroundMe)
@@ -573,7 +589,7 @@ namespace AdsbCarMap.Activities
 
             if (name.Length == 0 && fillName)
             {
-                name = AlertText.DescribeArea(area);
+                name = AlertText.DescribeArea(area, distanceUnit);
             }
 
             return new AlertRule(ruleId, name, ruleEnabled, area, null, entryBox!.Checked, appearanceBox!.Checked, cooldown, filterId);

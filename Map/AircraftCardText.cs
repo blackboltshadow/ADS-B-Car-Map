@@ -16,11 +16,6 @@ namespace AdsbCarMap.Map
         private static readonly CultureInfo DisplayCulture = new CultureInfo("pl-PL");
 
         /// <summary>
-        /// Knots to kilometers per hour conversion factor.
-        /// </summary>
-        private const double KilometersPerHourPerKnot = 1.852;
-
-        /// <summary>
         /// Speed in knots below which the time to arrival is not estimated.
         /// </summary>
         private const double MinimumSpeedForEstimateKnots = 80.0;
@@ -151,8 +146,9 @@ namespace AdsbCarMap.Map
         /// <param name="route">Flight route or null.</param>
         /// <param name="fraction">Flown part of the route from 0 to 1.</param>
         /// <param name="text">Progress description: flown part, distance to the destination and estimated time.</param>
+        /// <param name="units">Units chosen by the user.</param>
         /// <returns>False when the route is unknown or has no coordinates.</returns>
-        public static bool TryBuildProgress(SelectedAircraftInfo info, Aircraft aircraft, FlightRoute? route, out float fraction, out string text)
+        public static bool TryBuildProgress(SelectedAircraftInfo info, Aircraft aircraft, FlightRoute? route, out float fraction, out string text, DisplayUnits units)
         {
             fraction = 0.0f;
             text = string.Empty;
@@ -167,11 +163,11 @@ namespace AdsbCarMap.Map
             double total = flown + remaining;
 
             fraction = total > 0.0 ? (float)(flown / total) : 0.0f;
-            text = string.Format(DisplayCulture, "przeleciano {0:0}%  ·  do celu {1:N0} km", fraction * 100.0, remaining);
+            text = string.Format(DisplayCulture, "przeleciano {0:0}%  ·  do celu {1}", fraction * 100.0, UnitFormatter.FormatDistance(remaining, units.Distance, 0));
 
             if (!aircraft.OnGround && aircraft.GroundSpeedKnots.HasValue && aircraft.GroundSpeedKnots.Value >= MinimumSpeedForEstimateKnots)
             {
-                double hours = remaining / (aircraft.GroundSpeedKnots.Value * KilometersPerHourPerKnot);
+                double hours = remaining / (aircraft.GroundSpeedKnots.Value * UnitFormatter.KilometersPerNauticalMile);
                 text += "  ·  ok. " + FormatDuration(hours);
             }
 
@@ -183,9 +179,9 @@ namespace AdsbCarMap.Map
         /// </summary>
         /// <param name="info">Data of the selected aircraft.</param>
         /// <param name="aircraft">Aircraft.</param>
-        /// <param name="unit">Altitude unit chosen by the user.</param>
+        /// <param name="units">Units chosen by the user.</param>
         /// <returns>Text lines.</returns>
-        public static List<string> BuildLeftLines(SelectedAircraftInfo info, Aircraft aircraft, AltitudeUnit unit)
+        public static List<string> BuildLeftLines(SelectedAircraftInfo info, Aircraft aircraft, DisplayUnits units)
         {
             List<string> lines = new List<string>();
 
@@ -195,7 +191,7 @@ namespace AdsbCarMap.Map
             }
             else if (aircraft.AltitudeFeet.HasValue)
             {
-                lines.Add("Wysokość: " + AltitudeFormatter.FormatWithEquivalent(aircraft.AltitudeFeet.Value, unit));
+                lines.Add("Wysokość: " + AltitudeFormatter.Format(aircraft.AltitudeFeet.Value, units.Altitude));
             }
             else
             {
@@ -203,7 +199,7 @@ namespace AdsbCarMap.Map
             }
 
             lines.Add(aircraft.GroundSpeedKnots.HasValue
-                ? string.Format(DisplayCulture, "Prędkość: {0:N0} kt ({1:N0} km/h)", aircraft.GroundSpeedKnots.Value, aircraft.GroundSpeedKnots.Value * KilometersPerHourPerKnot)
+                ? "Prędkość: " + UnitFormatter.FormatSpeed(aircraft.GroundSpeedKnots.Value, units.Speed)
                 : "Prędkość: brak danych");
 
             lines.Add(aircraft.TrackDegrees.HasValue
@@ -220,8 +216,9 @@ namespace AdsbCarMap.Map
         /// </summary>
         /// <param name="info">Data of the selected aircraft and the user position.</param>
         /// <param name="aircraft">Aircraft.</param>
+        /// <param name="units">Units chosen by the user.</param>
         /// <returns>Text lines.</returns>
-        public static List<string> BuildRightLines(SelectedAircraftInfo info, Aircraft aircraft)
+        public static List<string> BuildRightLines(SelectedAircraftInfo info, Aircraft aircraft, DisplayUnits units)
         {
             List<string> lines = new List<string>();
 
@@ -235,7 +232,7 @@ namespace AdsbCarMap.Map
 
                 lines.Add(Math.Abs(rate) < LevelFlightThresholdFeetPerMinute
                     ? "Wznoszenie: lot poziomy"
-                    : string.Format(DisplayCulture, "{0}: {1:N0} ft/min", rate > 0 ? "Wznoszenie" : "Opadanie", Math.Abs(rate)));
+                    : (rate > 0 ? "Wznoszenie: " : "Opadanie: ") + UnitFormatter.FormatVerticalSpeed(rate, units.VerticalSpeed));
             }
             else
             {
@@ -247,7 +244,7 @@ namespace AdsbCarMap.Map
                 double distance = GeoMath.DistanceKilometers(info.UserLatitude, info.UserLongitude, info.Latitude, info.Longitude);
                 double bearing = GeoMath.BearingDegrees(info.UserLatitude, info.UserLongitude, info.Latitude, info.Longitude);
 
-                lines.Add(string.Format(DisplayCulture, "Od Ciebie: {0:N1} km, {1} ({2:0}°)", distance, GeoMath.CompassPoint(bearing), bearing));
+                lines.Add(string.Format(DisplayCulture, "Od Ciebie: {0}, {1} ({2:0}°)", UnitFormatter.FormatDistance(distance, units.Distance, 1), GeoMath.CompassPoint(bearing), bearing));
             }
             else
             {

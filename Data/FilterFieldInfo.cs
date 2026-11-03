@@ -1,3 +1,5 @@
+using AdsbCarMap.Settings;
+
 namespace AdsbCarMap.Data
 {
     /// <summary>
@@ -25,8 +27,9 @@ namespace AdsbCarMap.Data
         /// Returns the name of a field shown to the user.
         /// </summary>
         /// <param name="field">Field.</param>
+        /// <param name="altitudeUnit">Altitude unit chosen by the user, shown in the name of the altitude field.</param>
         /// <returns>Polish name of the field.</returns>
-        public static string GetLabel(FilterField field)
+        public static string GetLabel(FilterField field, AltitudeUnit altitudeUnit = AltitudeUnit.Metric)
         {
             return field switch
             {
@@ -36,7 +39,7 @@ namespace AdsbCarMap.Data
                 FilterField.Manufacturer => "Producent",
                 FilterField.TypeCode => "Typ (kod ICAO lub IATA)",
                 FilterField.CallsignPrefix => "Linia (początek znaku)",
-                FilterField.Altitude => "Wysokość [m]",
+                FilterField.Altitude => "Wysokość [" + AltitudeFormatter.Symbol(altitudeUnit) + "]",
                 FilterField.Origin => "Lotnisko wylotu",
                 FilterField.Destination => "Lotnisko docelowe",
                 _ => field.ToString(),

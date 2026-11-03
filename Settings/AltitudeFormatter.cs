@@ -58,16 +58,83 @@ namespace AdsbCarMap.Settings
         }
 
         /// <summary>
-        /// Formats an altitude for the aircraft card: the chosen unit first, then the metric (or feet, when the unit is metric) equivalent in parentheses.
+        /// Formats a length given in feet, such as a runway length. Flight levels are a way of writing altitude, so a length is shown in feet for them.
         /// </summary>
-        /// <param name="feet">Altitude in feet.</param>
-        /// <param name="unit">Unit shown first.</param>
-        /// <returns>Text such as "10 668 m (35 000 ft)" or "FL350 (10 668 m)".</returns>
-        public static string FormatWithEquivalent(double feet, AltitudeUnit unit)
+        /// <param name="feet">Length in feet.</param>
+        /// <param name="unit">Altitude unit chosen by the user; metric gives meters, the other units give feet.</param>
+        /// <returns>Text such as "3 505 m" or "11 500 ft".</returns>
+        public static string FormatLength(double feet, AltitudeUnit unit)
         {
-            AltitudeUnit other = unit == AltitudeUnit.Metric ? AltitudeUnit.Feet : AltitudeUnit.Metric;
+            return unit == AltitudeUnit.Metric
+                ? string.Format(DisplayCulture, "{0:N0} m", feet * MetersPerFoot)
+                : string.Format(DisplayCulture, "{0:N0} ft", feet);
+        }
 
-            return Format(feet, unit) + " (" + Format(feet, other) + ")";
+        /// <summary>
+        /// Converts an altitude in meters, as stored in the filters, to the number shown in the unit.
+        /// </summary>
+        /// <param name="meters">Altitude in meters.</param>
+        /// <param name="unit">Unit of the result; flight levels are hundreds of feet.</param>
+        /// <returns>Altitude in meters, feet or hundreds of feet.</returns>
+        public static double MetersToUnit(double meters, AltitudeUnit unit)
+        {
+            switch (unit)
+            {
+                case AltitudeUnit.Feet:
+                    return meters / MetersPerFoot;
+                case AltitudeUnit.FlightLevel:
+                    return meters / MetersPerFoot / 100.0;
+                default:
+                    return meters;
+            }
+        }
+
+        /// <summary>
+        /// Converts a number typed in the unit to an altitude in meters, as stored in the filters.
+        /// </summary>
+        /// <param name="value">Altitude in meters, feet or hundreds of feet.</param>
+        /// <param name="unit">Unit of the value.</param>
+        /// <returns>Altitude in meters.</returns>
+        public static double UnitToMeters(double value, AltitudeUnit unit)
+        {
+            switch (unit)
+            {
+                case AltitudeUnit.Feet:
+                    return value * MetersPerFoot;
+                case AltitudeUnit.FlightLevel:
+                    return value * 100.0 * MetersPerFoot;
+                default:
+                    return value;
+            }
+        }
+
+        /// <summary>
+        /// Returns the symbol of an altitude unit.
+        /// </summary>
+        /// <param name="unit">Unit.</param>
+        /// <returns>"m", "ft" or "FL".</returns>
+        public static string Symbol(AltitudeUnit unit)
+        {
+            switch (unit)
+            {
+                case AltitudeUnit.Feet:
+                    return "ft";
+                case AltitudeUnit.FlightLevel:
+                    return "FL";
+                default:
+                    return "m";
+            }
+        }
+
+        /// <summary>
+        /// Formats an altitude given in meters, as stored in the filters, in the unit.
+        /// </summary>
+        /// <param name="meters">Altitude in meters.</param>
+        /// <param name="unit">Unit of the result.</param>
+        /// <returns>Text such as "1000 m", "3281 ft" or "FL033".</returns>
+        public static string FormatMeters(double meters, AltitudeUnit unit)
+        {
+            return Format(meters / MetersPerFoot, unit);
         }
 
         /// <summary>

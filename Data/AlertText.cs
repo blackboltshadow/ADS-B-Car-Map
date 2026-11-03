@@ -14,10 +14,11 @@ namespace AdsbCarMap.Data
         /// Describes the area of a rule in one line.
         /// </summary>
         /// <param name="area">Area to describe.</param>
+        /// <param name="unit">Unit of the radius.</param>
         /// <returns>For example "Wokół lotniska EPWA, 50 km".</returns>
-        public static string DescribeArea(AlertArea area)
+        public static string DescribeArea(AlertArea area, DistanceUnit unit)
         {
-            string radius = FormatKilometers(area.RadiusKilometers);
+            string radius = UnitFormatter.FormatDistanceCompact(area.RadiusKilometers, unit);
 
             switch (area.Kind)
             {
@@ -72,9 +73,9 @@ namespace AdsbCarMap.Data
         /// Builds the text of the notification about a match.
         /// </summary>
         /// <param name="match">Match to describe.</param>
-        /// <param name="unit">Unit of the altitude.</param>
+        /// <param name="units">Units chosen by the user.</param>
         /// <returns>The callsign or address, the type, the altitude and the distance, separated by dots.</returns>
-        public static string Body(AlertMatch match, AltitudeUnit unit)
+        public static string Body(AlertMatch match, DisplayUnits units)
         {
             Aircraft aircraft = match.Aircraft;
             List<string> parts = new List<string>();
@@ -97,24 +98,12 @@ namespace AdsbCarMap.Data
             }
             else if (aircraft.AltitudeFeet != null)
             {
-                parts.Add(AltitudeFormatter.Format(aircraft.AltitudeFeet.Value, unit));
+                parts.Add(AltitudeFormatter.Format(aircraft.AltitudeFeet.Value, units.Altitude));
             }
 
-            parts.Add(FormatKilometers(match.DistanceKilometers));
+            parts.Add(UnitFormatter.FormatDistanceCompact(match.DistanceKilometers, units.Distance));
 
             return string.Join(" · ", parts);
-        }
-
-        /// <summary>
-        /// Formats a distance in kilometers, with one decimal place below ten kilometers.
-        /// </summary>
-        /// <param name="kilometers">Distance.</param>
-        /// <returns>For example "3,5 km" or "50 km".</returns>
-        public static string FormatKilometers(double kilometers)
-        {
-            CultureInfo polish = CultureInfo.GetCultureInfo("pl-PL");
-
-            return (kilometers < 10.0 ? kilometers.ToString("0.0", polish) : kilometers.ToString("0", polish)) + " km";
         }
     }
 }

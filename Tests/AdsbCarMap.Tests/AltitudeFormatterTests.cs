@@ -45,15 +45,40 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
-        /// The card shows the chosen unit first and the metric or feet equivalent in parentheses.
+        /// A length in feet is shown in meters for the metric unit and in feet for the other units, because a flight level is a way of writing altitude.
         /// </summary>
         [Theory]
-        [InlineData(AltitudeUnit.Metric, "10 668 m (35 000 ft)")]
-        [InlineData(AltitudeUnit.Feet, "35 000 ft (10 668 m)")]
-        [InlineData(AltitudeUnit.FlightLevel, "FL350 (10 668 m)")]
-        public void FormatWithEquivalent_ShowsUnitAndEquivalent(AltitudeUnit unit, string expected)
+        [InlineData(AltitudeUnit.Metric, "3 505 m")]
+        [InlineData(AltitudeUnit.Feet, "11 500 ft")]
+        [InlineData(AltitudeUnit.FlightLevel, "11 500 ft")]
+        public void FormatLength_MetricOrFeet(AltitudeUnit unit, string expected)
         {
-            Assert.Equal(expected, Plain(AltitudeFormatter.FormatWithEquivalent(35000.0, unit)));
+            Assert.Equal(expected, Plain(AltitudeFormatter.FormatLength(11500.0, unit)));
+        }
+
+        /// <summary>
+        /// Filter bounds are converted from meters to the unit and back.
+        /// </summary>
+        [Theory]
+        [InlineData(AltitudeUnit.Metric, 3048.0, 3048.0, "m")]
+        [InlineData(AltitudeUnit.Feet, 3048.0, 10000.0, "ft")]
+        [InlineData(AltitudeUnit.FlightLevel, 3048.0, 100.0, "FL")]
+        public void MetersAndUnit_ConvertBothWays(AltitudeUnit unit, double meters, double inUnit, string symbol)
+        {
+            Assert.Equal(inUnit, AltitudeFormatter.MetersToUnit(meters, unit), 6);
+            Assert.Equal(meters, AltitudeFormatter.UnitToMeters(inUnit, unit), 6);
+            Assert.Equal(symbol, AltitudeFormatter.Symbol(unit));
+        }
+
+        /// <summary>
+        /// An altitude in meters is formatted in the unit.
+        /// </summary>
+        [Fact]
+        public void FormatMeters_UsesUnit()
+        {
+            Assert.Equal("10 000 ft", Plain(AltitudeFormatter.FormatMeters(3048.0, AltitudeUnit.Feet)));
+            Assert.Equal("FL100", AltitudeFormatter.FormatMeters(3048.0, AltitudeUnit.FlightLevel));
+            Assert.Equal("3 048 m", Plain(AltitudeFormatter.FormatMeters(3048.0, AltitudeUnit.Metric)));
         }
 
         /// <summary>

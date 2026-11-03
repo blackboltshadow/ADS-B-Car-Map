@@ -1,5 +1,6 @@
 using System.Globalization;
 using AdsbCarMap.Data;
+using AdsbCarMap.Settings;
 using AdsbCarMap.Services;
 using Android.App;
 using Android.Content.PM;
@@ -453,7 +454,7 @@ namespace AdsbCarMap.Activities
             if (group.Collapsed)
             {
                 TextView summary = new TextView(this);
-                summary.Text = group.Children.Count == 0 ? "(pusta grupa)" : FilterDescriber.DescribeNode(group.ToNode(), false);
+                summary.Text = group.Children.Count == 0 ? "(pusta grupa)" : FilterDescriber.DescribeNode(group.ToNode(), false, AppSettings.AltitudeUnit);
                 summary.TextSize = 12f;
                 summary.SetTextColor(Color.Rgb(190, 190, 190));
                 summary.SetSingleLine(true);
@@ -822,7 +823,7 @@ namespace AdsbCarMap.Activities
                     continue;
                 }
 
-                string summary = group.Children.Count == 0 ? "pusta" : FilterDescriber.DescribeNode(group.ToNode(), false);
+                string summary = group.Children.Count == 0 ? "pusta" : FilterDescriber.DescribeNode(group.ToNode(), false, AppSettings.AltitudeUnit);
 
                 if (summary.Length > MaxTargetSummaryLength)
                 {
@@ -854,7 +855,7 @@ namespace AdsbCarMap.Activities
         /// <returns>The spinner.</returns>
         private Spinner CreateFieldSpinner(FilterDraftCondition condition)
         {
-            List<string> labels = FilterFieldInfo.All.Select((FilterField field) => FilterFieldInfo.GetLabel(field)).ToList();
+            List<string> labels = FilterFieldInfo.All.Select((FilterField field) => FilterFieldInfo.GetLabel(field, AppSettings.AltitudeUnit)).ToList();
             int selected = Math.Max(0, FilterFieldInfo.All.ToList().IndexOf(condition.Field));
 
             Spinner spinner = new Spinner(this);
@@ -1009,19 +1010,43 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Creates two numeric inputs for the lower and the upper bound of a range.
+        /// Creates two numeric inputs for the lower and the upper bound of an altitude range. The bounds are typed in the altitude unit from the settings and stored in meters.
         /// </summary>
         /// <param name="condition">Condition.</param>
         /// <returns>The inputs in one line.</returns>
         private View CreateRangeOperand(FilterDraftCondition condition)
         {
+            AltitudeUnit unit = AppSettings.AltitudeUnit;
+            string symbol = AltitudeFormatter.Symbol(unit);
             LinearLayout line = new LinearLayout(this);
             line.Orientation = Orientation.Horizontal;
 
-            line.AddView(CreateNumberInput("od [m]", condition.Minimum, value => condition.Minimum = value), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
-            line.AddView(CreateNumberInput("do [m]", condition.Maximum, value => condition.Maximum = value), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+            line.AddView(CreateNumberInput("od [" + symbol + "]", ToUnit(condition.Minimum, unit), value => condition.Minimum = ToMeters(value, unit)), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+            line.AddView(CreateNumberInput("do [" + symbol + "]", ToUnit(condition.Maximum, unit), value => condition.Maximum = ToMeters(value, unit)), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
             return line;
+        }
+
+        /// <summary>
+        /// Converts a stored altitude bound in meters to the number shown in the input.
+        /// </summary>
+        /// <param name="meters">Bound in meters or null.</param>
+        /// <param name="unit">Altitude unit of the input.</param>
+        /// <returns>The number in the unit, or null when there is no bound.</returns>
+        private static double? ToUnit(double? meters, AltitudeUnit unit)
+        {
+            return meters.HasValue ? AltitudeFormatter.MetersToUnit(meters.Value, unit) : null;
+        }
+
+        /// <summary>
+        /// Converts the number typed in the input to the altitude bound stored in meters.
+        /// </summary>
+        /// <param name="value">Typed number or null.</param>
+        /// <param name="unit">Altitude unit of the input.</param>
+        /// <returns>The bound in meters, or null when the input is empty or invalid.</returns>
+        private static double? ToMeters(double? value, AltitudeUnit unit)
+        {
+            return value.HasValue ? AltitudeFormatter.UnitToMeters(value.Value, unit) : null;
         }
 
         /// <summary>
@@ -1066,9 +1091,9 @@ namespace AdsbCarMap.Activities
             }
 
             AircraftFilter preview = draft.ToFilter("preview");
-            string? sentence = FilterDescriber.DescribeSentence(preview);
+            string? sentence = FilterDescriber.DescribeSentence(preview, AppSettings.AltitudeUnit);
 
-            previewText.Text = "Opis: " + FilterDescriber.Describe(preview);
+            previewText.Text = "Opis: " + FilterDescriber.Describe(preview, AppSettings.AltitudeUnit);
             sentenceText.Text = sentence == null ? string.Empty : "Czytaj: " + sentence;
             sentenceText.Visibility = sentence == null ? ViewStates.Gone : ViewStates.Visible;
         }

@@ -36,7 +36,6 @@ Zasada kolejności: najpierw rzeczy, które pomagają ocenić to, co już dodano
 
 ## P5 – pomysły
 
-- Ustawienie jednostki odległości (km, mile morskie, mile) obok jednostki wysokości. Dziś odległości i ustawienia zaokrąglania położenia są w km, a promień w API w NM.
 
 - Historia obserwowanych samolotów.
 - Przyloty i odloty lotniska: najpierw lista „na żywo” z pozycji i tras, potem opcjonalnie rozkład z AeroDataBox z kluczem użytkownika (porównanie źródeł i limity w DATA_SOURCES.md, sekcja „Przyloty i odloty lotniska”).

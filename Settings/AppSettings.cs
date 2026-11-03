@@ -248,7 +248,22 @@ namespace AdsbCarMap.Settings
         /// <summary>
         /// Altitude unit used across the application (phone and Android Auto): meters, feet or flight level.
         /// </summary>
-        public static readonly SettingDefinition AltitudeUnitSetting = SettingDefinition.CreateChoice("altitude_unit", "Jednostka wysokości", 0, "Jednostka, w której pokazywana jest wysokość samolotów w całej aplikacji, na telefonie i w Android Auto: na etykietach, w wynikach wyszukiwania, na karcie i w popupie samolotu, w legendzie oraz w skali kolorów. Metry to m i km, stopy to ft, a poziom lotu (FL) to wysokość w setkach stóp, np. FL350 to 35 000 ft. Karta samolotu pokazuje dodatkowo wartość w drugiej jednostce.", "Metry (m, km)", "Stopy (ft)", "Poziom lotu (FL)");
+        public static readonly SettingDefinition AltitudeUnitSetting = SettingDefinition.CreateChoice("altitude_unit", "Jednostka wysokości", 0, "Jednostka wysokości w całej aplikacji, na telefonie i w Android Auto. Pokazuje się: na etykietach samolotów na mapie; w wynikach wyszukiwania (wysokość samolotu i lotniska); na karcie i w popupie samolotu (Wysokość); na karcie i w popupie lotniska (wysokość lotniska oraz długość pasów, które w stopach i poziomach lotu są podawane w stopach); w legendzie i w edytorze skali kolorów; w powiadomieniach alertów; w filtrach (pole Wysokość w edytorze i opis filtra). Metry to m i km (w legendzie), stopy to ft, a poziom lotu (FL) to wysokość w setkach stóp, np. FL350 to 35 000 ft.", "Metry (m, km)", "Stopy (ft)", "Poziom lotu (FL)");
+
+        /// <summary>
+        /// Distance unit used across the application (phone and Android Auto): kilometers, nautical miles or statute miles.
+        /// </summary>
+        public static readonly SettingDefinition DistanceUnitSetting = SettingDefinition.CreateChoice("distance_unit", "Jednostka odległości", 0, "Jednostka odległości w całej aplikacji, na telefonie i w Android Auto. Pokazuje się: na karcie i w popupie samolotu (do celu oraz Od Ciebie); na karcie i w popupie lotniska (Odległość od Ciebie); w alertach (promień obszaru w edytorze i na liście oraz odległość samolotu w powiadomieniu). Nie dotyczy ustawień prywatności w sekcji Dev, które zawsze są w km, bo opisują technicznie zapytanie do serwera. Mila morska (NM) to 1,852 km, mila lądowa (mi) to 1,609 km.", "Kilometry (km)", "Mile morskie (NM)", "Mile lądowe (mi)");
+
+        /// <summary>
+        /// Speed unit used across the application (phone and Android Auto): kilometers per hour, knots or miles per hour.
+        /// </summary>
+        public static readonly SettingDefinition SpeedUnitSetting = SettingDefinition.CreateChoice("speed_unit", "Jednostka prędkości", 0, "Jednostka prędkości względem ziemi w całej aplikacji, na telefonie i w Android Auto. Pokazuje się w jednym miejscu: w linii Prędkość na karcie i w popupie zaznaczonego samolotu. Węzeł (kt) to jedna mila morska na godzinę, czyli 1,852 km/h; w tej jednostce samoloty podają prędkość w danych ADS-B. Szacowany czas do celu na karcie nie zależy od tego ustawienia.", "Kilometry na godzinę (km/h)", "Węzły (kt)", "Mile na godzinę (mph)");
+
+        /// <summary>
+        /// Vertical rate unit used across the application (phone and Android Auto): feet per minute or meters per second.
+        /// </summary>
+        public static readonly SettingDefinition VerticalSpeedUnitSetting = SettingDefinition.CreateChoice("vertical_speed_unit", "Jednostka prędkości pionowej", 0, "Jednostka tempa wznoszenia i opadania w całej aplikacji, na telefonie i w Android Auto. Pokazuje się w jednym miejscu: w linii Wznoszenie lub Opadanie na karcie i w popupie zaznaczonego samolotu. Stopy na minutę (ft/min) to jednostka używana w lotnictwie, metry na sekundę (m/s) to jednostka układu SI, np. 1 500 ft/min to 7,6 m/s. Lot z tempem poniżej 100 ft/min jest pokazywany jako poziomy.", "Stopy na minutę (ft/min)", "Metry na sekundę (m/s)");
 
         /// <summary>
         /// Switch that shows the "Dev log" item in the menu.
@@ -325,9 +340,12 @@ namespace AdsbCarMap.Settings
         /// </summary>
         public static readonly IReadOnlyList<SettingDefinition> All = new List<SettingDefinition>
         {
+            AltitudeUnitSetting,
+            DistanceUnitSetting,
+            SpeedUnitSetting,
+            VerticalSpeedUnitSetting,
             ShowLabelsSetting,
             ShowAltitudeLegendSetting,
-            AltitudeUnitSetting,
             LabelTextSizeSetting,
             AltitudeOrangeSetting,
             AltitudeYellowSetting,
@@ -379,6 +397,17 @@ namespace AdsbCarMap.Settings
             PrivacyLogSetting,
             AlertIntervalSetting,
             AlertMaxBackgroundSetting,
+        };
+
+        /// <summary>
+        /// Settings of the units section. They share one card on the settings screen.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> UnitSettings = new List<SettingDefinition>
+        {
+            AltitudeUnitSetting,
+            DistanceUnitSetting,
+            SpeedUnitSetting,
+            VerticalSpeedUnitSetting,
         };
 
         /// <summary>
@@ -797,6 +826,26 @@ namespace AdsbCarMap.Settings
         /// Unit in which the aircraft altitude is shown.
         /// </summary>
         public static AltitudeUnit AltitudeUnit => (AltitudeUnit)(int)Get(AltitudeUnitSetting);
+
+        /// <summary>
+        /// Unit in which distances are shown.
+        /// </summary>
+        public static DistanceUnit DistanceUnit => (DistanceUnit)(int)Get(DistanceUnitSetting);
+
+        /// <summary>
+        /// Unit in which the ground speed is shown.
+        /// </summary>
+        public static SpeedUnit SpeedUnit => (SpeedUnit)(int)Get(SpeedUnitSetting);
+
+        /// <summary>
+        /// Unit in which the vertical rate is shown.
+        /// </summary>
+        public static VerticalSpeedUnit VerticalSpeedUnit => (VerticalSpeedUnit)(int)Get(VerticalSpeedUnitSetting);
+
+        /// <summary>
+        /// All the units chosen by the user.
+        /// </summary>
+        public static DisplayUnits Units => new DisplayUnits(AltitudeUnit, DistanceUnit, SpeedUnit, VerticalSpeedUnit);
 
         /// <summary>
         /// Size of the aircraft label text in dp.

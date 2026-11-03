@@ -16,16 +16,6 @@ namespace AdsbCarMap.Settings
         }
 
         /// <summary>
-        /// Formats an altitude for the aircraft card in the unit from the settings, with the equivalent in parentheses.
-        /// </summary>
-        /// <param name="feet">Altitude in feet.</param>
-        /// <returns>Text such as "10 668 m (35 000 ft)" or "FL350 (10 668 m)".</returns>
-        public static string FormatWithEquivalent(double feet)
-        {
-            return FormatWithEquivalent(feet, AppSettings.AltitudeUnit);
-        }
-
-        /// <summary>
         /// Formats an altitude threshold of the legend, given in meters, in the unit from the settings.
         /// </summary>
         /// <param name="meters">Altitude in meters.</param>

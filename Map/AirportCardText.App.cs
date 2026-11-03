@@ -4,12 +4,12 @@ using AdsbCarMap.Settings;
 namespace AdsbCarMap.Map
 {
     /// <summary>
-    /// The part of the airport card text that reads the altitude unit from the application settings.
+    /// The part of the airport card text that reads the units from the application settings.
     /// </summary>
     public static partial class AirportCardText
     {
         /// <summary>
-        /// Returns the detail lines of the card in the altitude unit from the settings.
+        /// Returns the detail lines of the card in the units from the settings.
         /// </summary>
         /// <param name="airport">Airport.</param>
         /// <param name="runways">Runways of the airport.</param>
@@ -19,7 +19,7 @@ namespace AdsbCarMap.Map
         /// <returns>Text lines.</returns>
         public static List<string> BuildLines(Airport airport, IReadOnlyList<Runway> runways, bool hasUserLocation, double userLatitude, double userLongitude)
         {
-            return BuildLines(airport, runways, hasUserLocation, userLatitude, userLongitude, AppSettings.AltitudeUnit);
+            return BuildLines(airport, runways, hasUserLocation, userLatitude, userLongitude, AppSettings.Units);
         }
     }
 }

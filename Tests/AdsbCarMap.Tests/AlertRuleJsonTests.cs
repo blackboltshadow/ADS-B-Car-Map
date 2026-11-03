@@ -108,10 +108,10 @@ namespace AdsbCarMap.Tests
         [Fact]
         public void DescribeArea_AllKinds()
         {
-            Assert.Equal("Wokół mojej pozycji, 30 km", AlertText.DescribeArea(new AlertArea(AlertAreaKind.AroundMe, 30.0)));
-            Assert.Equal("Wokół lotniska EPWA, 7,5 km", AlertText.DescribeArea(new AlertArea(AlertAreaKind.AroundAirport, 7.5, null, "EPWA")));
-            Assert.Equal("Okrąg 52.250, 21.500, 80 km", AlertText.DescribeArea(new AlertArea(AlertAreaKind.Circle, 80.0, new GeoPoint(52.25, 21.5))));
-            Assert.Equal("Okrąg, 80 km", AlertText.DescribeArea(new AlertArea(AlertAreaKind.Circle, 80.0)));
+            Assert.Equal("Wokół mojej pozycji, 30 km", AlertText.DescribeArea(new AlertArea(AlertAreaKind.AroundMe, 30.0), DistanceUnit.Kilometers));
+            Assert.Equal("Wokół lotniska EPWA, 7,5 km", AlertText.DescribeArea(new AlertArea(AlertAreaKind.AroundAirport, 7.5, null, "EPWA"), DistanceUnit.Kilometers));
+            Assert.Equal("Okrąg 52.250, 21.500, 80 km", AlertText.DescribeArea(new AlertArea(AlertAreaKind.Circle, 80.0, new GeoPoint(52.25, 21.5)), DistanceUnit.Kilometers));
+            Assert.Equal("Okrąg, 80 km", AlertText.DescribeArea(new AlertArea(AlertAreaKind.Circle, 80.0), DistanceUnit.Kilometers));
         }
 
         /// <summary>
@@ -152,9 +152,9 @@ namespace AdsbCarMap.Tests
             Aircraft onGround = new Aircraft("48a124", null, 52.0, 21.0, 0, true, null, null, 0.0, null, null, typeName: "Boeing 737-800");
             Aircraft noAltitude = new Aircraft("48a125", null, 52.0, 21.0, null, false, null, null, 0.0, null, null);
 
-            Assert.Equal("LOT1 · B738 · FL350 · 3,5 km", AlertText.Body(new AlertMatch(rule, flying, AlertTrigger.Entered, 3.5), AltitudeUnit.FlightLevel));
-            Assert.Equal("48A124 · Boeing 737-800 · na ziemi · 12 km", AlertText.Body(new AlertMatch(rule, onGround, AlertTrigger.Appeared, 12.4), AltitudeUnit.Feet));
-            Assert.Equal("48A125 · 20 km", AlertText.Body(new AlertMatch(rule, noAltitude, AlertTrigger.Appeared, 20.0), AltitudeUnit.Metric));
+            Assert.Equal("LOT1 · B738 · FL350 · 3,5 km", AlertText.Body(new AlertMatch(rule, flying, AlertTrigger.Entered, 3.5), new DisplayUnits(AltitudeUnit.FlightLevel, DistanceUnit.Kilometers, SpeedUnit.KilometersPerHour, VerticalSpeedUnit.FeetPerMinute)));
+            Assert.Equal("48A124 · Boeing 737-800 · na ziemi · 12 km", AlertText.Body(new AlertMatch(rule, onGround, AlertTrigger.Appeared, 12.4), new DisplayUnits(AltitudeUnit.Feet, DistanceUnit.Kilometers, SpeedUnit.KilometersPerHour, VerticalSpeedUnit.FeetPerMinute)));
+            Assert.Equal("48A125 · 20 km", AlertText.Body(new AlertMatch(rule, noAltitude, AlertTrigger.Appeared, 20.0), DisplayUnits.Default));
         }
     }
 }

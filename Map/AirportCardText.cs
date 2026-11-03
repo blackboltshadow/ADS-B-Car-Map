@@ -20,11 +20,6 @@ namespace AdsbCarMap.Map
         private const int MaxRunways = 4;
 
         /// <summary>
-        /// Feet to meters conversion factor.
-        /// </summary>
-        private const double MetersPerFoot = 0.3048;
-
-        /// <summary>
         /// Returns the title of the card: the code and the name.
         /// </summary>
         /// <param name="airport">Airport.</param>
@@ -54,9 +49,9 @@ namespace AdsbCarMap.Map
         /// <param name="hasUserLocation">Whether the user position is known.</param>
         /// <param name="userLatitude">Latitude of the user.</param>
         /// <param name="userLongitude">Longitude of the user.</param>
-        /// <param name="unit">Altitude unit chosen by the user.</param>
+        /// <param name="units">Units chosen by the user.</param>
         /// <returns>Text lines.</returns>
-        public static List<string> BuildLines(Airport airport, IReadOnlyList<Runway> runways, bool hasUserLocation, double userLatitude, double userLongitude, AltitudeUnit unit)
+        public static List<string> BuildLines(Airport airport, IReadOnlyList<Runway> runways, bool hasUserLocation, double userLatitude, double userLongitude, DisplayUnits units)
         {
             List<string> lines = new List<string>();
             List<string> codes = new List<string>();
@@ -78,7 +73,7 @@ namespace AdsbCarMap.Map
 
             if (airport.ElevationFeet.HasValue)
             {
-                lines.Add("Wysokość: " + AltitudeFormatter.FormatWithEquivalent(airport.ElevationFeet.Value, unit));
+                lines.Add("Wysokość: " + AltitudeFormatter.Format(airport.ElevationFeet.Value, units.Altitude));
             }
 
             if (hasUserLocation)
@@ -86,10 +81,10 @@ namespace AdsbCarMap.Map
                 double kilometers = GeoMath.DistanceKilometers(userLatitude, userLongitude, airport.Latitude, airport.Longitude);
                 double bearing = GeoMath.BearingDegrees(userLatitude, userLongitude, airport.Latitude, airport.Longitude);
 
-                lines.Add(string.Format(DisplayCulture, "Odległość: {0:N0} km, kierunek {1}", kilometers, GeoMath.CompassPoint(bearing)));
+                lines.Add(string.Format(DisplayCulture, "Odległość: {0}, kierunek {1}", UnitFormatter.FormatDistance(kilometers, units.Distance, 0), GeoMath.CompassPoint(bearing)));
             }
 
-            string runwayText = BuildRunways(runways, unit);
+            string runwayText = BuildRunways(runways, units.Altitude);
 
             if (runwayText.Length > 0)
             {
@@ -103,7 +98,7 @@ namespace AdsbCarMap.Map
         /// Lists the longest runways with their designators and lengths.
         /// </summary>
         /// <param name="runways">Runways of the airport.</param>
-        /// <param name="unit">Altitude unit chosen by the user; feet give lengths in feet, other units in meters.</param>
+        /// <param name="unit">Altitude unit chosen by the user; metric gives lengths in meters, the other units in feet.</param>
         /// <returns>Text such as "Pasy: 15/33 · 3 690 m, 11/29 · 2 800 m", or an empty string when there are none.</returns>
         private static string BuildRunways(IReadOnlyList<Runway> runways, AltitudeUnit unit)
         {
@@ -112,7 +107,6 @@ namespace AdsbCarMap.Map
                 return string.Empty;
             }
 
-            bool feet = unit == AltitudeUnit.Feet;
             List<string> items = new List<string>();
 
             foreach (Runway runway in runways.OrderByDescending(item => item.LengthFeet).Take(MaxRunways))
@@ -125,11 +119,7 @@ namespace AdsbCarMap.Map
                 }
                 else
                 {
-                    string length = feet
-                        ? string.Format(DisplayCulture, "{0:N0} ft", runway.LengthFeet)
-                        : string.Format(DisplayCulture, "{0:N0} m", runway.LengthFeet * MetersPerFoot);
-
-                    items.Add(name + " · " + length);
+                    items.Add(name + " · " + AltitudeFormatter.FormatLength(runway.LengthFeet, unit));
                 }
             }
 

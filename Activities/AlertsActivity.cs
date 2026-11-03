@@ -299,7 +299,7 @@ namespace AdsbCarMap.Activities
                 filter = found == null ? "Filtr usunięty, alert nieaktywny" : "Filtr: " + found.Name;
             }
 
-            return AlertText.DescribeArea(rule.Area) + "\n" + filter + "\n" + AlertText.DescribeEvents(rule);
+            return AlertText.DescribeArea(rule.Area, AppSettings.DistanceUnit) + "\n" + filter + "\n" + AlertText.DescribeEvents(rule);
         }
 
         /// <summary>

@@ -1,3 +1,4 @@
+using AdsbCarMap.Settings;
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.Data;
 using Xunit;
@@ -60,6 +61,25 @@ namespace AdsbCarMap.Tests
             Assert.Equal("wysokość od 300 m", FilterDescriber.DescribeCondition(FilterCondition.AltitudeBetween(300.0, null)));
             Assert.Equal("wysokość do 3000 m", FilterDescriber.DescribeCondition(FilterCondition.AltitudeBetween(null, 3000.0)));
             Assert.Equal("wysokość dowolna", FilterDescriber.DescribeCondition(FilterCondition.AltitudeBetween(null, null)));
+        }
+
+        /// <summary>
+        /// Altitude bounds are written in the unit chosen by the user, although the filter stores meters.
+        /// </summary>
+        [Fact]
+        public void Describer_WritesAltitudeInChosenUnit()
+        {
+            FilterCondition range = FilterCondition.AltitudeBetween(3048.0, 10668.0);
+            AircraftFilter filter = new AircraftFilter("5", "5", FilterMode.Show, range);
+
+            Assert.Equal("wysokość 10000–35000 ft", FilterDescriber.DescribeCondition(range, AltitudeUnit.Feet));
+            Assert.Equal("wysokość FL100–FL350", FilterDescriber.DescribeCondition(range, AltitudeUnit.FlightLevel));
+            Assert.Equal("wysokość od FL100", FilterDescriber.DescribeCondition(FilterCondition.AltitudeBetween(3048.0, null), AltitudeUnit.FlightLevel));
+            Assert.Equal("Pokaż: wysokość do 35000 ft", FilterDescriber.Describe(new AircraftFilter("5", "5", FilterMode.Show, FilterCondition.AltitudeBetween(null, 10668.0)), AltitudeUnit.Feet));
+            Assert.Equal("Pokazuje każdy samolot, który leci na wysokości 10000–35000 ft.", FilterDescriber.DescribeSentence(filter, AltitudeUnit.Feet));
+            Assert.Equal("Pokazuje każdy samolot, który nie leci na wysokości FL100–FL350.", FilterDescriber.DescribeSentence(new AircraftFilter("5", "5", FilterMode.Show, new FilterNot(range)), AltitudeUnit.FlightLevel));
+            Assert.Equal("Wysokość [ft]", FilterFieldInfo.GetLabel(FilterField.Altitude, AltitudeUnit.Feet));
+            Assert.Equal("Wysokość [m]", FilterFieldInfo.GetLabel(FilterField.Altitude));
         }
 
         /// <summary>

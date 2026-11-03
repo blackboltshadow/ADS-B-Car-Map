@@ -159,8 +159,8 @@ namespace AdsbCarMap.Tests
             Aircraft aircraft = Create();
             FlightRoute noCoordinates = new FlightRoute("WAW", null, "JFK", null);
 
-            Assert.False(AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, null, out float _, out string _));
-            Assert.False(AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, noCoordinates, out float _, out string _));
+            Assert.False(AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, null, out float _, out string _, DisplayUnits.Default));
+            Assert.False(AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, noCoordinates, out float _, out string _, DisplayUnits.Default));
         }
 
         /// <summary>
@@ -172,7 +172,7 @@ namespace AdsbCarMap.Tests
             Aircraft aircraft = Create(speed: 400.0);
             FlightRoute route = new FlightRoute("AAA", null, "BBB", null, null, 0.0, 0.0, 0.0, 2.0);
 
-            bool result = AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, route, out float fraction, out string text);
+            bool result = AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, route, out float fraction, out string text, DisplayUnits.Default);
 
             Assert.True(result);
             Assert.Equal(0.5f, fraction, 3);
@@ -188,7 +188,7 @@ namespace AdsbCarMap.Tests
             Aircraft aircraft = Create(speed: 400.0);
             FlightRoute route = new FlightRoute("AAA", null, "BBB", null, null, 0.0, 0.0, 0.0, 10.0);
 
-            AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, route, out float _, out string text);
+            AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, route, out float _, out string text, DisplayUnits.Default);
 
             Assert.EndsWith("ok. 1 h 21 min", text);
         }
@@ -203,7 +203,7 @@ namespace AdsbCarMap.Tests
 
             foreach (Aircraft aircraft in new Aircraft[] { Create(onGround: true), Create(speed: null), Create(speed: 79.0) })
             {
-                AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, route, out float _, out string text);
+                AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, route, out float _, out string text, DisplayUnits.Default);
 
                 Assert.DoesNotContain("ok.", text);
             }
@@ -218,22 +218,22 @@ namespace AdsbCarMap.Tests
             Aircraft aircraft = Create();
             FlightRoute route = new FlightRoute("AAA", null, "BBB", null, null, 0.0, 1.0, 0.0, 1.0);
 
-            AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, route, out float fraction, out string _);
+            AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, route, out float fraction, out string _, DisplayUnits.Default);
 
             Assert.Equal(0.0f, fraction);
         }
 
         /// <summary>
-        /// The left column shows altitude in the unit, speed in two units, track with the compass point and the data age.
+        /// The left column shows altitude and speed in the default units, track with the compass point and the data age.
         /// </summary>
         [Fact]
         public void BuildLeftLines_ShowsAltitudeSpeedTrackAndAge()
         {
-            List<string> lines = AircraftCardText.BuildLeftLines(CreateInfo(Create()), Create(), AltitudeUnit.Metric);
+            List<string> lines = AircraftCardText.BuildLeftLines(CreateInfo(Create()), Create(), DisplayUnits.Default);
 
             Assert.Equal(4, lines.Count);
-            Assert.Equal("Wysokość: 10 668 m (35 000 ft)", Plain(lines[0]));
-            Assert.Equal("Prędkość: 400 kt (741 km/h)", Plain(lines[1]));
+            Assert.Equal("Wysokość: 10 668 m", Plain(lines[0]));
+            Assert.Equal("Prędkość: 741 km/h", Plain(lines[1]));
             Assert.Equal("Kurs: 90° E", lines[2]);
             Assert.Equal("Dane sprzed 3 s", lines[3]);
         }
@@ -244,9 +244,9 @@ namespace AdsbCarMap.Tests
         [Fact]
         public void BuildLeftLines_AltitudeDependsOnUnitAndState()
         {
-            Assert.Equal("Wysokość: FL350 (10 668 m)", Plain(AircraftCardText.BuildLeftLines(CreateInfo(Create()), Create(), AltitudeUnit.FlightLevel)[0]));
-            Assert.Equal("Wysokość: na ziemi", AircraftCardText.BuildLeftLines(CreateInfo(Create()), Create(onGround: true), AltitudeUnit.Metric)[0]);
-            Assert.Equal("Wysokość: brak danych", AircraftCardText.BuildLeftLines(CreateInfo(Create()), Create(altitude: null), AltitudeUnit.Metric)[0]);
+            Assert.Equal("Wysokość: FL350", Plain(AircraftCardText.BuildLeftLines(CreateInfo(Create()), Create(), Units(AltitudeUnit.FlightLevel))[0]));
+            Assert.Equal("Wysokość: na ziemi", AircraftCardText.BuildLeftLines(CreateInfo(Create()), Create(onGround: true), DisplayUnits.Default)[0]);
+            Assert.Equal("Wysokość: brak danych", AircraftCardText.BuildLeftLines(CreateInfo(Create()), Create(altitude: null), DisplayUnits.Default)[0]);
         }
 
         /// <summary>
@@ -255,7 +255,7 @@ namespace AdsbCarMap.Tests
         [Fact]
         public void BuildLeftLines_MissingSpeedAndTrack()
         {
-            List<string> lines = AircraftCardText.BuildLeftLines(CreateInfo(Create()), Create(speed: null, track: null), AltitudeUnit.Metric);
+            List<string> lines = AircraftCardText.BuildLeftLines(CreateInfo(Create()), Create(speed: null, track: null), DisplayUnits.Default);
 
             Assert.Equal("Prędkość: brak danych", lines[1]);
             Assert.Equal("Kurs: brak danych", lines[2]);
@@ -272,7 +272,7 @@ namespace AdsbCarMap.Tests
         [InlineData(100, "Wznoszenie: 100 ft/min")]
         public void BuildRightLines_VerticalRate(int rate, string expected)
         {
-            Assert.Equal(expected, Plain(AircraftCardText.BuildRightLines(CreateInfo(Create()), Create(verticalRate: rate))[0]));
+            Assert.Equal(expected, Plain(AircraftCardText.BuildRightLines(CreateInfo(Create()), Create(verticalRate: rate), DisplayUnits.Default)[0]));
         }
 
         /// <summary>
@@ -281,8 +281,8 @@ namespace AdsbCarMap.Tests
         [Fact]
         public void BuildRightLines_VerticalRateOnGroundAndMissing()
         {
-            Assert.Equal("Wznoszenie: –", AircraftCardText.BuildRightLines(CreateInfo(Create()), Create(onGround: true, verticalRate: 500))[0]);
-            Assert.Equal("Wznoszenie: brak danych", AircraftCardText.BuildRightLines(CreateInfo(Create()), Create())[0]);
+            Assert.Equal("Wznoszenie: –", AircraftCardText.BuildRightLines(CreateInfo(Create()), Create(onGround: true, verticalRate: 500), DisplayUnits.Default)[0]);
+            Assert.Equal("Wznoszenie: brak danych", AircraftCardText.BuildRightLines(CreateInfo(Create()), Create(), DisplayUnits.Default)[0]);
         }
 
         /// <summary>
@@ -291,8 +291,8 @@ namespace AdsbCarMap.Tests
         [Fact]
         public void BuildRightLines_DistanceFromUser()
         {
-            Assert.Equal("Od Ciebie: 111,2 km, E (90°)", Plain(AircraftCardText.BuildRightLines(CreateInfo(Create(), hasUser: true), Create())[1]));
-            Assert.Equal("Od Ciebie: brak pozycji GPS", AircraftCardText.BuildRightLines(CreateInfo(Create(), hasUser: false), Create())[1]);
+            Assert.Equal("Od Ciebie: 111,2 km, E (90°)", Plain(AircraftCardText.BuildRightLines(CreateInfo(Create(), hasUser: true), Create(), DisplayUnits.Default)[1]));
+            Assert.Equal("Od Ciebie: brak pozycji GPS", AircraftCardText.BuildRightLines(CreateInfo(Create(), hasUser: false), Create(), DisplayUnits.Default)[1]);
         }
 
         /// <summary>
@@ -301,8 +301,78 @@ namespace AdsbCarMap.Tests
         [Fact]
         public void BuildRightLines_Squawk()
         {
-            Assert.Equal("Squawk: 7700", AircraftCardText.BuildRightLines(CreateInfo(Create()), Create(squawk: "7700"))[2]);
-            Assert.Equal("Squawk: brak danych", AircraftCardText.BuildRightLines(CreateInfo(Create()), Create())[2]);
+            Assert.Equal("Squawk: 7700", AircraftCardText.BuildRightLines(CreateInfo(Create()), Create(squawk: "7700"), DisplayUnits.Default)[2]);
+            Assert.Equal("Squawk: brak danych", AircraftCardText.BuildRightLines(CreateInfo(Create()), Create(), DisplayUnits.Default)[2]);
+        }
+
+        /// <summary>
+        /// Creates units that differ from the defaults only in the altitude.
+        /// </summary>
+        /// <param name="altitude">Altitude unit.</param>
+        /// <returns>The units.</returns>
+        private static DisplayUnits Units(AltitudeUnit altitude)
+        {
+            return new DisplayUnits(altitude, DistanceUnit.Kilometers, SpeedUnit.KilometersPerHour, VerticalSpeedUnit.FeetPerMinute);
+        }
+
+        /// <summary>
+        /// The speed line follows the chosen speed unit.
+        /// </summary>
+        [Theory]
+        [InlineData(SpeedUnit.KilometersPerHour, "Prędkość: 741 km/h")]
+        [InlineData(SpeedUnit.Knots, "Prędkość: 400 kt")]
+        [InlineData(SpeedUnit.MilesPerHour, "Prędkość: 460 mph")]
+        public void BuildLeftLines_SpeedFollowsUnit(SpeedUnit speed, string expected)
+        {
+            DisplayUnits units = new DisplayUnits(AltitudeUnit.Metric, DistanceUnit.Kilometers, speed, VerticalSpeedUnit.FeetPerMinute);
+
+            Assert.Equal(expected, AircraftCardText.BuildLeftLines(CreateInfo(Create()), Create(), units)[1]);
+        }
+
+        /// <summary>
+        /// The vertical rate follows the chosen unit, and the level flight threshold does not depend on it.
+        /// </summary>
+        [Theory]
+        [InlineData(1500, "Wznoszenie: 7,6 m/s")]
+        [InlineData(-800, "Opadanie: 4,1 m/s")]
+        [InlineData(99, "Wznoszenie: lot poziomy")]
+        public void BuildRightLines_VerticalRateFollowsUnit(int rate, string expected)
+        {
+            DisplayUnits units = new DisplayUnits(AltitudeUnit.Metric, DistanceUnit.Kilometers, SpeedUnit.KilometersPerHour, VerticalSpeedUnit.MetersPerSecond);
+
+            Assert.Equal(expected, AircraftCardText.BuildRightLines(CreateInfo(Create()), Create(verticalRate: rate), units)[0]);
+        }
+
+        /// <summary>
+        /// The distance from the user and the distance to the destination follow the chosen distance unit, while the arrival estimate stays the same.
+        /// </summary>
+        [Fact]
+        public void Distances_FollowDistanceUnit()
+        {
+            DisplayUnits nautical = new DisplayUnits(AltitudeUnit.Metric, DistanceUnit.NauticalMiles, SpeedUnit.Knots, VerticalSpeedUnit.FeetPerMinute);
+            DisplayUnits miles = new DisplayUnits(AltitudeUnit.Metric, DistanceUnit.Miles, SpeedUnit.Knots, VerticalSpeedUnit.FeetPerMinute);
+            Aircraft aircraft = Create(speed: 400.0);
+            FlightRoute route = new FlightRoute("AAA", null, "BBB", null, null, 0.0, 0.0, 0.0, 2.0);
+
+            AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, route, out float _, out string progress, nautical);
+            AircraftCardText.TryBuildProgress(CreateInfo(aircraft), aircraft, route, out float _, out string milesProgress, miles);
+
+            Assert.Equal("przeleciano 50%  ·  do celu 60 NM  ·  ok. 9 min", Plain(progress));
+            Assert.Equal("przeleciano 50%  ·  do celu 69 mi  ·  ok. 9 min", Plain(milesProgress));
+            Assert.Equal("Od Ciebie: 60,0 NM, E (90°)", Plain(AircraftCardText.BuildRightLines(CreateInfo(Create(), hasUser: true), Create(), nautical)[1]));
+        }
+
+        /// <summary>
+        /// The distance from the airport follows the chosen distance unit.
+        /// </summary>
+        [Fact]
+        public void AirportLines_DistanceFollowsUnit()
+        {
+            DisplayUnits miles = new DisplayUnits(AltitudeUnit.Metric, DistanceUnit.Miles, SpeedUnit.KilometersPerHour, VerticalSpeedUnit.FeetPerMinute);
+
+            List<string> lines = AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), true, 52.1657, 19.9671, miles);
+
+            Assert.Contains(lines, line => Plain(line).StartsWith("Odległość: 42 mi, kierunek E", StringComparison.Ordinal));
         }
 
         /// <summary>
@@ -337,12 +407,12 @@ namespace AdsbCarMap.Tests
         [Fact]
         public void AirportLines_CodesPlaceAndElevation()
         {
-            List<string> lines = AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 0.0, 0.0, AltitudeUnit.Metric);
+            List<string> lines = AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 0.0, 0.0, DisplayUnits.Default);
 
             Assert.Equal(3, lines.Count);
             Assert.Equal("IATA WAW  ·  ICAO EPWA", lines[0]);
             Assert.Equal("Warsaw, PL", lines[1]);
-            Assert.Equal("Wysokość: 110 m (362 ft)", Plain(lines[2]));
+            Assert.Equal("Wysokość: 110 m", Plain(lines[2]));
         }
 
         /// <summary>
@@ -351,7 +421,7 @@ namespace AdsbCarMap.Tests
         [Fact]
         public void AirportLines_MissingFieldsAreLeftOut()
         {
-            List<string> lines = AirportCardText.BuildLines(CreateAirport(iata: string.Empty, city: string.Empty, elevation: null), Array.Empty<Runway>(), false, 0.0, 0.0, AltitudeUnit.Metric);
+            List<string> lines = AirportCardText.BuildLines(CreateAirport(iata: string.Empty, city: string.Empty, elevation: null), Array.Empty<Runway>(), false, 0.0, 0.0, DisplayUnits.Default);
 
             Assert.Equal(new string[] { "ICAO EPWA", "PL" }, lines.ToArray());
         }
@@ -362,15 +432,15 @@ namespace AdsbCarMap.Tests
         [Fact]
         public void AirportLines_DistanceFromUser()
         {
-            List<string> with = AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), true, 52.1657, 19.9671, AltitudeUnit.Metric);
-            List<string> without = AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 52.1657, 19.9671, AltitudeUnit.Metric);
+            List<string> with = AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), true, 52.1657, 19.9671, DisplayUnits.Default);
+            List<string> without = AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 52.1657, 19.9671, DisplayUnits.Default);
 
             Assert.Contains(with, line => Plain(line).StartsWith("Odległość: 68 km, kierunek E", StringComparison.Ordinal));
             Assert.DoesNotContain(without, line => line.StartsWith("Odległość", StringComparison.Ordinal));
         }
 
         /// <summary>
-        /// Runways are listed longest first, at most four, in meters unless the unit is feet.
+        /// Runways are listed longest first, at most four, in meters for the metric unit and in feet otherwise.
         /// </summary>
         [Fact]
         public void AirportLines_RunwaysLongestFirstAndLimited()
@@ -384,13 +454,13 @@ namespace AdsbCarMap.Tests
                 CreateRunway("12", "30", 1000),
             };
 
-            string metric = AirportCardText.BuildLines(CreateAirport(elevation: null), runways, false, 0.0, 0.0, AltitudeUnit.Metric).Last();
-            string feet = AirportCardText.BuildLines(CreateAirport(elevation: null), runways, false, 0.0, 0.0, AltitudeUnit.Feet).Last();
-            string flightLevel = AirportCardText.BuildLines(CreateAirport(elevation: null), runways, false, 0.0, 0.0, AltitudeUnit.FlightLevel).Last();
+            string metric = AirportCardText.BuildLines(CreateAirport(elevation: null), runways, false, 0.0, 0.0, DisplayUnits.Default).Last();
+            string feet = AirportCardText.BuildLines(CreateAirport(elevation: null), runways, false, 0.0, 0.0, Units(AltitudeUnit.Feet)).Last();
+            string flightLevel = AirportCardText.BuildLines(CreateAirport(elevation: null), runways, false, 0.0, 0.0, Units(AltitudeUnit.FlightLevel)).Last();
 
             Assert.Equal("Pasy: 15/33 · 3 505 m, 09/27 · 2 134 m, 05/23 · 1 524 m, 01/19 · 914 m", Plain(metric));
             Assert.Equal("Pasy: 15/33 · 11 500 ft, 09/27 · 7 000 ft, 05/23 · 5 000 ft, 01/19 · 3 000 ft", Plain(feet));
-            Assert.Equal(Plain(metric), Plain(flightLevel));
+            Assert.Equal(Plain(feet), Plain(flightLevel));
         }
 
         /// <summary>
@@ -399,10 +469,10 @@ namespace AdsbCarMap.Tests
         [Fact]
         public void AirportLines_RunwayWithoutLength()
         {
-            string line = AirportCardText.BuildLines(CreateAirport(elevation: null), new Runway[] { CreateRunway("09", "27", 0) }, false, 0.0, 0.0, AltitudeUnit.Metric).Last();
+            string line = AirportCardText.BuildLines(CreateAirport(elevation: null), new Runway[] { CreateRunway("09", "27", 0) }, false, 0.0, 0.0, DisplayUnits.Default).Last();
 
             Assert.Equal("Pasy: 09/27", line);
-            Assert.DoesNotContain(AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 0.0, 0.0, AltitudeUnit.Metric), item => item.StartsWith("Pasy", StringComparison.Ordinal));
+            Assert.DoesNotContain(AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 0.0, 0.0, DisplayUnits.Default), item => item.StartsWith("Pasy", StringComparison.Ordinal));
         }
 
         /// <summary>
