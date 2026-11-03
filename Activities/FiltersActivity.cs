@@ -179,7 +179,7 @@ namespace AdsbCarMap.Activities
             texts.AddView(title);
 
             TextView details = new TextView(this);
-            details.Text = FilterDescriber.Describe(filter, AppSettings.AltitudeUnit);
+            details.Text = FilterDescriber.Describe(filter, AppSettings.AltitudeUnit, AppSettings.VerticalSpeedUnit);
             details.TextSize = 13f;
             details.SetTextColor(Color.Rgb(190, 190, 190));
             texts.AddView(details);

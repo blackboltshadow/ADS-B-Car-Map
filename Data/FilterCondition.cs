@@ -63,12 +63,12 @@ namespace AdsbCarMap.Data
         public bool Family { get; }
 
         /// <summary>
-        /// Lower bound of the altitude in meters or null when there is none.
+        /// Lower bound of the range or null when there is none: meters for the altitude, feet per minute for the vertical rate.
         /// </summary>
         public double? Minimum { get; }
 
         /// <summary>
-        /// Upper bound of the altitude in meters or null when there is none.
+        /// Upper bound of the range or null when there is none: meters for the altitude, feet per minute for the vertical rate.
         /// </summary>
         public double? Maximum { get; }
 
@@ -158,6 +158,16 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
+        /// Creates the condition that the transponder code equals a given squawk.
+        /// </summary>
+        /// <param name="squawk">Four-digit squawk, for example "7700".</param>
+        /// <returns>The condition.</returns>
+        public static FilterCondition SquawkIs(string squawk)
+        {
+            return new FilterCondition(FilterField.Squawk, squawk, AircraftKind.Unknown, null, null);
+        }
+
+        /// <summary>
         /// Creates the condition that the altitude lies within a range. An aircraft on the ground counts as being at 0 m.
         /// </summary>
         /// <param name="minimumMeters">Lower bound in meters or null when there is none.</param>
@@ -166,6 +176,17 @@ namespace AdsbCarMap.Data
         public static FilterCondition AltitudeBetween(double? minimumMeters, double? maximumMeters)
         {
             return new FilterCondition(FilterField.Altitude, null, AircraftKind.Unknown, minimumMeters, maximumMeters);
+        }
+
+        /// <summary>
+        /// Creates the condition that the vertical rate lies within a range. An aircraft that does not report its vertical rate gives an unknown result.
+        /// </summary>
+        /// <param name="minimumFeetPerMinute">Lower bound in feet per minute (negative when descending) or null when there is none.</param>
+        /// <param name="maximumFeetPerMinute">Upper bound in feet per minute or null when there is none.</param>
+        /// <returns>The condition.</returns>
+        public static FilterCondition VerticalRateBetween(double? minimumFeetPerMinute, double? maximumFeetPerMinute)
+        {
+            return new FilterCondition(FilterField.VerticalRate, null, AircraftKind.Unknown, minimumFeetPerMinute, maximumFeetPerMinute);
         }
 
         /// <summary>
@@ -214,8 +235,16 @@ namespace AdsbCarMap.Data
                     return string.IsNullOrWhiteSpace(aircraft.Callsign) || string.IsNullOrEmpty(Text)
                         ? FilterResult.Unknown
                         : ToResult(aircraft.Callsign.Trim().StartsWith(Text, StringComparison.OrdinalIgnoreCase));
+                case FilterField.Squawk:
+                    return string.IsNullOrWhiteSpace(aircraft.Squawk) || string.IsNullOrWhiteSpace(Text)
+                        ? FilterResult.Unknown
+                        : ToResult(string.Equals(aircraft.Squawk.Trim(), Text.Trim(), StringComparison.Ordinal));
                 case FilterField.Altitude:
                     return EvaluateAltitude(aircraft);
+                case FilterField.VerticalRate:
+                    return aircraft.VerticalRateFeetPerMinute.HasValue
+                        ? ToResult((!Minimum.HasValue || aircraft.VerticalRateFeetPerMinute.Value >= Minimum.Value) && (!Maximum.HasValue || aircraft.VerticalRateFeetPerMinute.Value <= Maximum.Value))
+                        : FilterResult.Unknown;
                 case FilterField.Origin:
                     return EvaluateAirport(aircraft, routeLookup, false);
                 case FilterField.Destination:

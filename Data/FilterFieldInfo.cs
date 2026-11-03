@@ -22,6 +22,8 @@ namespace AdsbCarMap.Data
             FilterField.Military,
             FilterField.OnGround,
             FilterField.Altitude,
+            FilterField.Squawk,
+            FilterField.VerticalRate,
         };
 
         /// <summary>
@@ -29,8 +31,9 @@ namespace AdsbCarMap.Data
         /// </summary>
         /// <param name="field">Field.</param>
         /// <param name="altitudeUnit">Altitude unit chosen by the user, shown in the name of the altitude field.</param>
+        /// <param name="verticalSpeedUnit">Vertical rate unit chosen by the user, shown in the name of the vertical rate field.</param>
         /// <returns>Polish name of the field.</returns>
-        public static string GetLabel(FilterField field, AltitudeUnit altitudeUnit = AltitudeUnit.Metric)
+        public static string GetLabel(FilterField field, AltitudeUnit altitudeUnit = AltitudeUnit.Metric, VerticalSpeedUnit verticalSpeedUnit = VerticalSpeedUnit.FeetPerMinute)
         {
             return field switch
             {
@@ -43,6 +46,8 @@ namespace AdsbCarMap.Data
                 FilterField.Altitude => Loc.T("Wysokość [") + AltitudeFormatter.Symbol(altitudeUnit) + "]",
                 FilterField.Origin => Loc.T("Lotnisko wylotu"),
                 FilterField.Destination => Loc.T("Lotnisko docelowe"),
+                FilterField.Squawk => Loc.T("Squawk (kod transpondera)"),
+                FilterField.VerticalRate => Loc.T("Prędkość pionowa [") + UnitFormatter.VerticalSpeedSymbol(verticalSpeedUnit) + "]",
                 _ => field.ToString(),
             };
         }
@@ -60,6 +65,7 @@ namespace AdsbCarMap.Data
                 FilterField.CallsignPrefix => Loc.T("np. LOT"),
                 FilterField.Origin => Loc.T("kod lub miasto, np. WAW"),
                 FilterField.Destination => Loc.T("kod lub miasto, np. RZE"),
+                FilterField.Squawk => Loc.T("np. 7700"),
                 _ => string.Empty,
             };
         }
@@ -76,10 +82,12 @@ namespace AdsbCarMap.Data
                 FilterField.Kind => FilterOperandType.Kind,
                 FilterField.Manufacturer => FilterOperandType.Manufacturer,
                 FilterField.Altitude => FilterOperandType.Range,
+                FilterField.VerticalRate => FilterOperandType.Range,
                 FilterField.TypeCode => FilterOperandType.Text,
                 FilterField.CallsignPrefix => FilterOperandType.Text,
                 FilterField.Origin => FilterOperandType.Text,
                 FilterField.Destination => FilterOperandType.Text,
+                FilterField.Squawk => FilterOperandType.Text,
                 _ => FilterOperandType.None,
             };
         }

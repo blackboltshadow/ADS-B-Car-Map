@@ -367,14 +367,19 @@ namespace AdsbCarMap.Data
                 case FilterOperandType.Manufacturer:
                     return string.IsNullOrWhiteSpace(condition.Text) ? Loc.T("Uzupełnij wartość: ") + FilterFieldInfo.GetLabel(condition.Field) + "." : null;
                 case FilterOperandType.Range:
+                    bool vertical = condition.Field == FilterField.VerticalRate;
+
                     if (!condition.Minimum.HasValue && !condition.Maximum.HasValue)
                     {
-                        return Loc.T("Podaj wysokość „od” lub „do”.");
+                        return vertical ? Loc.T("Podaj prędkość pionową „od” lub „do”.") : Loc.T("Podaj wysokość „od” lub „do”.");
                     }
 
-                    return condition.Minimum.HasValue && condition.Maximum.HasValue && condition.Minimum.Value > condition.Maximum.Value
-                        ? Loc.T("Wysokość „od” jest większa niż „do”.")
-                        : null;
+                    if (condition.Minimum.HasValue && condition.Maximum.HasValue && condition.Minimum.Value > condition.Maximum.Value)
+                    {
+                        return vertical ? Loc.T("Prędkość pionowa „od” jest większa niż „do”.") : Loc.T("Wysokość „od” jest większa niż „do”.");
+                    }
+
+                    return null;
                 default:
                     return null;
             }

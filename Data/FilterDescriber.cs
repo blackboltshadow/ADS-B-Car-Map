@@ -19,8 +19,9 @@ namespace AdsbCarMap.Data
         /// </summary>
         /// <param name="filter">Filter.</param>
         /// <param name="altitudeUnit">Unit in which altitude bounds are written; the filter stores them in meters.</param>
+        /// <param name="verticalSpeedUnit">Unit in which vertical rate bounds are written; the filter stores them in feet per minute.</param>
         /// <returns>The sentence, or null when the filter is nested deeper than <see cref="MaxSentenceDepth"/> groups.</returns>
-        public static string? DescribeSentence(AircraftFilter filter, AltitudeUnit altitudeUnit = AltitudeUnit.Metric)
+        public static string? DescribeSentence(AircraftFilter filter, AltitudeUnit altitudeUnit = AltitudeUnit.Metric, VerticalSpeedUnit verticalSpeedUnit = VerticalSpeedUnit.FeetPerMinute)
         {
             SentenceNode tree = BuildSentence(filter.Expression, false);
 
@@ -29,7 +30,7 @@ namespace AdsbCarMap.Data
                 return null;
             }
 
-            return (filter.Mode == FilterMode.Show ? Loc.T("Pokazuje każdy samolot, który ") : Loc.T("Ukrywa każdy samolot, który ")) + RenderSentence(tree, false, altitudeUnit) + ".";
+            return (filter.Mode == FilterMode.Show ? Loc.T("Pokazuje każdy samolot, który ") : Loc.T("Ukrywa każdy samolot, który ")) + RenderSentence(tree, false, altitudeUnit, verticalSpeedUnit) + ".";
         }
 
         /// <summary>
@@ -37,10 +38,11 @@ namespace AdsbCarMap.Data
         /// </summary>
         /// <param name="filter">Filter.</param>
         /// <param name="altitudeUnit">Unit in which altitude bounds are written; the filter stores them in meters.</param>
+        /// <param name="verticalSpeedUnit">Unit in which vertical rate bounds are written; the filter stores them in feet per minute.</param>
         /// <returns>For example "Pokaż: producent Boeing ORAZ NIE lotnisko docelowe WAW".</returns>
-        public static string Describe(AircraftFilter filter, AltitudeUnit altitudeUnit = AltitudeUnit.Metric)
+        public static string Describe(AircraftFilter filter, AltitudeUnit altitudeUnit = AltitudeUnit.Metric, VerticalSpeedUnit verticalSpeedUnit = VerticalSpeedUnit.FeetPerMinute)
         {
-            return (filter.Mode == FilterMode.Show ? Loc.T("Pokaż: ") : Loc.T("Ukryj: ")) + DescribeNode(filter.Expression, false, altitudeUnit);
+            return (filter.Mode == FilterMode.Show ? Loc.T("Pokaż: ") : Loc.T("Ukryj: ")) + DescribeNode(filter.Expression, false, altitudeUnit, verticalSpeedUnit);
         }
 
         /// <summary>
@@ -49,18 +51,19 @@ namespace AdsbCarMap.Data
         /// <param name="node">Node.</param>
         /// <param name="nested">True when the node is inside another group or negation.</param>
         /// <param name="altitudeUnit">Unit in which altitude bounds are written; the filter stores them in meters.</param>
+        /// <param name="verticalSpeedUnit">Unit in which vertical rate bounds are written; the filter stores them in feet per minute.</param>
         /// <returns>Description of the node.</returns>
-        public static string DescribeNode(FilterNode node, bool nested, AltitudeUnit altitudeUnit = AltitudeUnit.Metric)
+        public static string DescribeNode(FilterNode node, bool nested, AltitudeUnit altitudeUnit = AltitudeUnit.Metric, VerticalSpeedUnit verticalSpeedUnit = VerticalSpeedUnit.FeetPerMinute)
         {
             if (node is FilterNot negation)
             {
-                return Loc.T("NIE ") + DescribeNode(negation.Inner, true, altitudeUnit);
+                return Loc.T("NIE ") + DescribeNode(negation.Inner, true, altitudeUnit, verticalSpeedUnit);
             }
 
             if (node is FilterGroup group)
             {
                 string connector = group.Mode == FilterGroupMode.All ? Loc.T(" ORAZ ") : Loc.T(" LUB ");
-                string text = string.Join(connector, group.Children.Select((FilterNode child) => DescribeNode(child, true, altitudeUnit)));
+                string text = string.Join(connector, group.Children.Select((FilterNode child) => DescribeNode(child, true, altitudeUnit, verticalSpeedUnit)));
 
                 if (group.Children.Count == 0)
                 {
@@ -70,7 +73,7 @@ namespace AdsbCarMap.Data
                 return nested && group.Children.Count > 1 ? "(" + text + ")" : text;
             }
 
-            return node is FilterCondition condition ? DescribeCondition(condition, altitudeUnit) : string.Empty;
+            return node is FilterCondition condition ? DescribeCondition(condition, altitudeUnit, verticalSpeedUnit) : string.Empty;
         }
 
         /// <summary>
@@ -78,8 +81,9 @@ namespace AdsbCarMap.Data
         /// </summary>
         /// <param name="condition">Condition.</param>
         /// <param name="altitudeUnit">Unit in which altitude bounds are written; the filter stores them in meters.</param>
+        /// <param name="verticalSpeedUnit">Unit in which vertical rate bounds are written; the filter stores them in feet per minute.</param>
         /// <returns>Description of the condition.</returns>
-        public static string DescribeCondition(FilterCondition condition, AltitudeUnit altitudeUnit = AltitudeUnit.Metric)
+        public static string DescribeCondition(FilterCondition condition, AltitudeUnit altitudeUnit = AltitudeUnit.Metric, VerticalSpeedUnit verticalSpeedUnit = VerticalSpeedUnit.FeetPerMinute)
         {
             switch (condition.Field)
             {
@@ -101,6 +105,10 @@ namespace AdsbCarMap.Data
                     return Loc.T("lotnisko wylotu ") + condition.Text;
                 case FilterField.Destination:
                     return Loc.T("lotnisko docelowe ") + condition.Text;
+                case FilterField.Squawk:
+                    return "squawk " + condition.Text;
+                case FilterField.VerticalRate:
+                    return Loc.T("prędkość pionowa ") + (FormatVerticalRange(condition.Minimum, condition.Maximum, verticalSpeedUnit) ?? "dowolna");
                 default:
                     return string.Empty;
             }
@@ -145,6 +153,48 @@ namespace AdsbCarMap.Data
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Formats the bounds of a vertical rate range.
+        /// </summary>
+        /// <param name="minimum">Lower bound in feet per minute or null.</param>
+        /// <param name="maximum">Upper bound in feet per minute or null.</param>
+        /// <param name="unit">Unit in which the bounds are written.</param>
+        /// <returns>For example "-3000 do -1000 ft/min", "od 500 ft/min", "do -3000 ft/min"; null when there are no bounds.</returns>
+        private static string? FormatVerticalRange(double? minimum, double? maximum, VerticalSpeedUnit unit)
+        {
+            string suffix = " " + UnitFormatter.VerticalSpeedSymbol(unit);
+
+            if (minimum.HasValue && maximum.HasValue)
+            {
+                return FormatVerticalBound(minimum.Value, unit) + " do " + FormatVerticalBound(maximum.Value, unit) + suffix;
+            }
+
+            if (minimum.HasValue)
+            {
+                return "od " + FormatVerticalBound(minimum.Value, unit) + suffix;
+            }
+
+            if (maximum.HasValue)
+            {
+                return "do " + FormatVerticalBound(maximum.Value, unit) + suffix;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Formats one bound of a vertical rate range with its sign.
+        /// </summary>
+        /// <param name="feetPerMinute">Bound in feet per minute.</param>
+        /// <param name="unit">Unit in which the bound is written.</param>
+        /// <returns>The number in the unit, for example "-3000" or "-15.2".</returns>
+        private static string FormatVerticalBound(double feetPerMinute, VerticalSpeedUnit unit)
+        {
+            double value = UnitFormatter.VerticalSpeedToUnit(feetPerMinute, unit);
+
+            return unit == VerticalSpeedUnit.MetersPerSecond ? value.ToString("0.#", CultureInfo.InvariantCulture) : Math.Round(value).ToString("0", CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -236,12 +286,13 @@ namespace AdsbCarMap.Data
         /// <param name="node">Sentence node.</param>
         /// <param name="nested">True when the node is inside another group.</param>
         /// <param name="altitudeUnit">Unit in which altitude bounds are written.</param>
+        /// <param name="verticalSpeedUnit">Unit in which vertical rate bounds are written.</param>
         /// <returns>The text.</returns>
-        private static string RenderSentence(SentenceNode node, bool nested, AltitudeUnit altitudeUnit)
+        private static string RenderSentence(SentenceNode node, bool nested, AltitudeUnit altitudeUnit, VerticalSpeedUnit verticalSpeedUnit)
         {
             if (node is SentenceLeaf leaf)
             {
-                return DescribeLeaf(leaf.Condition, leaf.Negated, altitudeUnit);
+                return DescribeLeaf(leaf.Condition, leaf.Negated, altitudeUnit, verticalSpeedUnit);
             }
 
             SentenceGroup group = (SentenceGroup)node;
@@ -251,7 +302,7 @@ namespace AdsbCarMap.Data
                 return Loc.T("(pusta grupa)");
             }
 
-            string text = string.Join(group.All ? Loc.T(" oraz ") : Loc.T(" lub "), group.Children.Select((SentenceNode child) => RenderSentence(child, true, altitudeUnit)));
+            string text = string.Join(group.All ? Loc.T(" oraz ") : Loc.T(" lub "), group.Children.Select((SentenceNode child) => RenderSentence(child, true, altitudeUnit, verticalSpeedUnit)));
 
             return nested ? "(" + text + ")" : text;
         }
@@ -262,8 +313,9 @@ namespace AdsbCarMap.Data
         /// <param name="condition">Condition.</param>
         /// <param name="negated">Whether the condition is negated.</param>
         /// <param name="altitudeUnit">Unit in which altitude bounds are written.</param>
+        /// <param name="verticalSpeedUnit">Unit in which vertical rate bounds are written.</param>
         /// <returns>For example "nie leci do lotniska WAW".</returns>
-        private static string DescribeLeaf(FilterCondition condition, bool negated, AltitudeUnit altitudeUnit)
+        private static string DescribeLeaf(FilterCondition condition, bool negated, AltitudeUnit altitudeUnit, VerticalSpeedUnit verticalSpeedUnit)
         {
             switch (condition.Field)
             {
@@ -297,6 +349,17 @@ namespace AdsbCarMap.Data
                     return (negated ? Loc.T("nie leci z lotniska ") : Loc.T("leci z lotniska ")) + condition.Text;
                 case FilterField.Destination:
                     return (negated ? Loc.T("nie leci do lotniska ") : Loc.T("leci do lotniska ")) + condition.Text;
+                case FilterField.Squawk:
+                    return (negated ? Loc.T("nie ma squawka ") : Loc.T("ma squawk ")) + condition.Text;
+                case FilterField.VerticalRate:
+                    string? rate = FormatVerticalRange(condition.Minimum, condition.Maximum, verticalSpeedUnit);
+
+                    if (rate == null)
+                    {
+                        return negated ? Loc.T("nie ma żadnej prędkości pionowej") : Loc.T("ma dowolną prędkość pionową");
+                    }
+
+                    return (negated ? Loc.T("nie ma prędkości pionowej ") : Loc.T("ma prędkość pionową ")) + rate;
                 default:
                     return string.Empty;
             }

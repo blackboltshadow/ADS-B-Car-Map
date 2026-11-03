@@ -50,5 +50,15 @@ namespace AdsbCarMap.Data
         /// Airport the flight is heading to, by code or city.
         /// </summary>
         Destination,
+
+        /// <summary>
+        /// Four-digit transponder code (squawk).
+        /// </summary>
+        Squawk,
+
+        /// <summary>
+        /// Vertical rate in feet per minute: positive when climbing, negative when descending.
+        /// </summary>
+        VerticalRate,
     }
 }

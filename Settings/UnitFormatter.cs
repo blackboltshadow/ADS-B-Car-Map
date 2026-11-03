@@ -229,6 +229,28 @@ namespace AdsbCarMap.Settings
         }
 
         /// <summary>
+        /// Converts a vertical rate in feet per minute to the unit, keeping the sign.
+        /// </summary>
+        /// <param name="feetPerMinute">Vertical rate in feet per minute.</param>
+        /// <param name="unit">Target unit.</param>
+        /// <returns>Vertical rate in the unit.</returns>
+        public static double VerticalSpeedToUnit(double feetPerMinute, VerticalSpeedUnit unit)
+        {
+            return unit == VerticalSpeedUnit.MetersPerSecond ? feetPerMinute * MetersPerSecondPerFootPerMinute : feetPerMinute;
+        }
+
+        /// <summary>
+        /// Converts a vertical rate in the unit to feet per minute, keeping the sign.
+        /// </summary>
+        /// <param name="value">Vertical rate in the unit.</param>
+        /// <param name="unit">Unit of the value.</param>
+        /// <returns>Vertical rate in feet per minute.</returns>
+        public static double UnitToVerticalSpeed(double value, VerticalSpeedUnit unit)
+        {
+            return unit == VerticalSpeedUnit.MetersPerSecond ? value / MetersPerSecondPerFootPerMinute : value;
+        }
+
+        /// <summary>
         /// Formats the magnitude of a vertical rate.
         /// </summary>
         /// <param name="feetPerMinute">Vertical rate in feet per minute; the sign is ignored.</param>

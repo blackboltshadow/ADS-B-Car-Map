@@ -1,5 +1,6 @@
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.Data;
+using AdsbCarMap.Settings;
 using Xunit;
 
 namespace AdsbCarMap.Tests
@@ -104,6 +105,84 @@ namespace AdsbCarMap.Tests
         public void Condition_CallsignPrefix(string? callsign, string prefix, FilterResult expected)
         {
             Assert.Equal(expected, FilterCondition.CallsignStartsWith(prefix).Evaluate(CreateAircraft(callsign: callsign), NoRoutes));
+        }
+
+        /// <summary>
+        /// The squawk condition matches the whole code and is unknown when the aircraft transmits none.
+        /// </summary>
+        [Theory]
+        [InlineData("7700", "7700", FilterResult.True)]
+        [InlineData(" 7700 ", "7700", FilterResult.True)]
+        [InlineData("1200", "7700", FilterResult.False)]
+        [InlineData("77000", "7700", FilterResult.False)]
+        [InlineData(null, "7700", FilterResult.Unknown)]
+        [InlineData("7700", "", FilterResult.Unknown)]
+        public void Condition_Squawk(string? squawk, string wanted, FilterResult expected)
+        {
+            Aircraft aircraft = new Aircraft("489123", "LOT281", 52.0, 21.0, 35000, false, 450.0, 90.0, 0.0, "B738", null, "A3", false, null, squawk);
+
+            Assert.Equal(expected, FilterCondition.SquawkIs(wanted).Evaluate(aircraft, NoRoutes));
+        }
+
+        /// <summary>
+        /// The vertical rate condition compares the signed rate in feet per minute and is unknown without it.
+        /// </summary>
+        [Theory]
+        [InlineData(-3500, null, -3000.0, FilterResult.True)]
+        [InlineData(-3000, null, -3000.0, FilterResult.True)]
+        [InlineData(-2000, null, -3000.0, FilterResult.False)]
+        [InlineData(1500, null, -3000.0, FilterResult.False)]
+        [InlineData(1500, 1000.0, null, FilterResult.True)]
+        [InlineData(500, 1000.0, 2000.0, FilterResult.False)]
+        [InlineData(null, null, -3000.0, FilterResult.Unknown)]
+        public void Condition_VerticalRate(int? rate, double? minimum, double? maximum, FilterResult expected)
+        {
+            Aircraft aircraft = new Aircraft("489123", "LOT281", 52.0, 21.0, 35000, false, 450.0, 90.0, 0.0, "B738", null, "A3", false, rate);
+
+            Assert.Equal(expected, FilterCondition.VerticalRateBetween(minimum, maximum).Evaluate(aircraft, NoRoutes));
+        }
+
+        /// <summary>
+        /// The description writes the vertical rate bounds in the unit chosen by the user.
+        /// </summary>
+        [Fact]
+        public void Describe_VerticalRate_InUserUnit()
+        {
+            AircraftFilter filter = new AircraftFilter("v", "v", FilterMode.Show, FilterCondition.VerticalRateBetween(null, -3000.0));
+
+            Assert.Equal("Pokaż: prędkość pionowa do -3000 ft/min", FilterDescriber.Describe(filter));
+            Assert.Equal("Pokaż: prędkość pionowa do -15.2 m/s", FilterDescriber.Describe(filter, AltitudeUnit.Metric, VerticalSpeedUnit.MetersPerSecond));
+            Assert.Equal("Pokazuje każdy samolot, który ma prędkość pionową do -3000 ft/min.", FilterDescriber.DescribeSentence(filter));
+        }
+
+        /// <summary>
+        /// The vertical rate unit converts both ways keeping the sign.
+        /// </summary>
+        [Fact]
+        public void VerticalSpeedConversion_RoundTripKeepsSign()
+        {
+            double metersPerSecond = UnitFormatter.VerticalSpeedToUnit(-3000.0, VerticalSpeedUnit.MetersPerSecond);
+
+            Assert.Equal(-15.24, metersPerSecond, 2);
+            Assert.Equal(-3000.0, UnitFormatter.UnitToVerticalSpeed(metersPerSecond, VerticalSpeedUnit.MetersPerSecond), 6);
+            Assert.Equal(-3000.0, UnitFormatter.VerticalSpeedToUnit(-3000.0, VerticalSpeedUnit.FeetPerMinute));
+        }
+
+        /// <summary>
+        /// The built-in emergency filter accepts exactly the three emergency codes.
+        /// </summary>
+        [Theory]
+        [InlineData("7500", FilterResult.True)]
+        [InlineData("7600", FilterResult.True)]
+        [InlineData("7700", FilterResult.True)]
+        [InlineData("7000", FilterResult.False)]
+        [InlineData(null, FilterResult.Unknown)]
+        public void BuiltIn_Emergency(string? squawk, FilterResult expected)
+        {
+            Aircraft aircraft = new Aircraft("489123", "LOT281", 52.0, 21.0, 35000, false, 450.0, 90.0, 0.0, "B738", null, "A3", false, null, squawk);
+
+            Assert.Equal(expected, BuiltInFilters.Emergency.Expression.Evaluate(aircraft, NoRoutes));
+            Assert.Equal(FilterMode.Show, BuiltInFilters.Emergency.Mode);
         }
 
         /// <summary>

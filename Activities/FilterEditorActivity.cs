@@ -456,7 +456,7 @@ namespace AdsbCarMap.Activities
             if (group.Collapsed)
             {
                 TextView summary = new TextView(this);
-                summary.Text = group.Children.Count == 0 ? Loc.T("(pusta grupa)") : FilterDescriber.DescribeNode(group.ToNode(), false, AppSettings.AltitudeUnit);
+                summary.Text = group.Children.Count == 0 ? Loc.T("(pusta grupa)") : FilterDescriber.DescribeNode(group.ToNode(), false, AppSettings.AltitudeUnit, AppSettings.VerticalSpeedUnit);
                 summary.TextSize = 12f;
                 summary.SetTextColor(Color.Rgb(190, 190, 190));
                 summary.SetSingleLine(true);
@@ -825,7 +825,7 @@ namespace AdsbCarMap.Activities
                     continue;
                 }
 
-                string summary = group.Children.Count == 0 ? "pusta" : FilterDescriber.DescribeNode(group.ToNode(), false, AppSettings.AltitudeUnit);
+                string summary = group.Children.Count == 0 ? "pusta" : FilterDescriber.DescribeNode(group.ToNode(), false, AppSettings.AltitudeUnit, AppSettings.VerticalSpeedUnit);
 
                 if (summary.Length > MaxTargetSummaryLength)
                 {
@@ -857,7 +857,7 @@ namespace AdsbCarMap.Activities
         /// <returns>The spinner.</returns>
         private Spinner CreateFieldSpinner(FilterDraftCondition condition)
         {
-            List<string> labels = FilterFieldInfo.All.Select((FilterField field) => FilterFieldInfo.GetLabel(field, AppSettings.AltitudeUnit)).ToList();
+            List<string> labels = FilterFieldInfo.All.Select((FilterField field) => FilterFieldInfo.GetLabel(field, AppSettings.AltitudeUnit, AppSettings.VerticalSpeedUnit)).ToList();
             int selected = Math.Max(0, FilterFieldInfo.All.ToList().IndexOf(condition.Field));
 
             Spinner spinner = new Spinner(this);
@@ -1018,6 +1018,11 @@ namespace AdsbCarMap.Activities
         /// <returns>The inputs in one line.</returns>
         private View CreateRangeOperand(FilterDraftCondition condition)
         {
+            if (condition.Field == FilterField.VerticalRate)
+            {
+                return CreateVerticalRateOperand(condition);
+            }
+
             AltitudeUnit unit = AppSettings.AltitudeUnit;
             string symbol = AltitudeFormatter.Symbol(unit);
             LinearLayout line = new LinearLayout(this);
@@ -1025,6 +1030,24 @@ namespace AdsbCarMap.Activities
 
             line.AddView(CreateNumberInput("od [" + symbol + "]", ToUnit(condition.Minimum, unit), value => condition.Minimum = ToMeters(value, unit)), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
             line.AddView(CreateNumberInput("do [" + symbol + "]", ToUnit(condition.Maximum, unit), value => condition.Maximum = ToMeters(value, unit)), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+
+            return line;
+        }
+
+        /// <summary>
+        /// Creates two numeric inputs for the lower and the upper bound of a vertical rate range. The bounds are typed in the vertical rate unit from the settings and stored in feet per minute; a descent is negative.
+        /// </summary>
+        /// <param name="condition">Condition.</param>
+        /// <returns>The inputs in one line.</returns>
+        private View CreateVerticalRateOperand(FilterDraftCondition condition)
+        {
+            VerticalSpeedUnit unit = AppSettings.VerticalSpeedUnit;
+            string symbol = UnitFormatter.VerticalSpeedSymbol(unit);
+            LinearLayout line = new LinearLayout(this);
+            line.Orientation = Orientation.Horizontal;
+
+            line.AddView(CreateNumberInput("od [" + symbol + "]", condition.Minimum.HasValue ? UnitFormatter.VerticalSpeedToUnit(condition.Minimum.Value, unit) : null, value => condition.Minimum = value.HasValue ? UnitFormatter.UnitToVerticalSpeed(value.Value, unit) : null), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+            line.AddView(CreateNumberInput("do [" + symbol + "]", condition.Maximum.HasValue ? UnitFormatter.VerticalSpeedToUnit(condition.Maximum.Value, unit) : null, value => condition.Maximum = value.HasValue ? UnitFormatter.UnitToVerticalSpeed(value.Value, unit) : null), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
             return line;
         }
@@ -1063,7 +1086,7 @@ namespace AdsbCarMap.Activities
             EditText input = new EditText(this);
             input.Hint = hint;
             input.SetSingleLine(true);
-            input.InputType = InputTypes.ClassNumber | InputTypes.NumberFlagDecimal;
+            input.InputType = InputTypes.ClassNumber | InputTypes.NumberFlagDecimal | InputTypes.NumberFlagSigned;
             input.Enabled = !readOnly;
 
             if (initial.HasValue)
@@ -1093,9 +1116,9 @@ namespace AdsbCarMap.Activities
             }
 
             AircraftFilter preview = draft.ToFilter("preview");
-            string? sentence = FilterDescriber.DescribeSentence(preview, AppSettings.AltitudeUnit);
+            string? sentence = FilterDescriber.DescribeSentence(preview, AppSettings.AltitudeUnit, AppSettings.VerticalSpeedUnit);
 
-            previewText.Text = Loc.T("Opis: ") + FilterDescriber.Describe(preview, AppSettings.AltitudeUnit);
+            previewText.Text = Loc.T("Opis: ") + FilterDescriber.Describe(preview, AppSettings.AltitudeUnit, AppSettings.VerticalSpeedUnit);
             sentenceText.Text = sentence == null ? string.Empty : Loc.T("Czytaj: ") + sentence;
             sentenceText.Visibility = sentence == null ? ViewStates.Gone : ViewStates.Visible;
         }
