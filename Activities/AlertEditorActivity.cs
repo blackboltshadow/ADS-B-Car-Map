@@ -80,6 +80,11 @@ namespace AdsbCarMap.Activities
         private bool ruleEnabled = true;
 
         /// <summary>
+        /// Address of the aircraft the edited rule watches, or null. The editor does not change it, only keeps it.
+        /// </summary>
+        private string? watchedHex;
+
+        /// <summary>
         /// Chosen kind of the area.
         /// </summary>
         private AlertAreaKind areaKind = AlertAreaKind.AroundMe;
@@ -93,6 +98,11 @@ namespace AdsbCarMap.Activities
         /// Field with the name of the rule.
         /// </summary>
         private EditText? nameField;
+
+        /// <summary>
+        /// Text that says which aircraft the rule watches; hidden for other rules.
+        /// </summary>
+        private TextView? watchedText;
 
         /// <summary>
         /// Field with the airport code.
@@ -210,6 +220,11 @@ namespace AdsbCarMap.Activities
         private CheckBox? appearanceBox;
 
         /// <summary>
+        /// Checkbox of the exit event.
+        /// </summary>
+        private CheckBox? exitBox;
+
+        /// <summary>
         /// Builds the screen and loads the edited rule.
         /// </summary>
         /// <param name="savedInstanceState">Saved state of the activity.</param>
@@ -289,6 +304,11 @@ namespace AdsbCarMap.Activities
             nameField.Hint = Loc.T("np. Wojskowe nad domem");
             nameField.SetSingleLine(true);
             form.AddView(nameField);
+            watchedText = new TextView(this);
+            watchedText.TextSize = 13f;
+            watchedText.SetTextColor(Color.Rgb(150, 200, 255));
+            watchedText.Visibility = ViewStates.Gone;
+            form.AddView(watchedText);
 
             AddLabel(form, Loc.T("Obszar"));
             RadioGroup areaGroup = new RadioGroup(this);
@@ -396,6 +416,10 @@ namespace AdsbCarMap.Activities
             appearanceBox.Text = Loc.T("samolot pojawi się w obszarze (np. po starcie)");
             appearanceBox.Checked = true;
             form.AddView(appearanceBox);
+            exitBox = new CheckBox(this);
+            exitBox.Text = Loc.T("samolot wyleci z obszaru");
+            exitBox.Checked = false;
+            form.AddView(exitBox);
 
             AddLabel(form, Loc.T("Cisza o tym samym samolocie (minuty)"));
             cooldownField = new EditText(this);
@@ -495,6 +519,15 @@ namespace AdsbCarMap.Activities
 
             entryBox!.Checked = rule.NotifyOnEntry;
             appearanceBox!.Checked = rule.NotifyOnAppearance;
+            exitBox!.Checked = rule.NotifyOnExit;
+            watchedHex = rule.WatchedHex;
+
+            if (watchedHex != null)
+            {
+                watchedText!.Text = Loc.T("Obserwowany samolot: ") + watchedHex.ToUpperInvariant();
+                watchedText.Visibility = ViewStates.Visible;
+            }
+
             cooldownField!.Text = rule.CooldownMinutes.ToString(CultureInfo.InvariantCulture);
 
             if (rule.Area.Vertices != null)
@@ -942,7 +975,7 @@ namespace AdsbCarMap.Activities
                 return null;
             }
 
-            return new AlertRule(ruleId, name, ruleEnabled, area, null, entryBox!.Checked, appearanceBox!.Checked, cooldown, filterId, schedule, ImportanceLevels[Math.Clamp(importanceSpinner!.SelectedItemPosition, 0, ImportanceLevels.Length - 1)]);
+            return new AlertRule(ruleId, name, ruleEnabled, area, null, entryBox!.Checked, appearanceBox!.Checked, cooldown, filterId, schedule, ImportanceLevels[Math.Clamp(importanceSpinner!.SelectedItemPosition, 0, ImportanceLevels.Length - 1)], exitBox!.Checked, watchedHex);
         }
 
         /// <summary>

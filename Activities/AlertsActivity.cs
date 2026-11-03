@@ -19,6 +19,11 @@ namespace AdsbCarMap.Activities
     public class AlertsActivity : Activity
     {
         /// <summary>
+        /// Tag used in the developer log.
+        /// </summary>
+        private const string LogTag = "Alerts";
+
+        /// <summary>
         /// Code of the request for the background location permission.
         /// </summary>
         private const int BackgroundLocationRequestCode = 4011;
@@ -27,6 +32,21 @@ namespace AdsbCarMap.Activities
         /// Code of the request for the notification permission.
         /// </summary>
         private const int NotificationRequestCode = 4012;
+
+        /// <summary>
+        /// Code of the request for the file to import the alerts from.
+        /// </summary>
+        private const int ImportRequestCode = 4013;
+
+        /// <summary>
+        /// Authority of the file provider that shares the exported file.
+        /// </summary>
+        private const string FileProviderAuthority = "com.blackboltshadow.adsbcarmap.fileprovider";
+
+        /// <summary>
+        /// Largest file accepted for the import in bytes; larger files are not alert files.
+        /// </summary>
+        private const int MaximumImportBytes = 2 * 1024 * 1024;
 
         /// <summary>
         /// Switch of all alerts.
@@ -141,6 +161,20 @@ namespace AdsbCarMap.Activities
             historyButton.Click += (sender, args) => StartActivity(new Intent(this, typeof(AlertHistoryActivity)));
             header.AddView(historyButton);
 
+            LinearLayout fileButtons = new LinearLayout(this);
+            fileButtons.Orientation = Orientation.Horizontal;
+            header.AddView(fileButtons);
+
+            Button exportButton = new Button(this);
+            exportButton.Text = Loc.T("Eksportuj alerty");
+            exportButton.Click += (sender, args) => ExportAlerts();
+            fileButtons.AddView(exportButton, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+
+            Button importButton = new Button(this);
+            importButton.Text = Loc.T("Importuj alerty");
+            importButton.Click += (sender, args) => PickImportFile();
+            fileButtons.AddView(importButton, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+
             BuildBackgroundSection(header);
 
             TextView hint = new TextView(this);
@@ -244,6 +278,7 @@ namespace AdsbCarMap.Activities
             texts.Click += (sender, args) => OpenEditor(rule.Id);
             row.AddView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
+            row.AddView(CreateIconButton(Resource.Drawable.ic_copy, Loc.T("Kopiuj alert"), () => CopyRule(rule)));
             row.AddView(CreateIconButton(Resource.Drawable.ic_edit, Loc.T("Edytuj alert"), () => OpenEditor(rule.Id)));
             row.AddView(CreateIconButton(Resource.Drawable.ic_delete, Loc.T("Usuń alert"), () => ConfirmRemove(rule)));
 
@@ -403,9 +438,9 @@ namespace AdsbCarMap.Activities
         /// <returns>Text for the list.</returns>
         private static string DescribeRule(AlertRule rule)
         {
-            string filter = Loc.T("Każdy samolot");
+            string filter = rule.WatchedHex != null ? Loc.T("Samolot: ") + rule.WatchedHex.ToUpperInvariant() : Loc.T("Każdy samolot");
 
-            if (rule.ConditionFilterId != null)
+            if (rule.WatchedHex == null && rule.ConditionFilterId != null)
             {
                 AircraftFilter? found = AppServices.Filters.Find(rule.ConditionFilterId);
 
@@ -433,6 +468,152 @@ namespace AdsbCarMap.Activities
             }
 
             StartActivity(intent);
+        }
+
+        /// <summary>
+        /// Saves a copy of a rule under a new identifier. The copy is switched off, so that it does not notify before the user changes it.
+        /// </summary>
+        /// <param name="rule">Rule to copy.</param>
+        private void CopyRule(AlertRule rule)
+        {
+            AlertRule copy = rule.WithIdentity(AlertRuleStore.CreateId(), Loc.T("Kopia: ") + rule.Name).WithEnabled(false);
+
+            AppServices.Alerts.Save(copy);
+            Toast.MakeText(this, Loc.T("Utworzono kopię (wyłączoną)"), ToastLength.Short)?.Show();
+        }
+
+        /// <summary>
+        /// Writes the alerts and the filters they use to a file and offers it through the system share dialog.
+        /// </summary>
+        private void ExportAlerts()
+        {
+            if (AppServices.Alerts.Rules.Count == 0)
+            {
+                Toast.MakeText(this, Loc.T("Brak alertów do wyeksportowania"), ToastLength.Short)?.Show();
+
+                return;
+            }
+
+            try
+            {
+                string json = AlertBundle.Serialize(AppServices.Alerts.Rules, (string id) => AppServices.Filters.Find(id), (string id) => AppServices.Filters.IsBuiltIn(id));
+                Java.IO.File directory = new Java.IO.File(CacheDir!, "shared");
+                directory.Mkdirs();
+
+                Java.IO.File file = new Java.IO.File(directory, "adsbcarmap-alerts-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture) + ".json");
+
+                System.IO.File.WriteAllText(file.AbsolutePath, json, new System.Text.UTF8Encoding(false));
+
+                Android.Net.Uri? uri = AndroidX.Core.Content.FileProvider.GetUriForFile(this, FileProviderAuthority, file);
+                Intent send = new Intent(Intent.ActionSend);
+                send.SetType("application/json");
+                send.PutExtra(Intent.ExtraStream, uri);
+                send.PutExtra(Intent.ExtraSubject, "ADS-B Car Map – alerty");
+                send.AddFlags(ActivityFlags.GrantReadUriPermission);
+
+                StartActivity(Intent.CreateChooser(send, Loc.T("Eksportuj alerty")));
+            }
+            catch (Exception exception)
+            {
+                DevLogger.Error(LogTag, "Eksport alertów nie powiódł się", exception);
+                Toast.MakeText(this, Loc.T("Nie udało się wyeksportować alertów: ") + exception.Message, ToastLength.Long)?.Show();
+            }
+        }
+
+        /// <summary>
+        /// Opens the system file picker to choose the file with alerts.
+        /// </summary>
+        private void PickImportFile()
+        {
+            Intent intent = new Intent(Intent.ActionOpenDocument);
+            intent.AddCategory(Intent.CategoryOpenable);
+            intent.SetType("*/*");
+
+            try
+            {
+                StartActivityForResult(intent, ImportRequestCode);
+            }
+            catch (ActivityNotFoundException)
+            {
+                Toast.MakeText(this, Loc.T("Brak aplikacji do wyboru plików"), ToastLength.Long)?.Show();
+            }
+        }
+
+        /// <summary>
+        /// Reads the chosen file and asks whether to import the alerts it contains.
+        /// </summary>
+        /// <param name="requestCode">Code of the request.</param>
+        /// <param name="resultCode">Result of the picker.</param>
+        /// <param name="data">Intent with the chosen file.</param>
+        protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
+        {
+            base.OnActivityResult(requestCode, resultCode, data);
+
+            if (requestCode != ImportRequestCode || resultCode != Result.Ok || data?.Data == null)
+            {
+                return;
+            }
+
+            AlertBundle? bundle = null;
+
+            try
+            {
+                using System.IO.Stream? stream = ContentResolver?.OpenInputStream(data.Data);
+
+                if (stream != null)
+                {
+                    using System.IO.MemoryStream buffer = new System.IO.MemoryStream();
+
+                    stream.CopyTo(buffer);
+
+                    if (buffer.Length <= MaximumImportBytes)
+                    {
+                        bundle = AlertBundle.Parse(System.Text.Encoding.UTF8.GetString(buffer.ToArray()));
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                DevLogger.Error(LogTag, "Odczyt pliku z alertami nie powiódł się", exception);
+            }
+
+            if (bundle == null || bundle.Rules.Count == 0)
+            {
+                Toast.MakeText(this, Loc.T("Wybrany plik nie zawiera alertów"), ToastLength.Long)?.Show();
+
+                return;
+            }
+
+            ConfirmImport(bundle);
+        }
+
+        /// <summary>
+        /// Asks for confirmation and adds the alerts and the missing filters of a bundle.
+        /// </summary>
+        /// <param name="bundle">Bundle read from the file.</param>
+        private void ConfirmImport(AlertBundle bundle)
+        {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
+            builder.SetTitle(Loc.T("Importować alerty?"));
+            builder.SetMessage(Loc.F("Zostanie dodanych alertów: {0}. Istniejące alerty zostają bez zmian.", bundle.Rules.Count));
+            builder.SetPositiveButton(Loc.T("Importuj"), (sender, args) =>
+            {
+                AlertBundle prepared = bundle.PrepareImport(AlertRuleStore.CreateId, (string id) => AppServices.Filters.Find(id) != null);
+
+                foreach (AircraftFilter filter in prepared.Filters)
+                {
+                    AppServices.Filters.Save(filter);
+                }
+
+                foreach (AlertRule rule in prepared.Rules)
+                {
+                    AppServices.Alerts.Save(rule);
+                }
+
+                Toast.MakeText(this, Loc.F("Zaimportowano alertów: {0}", prepared.Rules.Count), ToastLength.Short)?.Show();
+            });
+            builder.SetNegativeButton(Loc.T("Anuluj"), (sender, args) => { });
+            builder.Show();
         }
 
         /// <summary>

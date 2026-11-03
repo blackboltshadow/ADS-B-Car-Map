@@ -212,5 +212,50 @@ namespace AdsbCarMap.Tests
             Assert.Equal("48A124 · Boeing 737-800 · na ziemi · 12 km", AlertText.Body(new AlertMatch(rule, onGround, AlertTrigger.Appeared, 12.4), new DisplayUnits(AltitudeUnit.Feet, DistanceUnit.Kilometers, SpeedUnit.KilometersPerHour, VerticalSpeedUnit.FeetPerMinute)));
             Assert.Equal("48A125 · 20 km", AlertText.Body(new AlertMatch(rule, noAltitude, AlertTrigger.Appeared, 20.0), DisplayUnits.Default));
         }
+
+        /// <summary>
+        /// The exit option and the watched address survive a round trip and default to off and none.
+        /// </summary>
+        [Fact]
+        public void RoundTrip_KeepsExitAndWatchedHex()
+        {
+            AlertArea area = new AlertArea(AlertAreaKind.AroundMe, 30.0);
+            AlertRule watch = new AlertRule("w", "Obserwuj", true, area, null, true, true, 60, null, null, AlertImportance.High, true, " 48A124 ");
+
+            List<AlertRule> parsed = AlertRuleJson.Parse(AlertRuleJson.Serialize(new List<AlertRule> { watch, CreateRule(area) }));
+
+            Assert.True(parsed[0].NotifyOnExit);
+            Assert.Equal("48a124", parsed[0].WatchedHex);
+            Assert.False(parsed[1].NotifyOnExit);
+            Assert.Null(parsed[1].WatchedHex);
+        }
+
+        /// <summary>
+        /// A rule written before the exit option existed is read with the option off.
+        /// </summary>
+        [Fact]
+        public void Parse_OldRule_HasNoExitAndNoWatchedHex()
+        {
+            List<AlertRule> parsed = AlertRuleJson.Parse("[{\"id\":\"a\",\"area\":\"AroundMe\",\"radius\":10}]");
+
+            Assert.Single(parsed);
+            Assert.False(parsed[0].NotifyOnExit);
+            Assert.Null(parsed[0].WatchedHex);
+        }
+
+        /// <summary>
+        /// The exit event has its own title and description.
+        /// </summary>
+        [Fact]
+        public void Texts_DescribeExit()
+        {
+            AlertArea area = new AlertArea(AlertAreaKind.AroundMe, 30.0);
+            AlertRule rule = new AlertRule("a", "Moje", true, area, null, false, false, 30, null, null, AlertImportance.High, true);
+            Aircraft aircraft = new Aircraft("48A124", "LOT1", 52.0, 21.0, 35000, false, 400.0, 90.0, 0.0, "B738", null, "A3", false);
+
+            Assert.Equal("Moje – wylot z obszaru", AlertText.Title(new AlertMatch(rule, aircraft, AlertTrigger.Exited, 5.0)));
+            Assert.Equal("wylot z obszaru", AlertText.DescribeTrigger(AlertTrigger.Exited));
+            Assert.Equal("wylot · cisza 30 min", AlertText.DescribeEvents(rule));
+        }
     }
 }

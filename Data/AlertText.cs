@@ -89,7 +89,15 @@ namespace AdsbCarMap.Data
         /// <returns>For example "wlot do obszaru".</returns>
         public static string DescribeTrigger(AlertTrigger trigger)
         {
-            return trigger == AlertTrigger.Entered ? Loc.T("wlot do obszaru") : Loc.T("w obszarze");
+            switch (trigger)
+            {
+                case AlertTrigger.Entered:
+                    return Loc.T("wlot do obszaru");
+                case AlertTrigger.Exited:
+                    return Loc.T("wylot z obszaru");
+                default:
+                    return Loc.T("w obszarze");
+            }
         }
 
         /// <summary>
@@ -180,12 +188,17 @@ namespace AdsbCarMap.Data
 
             if (rule.NotifyOnEntry)
             {
-                events.Add("wlot");
+                events.Add(Loc.T("wlot"));
             }
 
             if (rule.NotifyOnAppearance)
             {
                 events.Add(Loc.T("pojawienie się"));
+            }
+
+            if (rule.NotifyOnExit)
+            {
+                events.Add(Loc.T("wylot"));
             }
 
             string text = events.Count == 0 ? Loc.T("bez zdarzeń") : string.Join(", ", events);
@@ -202,7 +215,15 @@ namespace AdsbCarMap.Data
         {
             string name = string.IsNullOrWhiteSpace(match.Rule.Name) ? Loc.T("Alert") : match.Rule.Name;
 
-            return name + (match.Trigger == AlertTrigger.Entered ? Loc.T(" – wlot do obszaru") : Loc.T(" – w obszarze"));
+            switch (match.Trigger)
+            {
+                case AlertTrigger.Entered:
+                    return name + Loc.T(" – wlot do obszaru");
+                case AlertTrigger.Exited:
+                    return name + Loc.T(" – wylot z obszaru");
+                default:
+                    return name + Loc.T(" – w obszarze");
+            }
         }
 
         /// <summary>

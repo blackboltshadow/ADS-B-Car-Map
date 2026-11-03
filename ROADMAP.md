@@ -41,12 +41,12 @@ Zasada kolejności: najpierw rzeczy, które pomagają ocenić to, co już dodano
 - Historia obserwowanych samolotów.
 - **Pomysły do alertów (zapisane 2026-11-03, w kolejności polecanej):**
   - Squawk awaryjny: **zrobione w kodzie (2026-11-03), niesprawdzone na telefonie** jako wbudowany filtr „Squawk awaryjny” (`BuiltInFilters.Emergency`, nowe pole `FilterField.Squawk`), który wybiera się jako warunek alertu. Zostaje ewentualnie gotowa reguła alertu bez ręcznego wybierania obszaru i warunku.
-  - Zdarzenie „wylot z obszaru” obok wlotu i pojawienia się (silnik pamięta, czy samolot był w środku).
+  - Zdarzenie „wylot z obszaru”: **zrobione w kodzie (2026-11-03), niesprawdzone na telefonie** (`AlertTrigger.Exited`, pole `NotifyOnExit`, własny czas ciszy wylotu; samolot, który zniknął z danych, nie daje wylotu).
   - Lądowanie i start jako zdarzenie w obszarze lotniska (przejście „w powietrzu ↔ na ziemi”).
-  - Alert na konkretny samolot lub rejestrację, np. przycisk „obserwuj ten samolot” na jego karcie.
+  - Alert na konkretny samolot: **zrobione w kodzie (2026-11-03), niesprawdzone na telefonie** jako przycisk „Obserwuj” na karcie samolotu (`AlertRule.WatchedHex`, `AlertBundle.CreateWatchRule`: okrąg 300 km wokół GPS). Zostaje: alert po rejestracji lub znaku wywoławczym bez wybranego samolotu, obserwowanie z poziomu wyszukiwarki i w samochodzie, samoczynne usuwanie alertu po lądowaniu.
   - Warunek na prędkość pionową: **zrobione w kodzie (2026-11-03), niesprawdzone na telefonie** jako pole `FilterField.VerticalRate` (zakres w ft/min, w kreatorze w jednostce z ustawień) i wbudowany filtr „Szybko opadające” (poniżej −3000 ft/min). Zostaje ewentualne wymaganie, by wartość utrzymała się przez dwa kolejne odczyty (szum transpondera).
   - Korytarz wzdłuż linii (odległość od odcinka; blisko wielokątów, które już są).
-  - Kopiowanie alertu, eksport i import alertów jako plik.
+  - Kopiowanie alertu, eksport i import alertów jako plik: **zrobione w kodzie (2026-11-03), niesprawdzone na telefonie** (`AlertBundle`, ikona kopiowania na liście, przyciski „Eksportuj alerty” i „Importuj alerty”; eksport zawiera użyte własne filtry, import nie nadpisuje istniejących alertów).
   - Test „czy ten alert zadziałałby wczoraj” (wymaga historii pozycji, więc raczej daleka przyszłość).
   - Ostrzeżenie o kosztach zapytań przy dużych obszarach w trybie w tle (planer zapytań już liczy koszt).
   - Przesuwanie wierzchołków wielokąta na mapie jest zrobione; zostaje ewentualne zaznaczanie kilku wierzchołków naraz.

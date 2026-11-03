@@ -29,6 +29,11 @@ namespace AdsbCarMap.Data
             public DateTime? LastNotified;
 
             /// <summary>
+            /// Time of the last notification about leaving the area or null when there was none. Kept apart from <see cref="LastNotified"/>, so that a quick entry and exit are both reported.
+            /// </summary>
+            public DateTime? LastExitNotified;
+
+            /// <summary>
             /// Whether the aircraft was present in the data at the latest evaluation.
             /// </summary>
             public bool Seen;
@@ -190,6 +195,17 @@ namespace AdsbCarMap.Data
                 bool inside = IsInside(rule.Area, center, item);
                 bool matching = inside && SatisfiesCondition(rule, item, routeLookup);
 
+                if (known && state.WasMatching && !inside && rule.NotifyOnExit && scheduleActive)
+                {
+                    bool exitCooledDown = state.LastExitNotified == null || now - state.LastExitNotified.Value >= cooldown;
+
+                    if (exitCooledDown)
+                    {
+                        state.LastExitNotified = now;
+                        matches.Add(new AlertMatch(rule, item, AlertTrigger.Exited, GeoMath.DistanceKilometers(center.Latitude, center.Longitude, item.Latitude, item.Longitude)));
+                    }
+                }
+
                 if (matching && !state.WasMatching)
                 {
                     AlertTrigger trigger = known && !state.WasInside ? AlertTrigger.Entered : AlertTrigger.Appeared;
@@ -217,7 +233,8 @@ namespace AdsbCarMap.Data
                     continue;
                 }
 
-                bool inCooldown = pair.Value.LastNotified != null && now - pair.Value.LastNotified.Value < cooldown;
+                bool inCooldown = (pair.Value.LastNotified != null && now - pair.Value.LastNotified.Value < cooldown)
+                    || (pair.Value.LastExitNotified != null && now - pair.Value.LastExitNotified.Value < cooldown);
 
                 if (inCooldown)
                 {
@@ -257,6 +274,11 @@ namespace AdsbCarMap.Data
         /// <returns>True when the aircraft satisfies the condition.</returns>
         private static bool SatisfiesCondition(AlertRule rule, Aircraft aircraft, Func<string?, FlightRoute?> routeLookup)
         {
+            if (rule.WatchedHex != null && !string.Equals(rule.WatchedHex, aircraft.Hex, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
             return rule.Condition == null || rule.Condition.Evaluate(aircraft, routeLookup) == FilterResult.True;
         }
     }

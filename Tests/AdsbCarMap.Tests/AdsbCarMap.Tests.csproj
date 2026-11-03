@@ -37,6 +37,7 @@
     <Compile Include="..\..\Data\AlertMatch.cs" Link="Linked\AlertMatch.cs" />
     <Compile Include="..\..\Data\AlertEngine.cs" Link="Linked\AlertEngine.cs" />
     <Compile Include="..\..\Data\AlertRuleJson.cs" Link="Linked\AlertRuleJson.cs" />
+    <Compile Include="..\..\Data\AlertBundle.cs" Link="Linked\AlertBundle.cs" />
     <Compile Include="..\..\Data\AlertText.cs" Link="Linked\AlertText.cs" />
     <Compile Include="..\..\Data\AlertCircle.cs" Link="Linked\AlertCircle.cs" />
     <Compile Include="..\..\Data\AlertQueryPlanner.cs" Link="Linked\AlertQueryPlanner.cs" />

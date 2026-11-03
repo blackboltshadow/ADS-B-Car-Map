@@ -19,8 +19,12 @@ namespace AdsbCarMap.Data
         /// <param name="conditionFilterId">Identifier of the saved filter that provides the condition, or null when the condition is not taken from a filter.</param>
         /// <param name="schedule">Days and quiet hours in which the rule may notify, or null for no restriction.</param>
         /// <param name="importance">How loudly the notifications of the rule are shown.</param>
-        public AlertRule(string id, string name, bool isEnabled, AlertArea area, FilterNode? condition, bool notifyOnEntry, bool notifyOnAppearance, int cooldownMinutes, string? conditionFilterId = null, AlertSchedule? schedule = null, AlertImportance importance = AlertImportance.High)
+        /// <param name="notifyOnExit">Whether to notify when an aircraft leaves the area.</param>
+        /// <param name="watchedHex">ICAO address of the only aircraft the rule is about, or null when the rule is about every aircraft that satisfies the condition.</param>
+        public AlertRule(string id, string name, bool isEnabled, AlertArea area, FilterNode? condition, bool notifyOnEntry, bool notifyOnAppearance, int cooldownMinutes, string? conditionFilterId = null, AlertSchedule? schedule = null, AlertImportance importance = AlertImportance.High, bool notifyOnExit = false, string? watchedHex = null)
         {
+            NotifyOnExit = notifyOnExit;
+            WatchedHex = string.IsNullOrWhiteSpace(watchedHex) ? null : watchedHex.Trim().ToLowerInvariant();
             Schedule = schedule ?? AlertSchedule.Always;
             Importance = importance;
             ConditionFilterId = conditionFilterId;
@@ -75,6 +79,16 @@ namespace AdsbCarMap.Data
         public bool NotifyOnAppearance { get; }
 
         /// <summary>
+        /// Whether to notify when an aircraft that satisfied the rule leaves the area.
+        /// </summary>
+        public bool NotifyOnExit { get; }
+
+        /// <summary>
+        /// Lower case ICAO address of the only aircraft the rule is about, or null when the rule is about every aircraft that satisfies the condition.
+        /// </summary>
+        public string? WatchedHex { get; }
+
+        /// <summary>
         /// Minimum time between two notifications about the same aircraft.
         /// </summary>
         public int CooldownMinutes { get; }
@@ -96,7 +110,7 @@ namespace AdsbCarMap.Data
         /// <returns>The copy.</returns>
         public AlertRule WithCondition(FilterNode? condition)
         {
-            return new AlertRule(Id, Name, IsEnabled, Area, condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance);
+            return new AlertRule(Id, Name, IsEnabled, Area, condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance, NotifyOnExit, WatchedHex);
         }
 
         /// <summary>
@@ -106,7 +120,18 @@ namespace AdsbCarMap.Data
         /// <returns>The copy.</returns>
         public AlertRule WithEnabled(bool enabled)
         {
-            return new AlertRule(Id, Name, enabled, Area, Condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance);
+            return new AlertRule(Id, Name, enabled, Area, Condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance, NotifyOnExit, WatchedHex);
+        }
+
+        /// <summary>
+        /// Creates a copy of the rule with another identifier and name, for duplicating a rule.
+        /// </summary>
+        /// <param name="id">Identifier of the copy.</param>
+        /// <param name="name">Name of the copy.</param>
+        /// <returns>The copy.</returns>
+        public AlertRule WithIdentity(string id, string name)
+        {
+            return new AlertRule(id, name, IsEnabled, Area, Condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance, NotifyOnExit, WatchedHex);
         }
     }
 }

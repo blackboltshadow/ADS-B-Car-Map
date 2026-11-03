@@ -455,5 +455,138 @@ namespace AdsbCarMap.Tests
             Assert.True(area.Contains(area.Center!, 52.0, 21.0));
             Assert.False(area.Contains(area.Center!, 54.0, 21.0));
         }
+
+        /// <summary>
+        /// Creates a rule that reports leaving the area.
+        /// </summary>
+        /// <param name="watchedHex">Address of the watched aircraft or null.</param>
+        /// <param name="exit">Whether to notify on exit.</param>
+        /// <returns>The rule.</returns>
+        private static AlertRule CreateExitRule(string? watchedHex = null, bool exit = true)
+        {
+            AlertArea area = new AlertArea(AlertAreaKind.Circle, 50.0, Center);
+
+            return new AlertRule("r1", "Rule", true, area, null, true, true, 30, null, null, AlertImportance.High, exit, watchedHex);
+        }
+
+        /// <summary>
+        /// An aircraft that was inside and is now outside fires an exit.
+        /// </summary>
+        [Fact]
+        public void Evaluate_LeavesArea_IsExited()
+        {
+            AlertEngine engine = new AlertEngine();
+            AlertRule rule = CreateExitRule();
+
+            Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 0.1) }, 0);
+            List<AlertMatch> matches = Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 2.0) }, 1);
+
+            Assert.Single(matches);
+            Assert.Equal(AlertTrigger.Exited, matches[0].Trigger);
+        }
+
+        /// <summary>
+        /// Without the option an exit is not reported.
+        /// </summary>
+        [Fact]
+        public void Evaluate_LeavesAreaWithoutOption_DoesNotFire()
+        {
+            AlertEngine engine = new AlertEngine();
+            AlertRule rule = CreateExitRule(null, false);
+
+            Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 0.1) }, 0);
+
+            Assert.Empty(Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 2.0) }, 1));
+        }
+
+        /// <summary>
+        /// An aircraft that disappears from the data while inside is not reported as exited, because it may only have lost coverage or landed.
+        /// </summary>
+        [Fact]
+        public void Evaluate_DisappearsInside_DoesNotFireExit()
+        {
+            AlertEngine engine = new AlertEngine();
+            AlertRule rule = CreateExitRule();
+
+            Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 0.1) }, 0);
+
+            Assert.Empty(Run(engine, rule, new List<Aircraft>(), 1));
+            Assert.Empty(Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 2.0) }, 2));
+        }
+
+        /// <summary>
+        /// An aircraft that was never inside does not fire an exit.
+        /// </summary>
+        [Fact]
+        public void Evaluate_NeverInside_DoesNotFireExit()
+        {
+            AlertEngine engine = new AlertEngine();
+            AlertRule rule = CreateExitRule();
+
+            Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 2.0) }, 0);
+
+            Assert.Empty(Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 3.0) }, 1));
+        }
+
+        /// <summary>
+        /// Entering and leaving soon after are both reported, because an exit has its own cooldown.
+        /// </summary>
+        [Fact]
+        public void Evaluate_QuickEntryAndExit_BothFire()
+        {
+            AlertEngine engine = new AlertEngine();
+            AlertRule rule = CreateExitRule();
+
+            Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 2.0) }, 0);
+
+            Assert.Single(Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 0.1) }, 1));
+
+            List<AlertMatch> exit = Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 2.0) }, 2);
+
+            Assert.Single(exit);
+            Assert.Equal(AlertTrigger.Exited, exit[0].Trigger);
+        }
+
+        /// <summary>
+        /// A second exit within the cooldown is not reported.
+        /// </summary>
+        [Fact]
+        public void Evaluate_RepeatedExitInCooldown_FiresOnce()
+        {
+            AlertEngine engine = new AlertEngine();
+            AlertRule rule = CreateExitRule();
+
+            Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 0.1) }, 0);
+            Assert.Single(Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 2.0) }, 1));
+            Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 0.1) }, 2);
+
+            Assert.Empty(Run(engine, rule, new List<Aircraft> { CreateAircraft("A1", 2.0) }, 3));
+        }
+
+        /// <summary>
+        /// A rule with a watched address ignores every other aircraft.
+        /// </summary>
+        [Fact]
+        public void Evaluate_WatchedHex_OnlyThatAircraftFires()
+        {
+            AlertEngine engine = new AlertEngine();
+            AlertRule rule = CreateExitRule("A1", false);
+
+            List<AlertMatch> matches = Run(engine, rule, new List<Aircraft> { CreateAircraft("b2", 0.1), CreateAircraft("a1", 0.2) });
+
+            Assert.Single(matches);
+            Assert.Equal("a1", matches[0].Aircraft.Hex);
+        }
+
+        /// <summary>
+        /// The count used for the preview respects the watched address.
+        /// </summary>
+        [Fact]
+        public void CountMatching_WatchedHex_CountsOnlyThatAircraft()
+        {
+            AlertRule rule = CreateExitRule("a1", false);
+
+            Assert.Equal(1, AlertEngine.CountMatching(rule, new List<Aircraft> { CreateAircraft("b2", 0.1), CreateAircraft("a1", 0.2) }, null, Airports, NoRoutes));
+        }
     }
 }

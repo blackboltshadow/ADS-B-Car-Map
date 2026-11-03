@@ -63,7 +63,13 @@ namespace AdsbCarMap.Data
 
                     writer.WriteBoolean("entry", rule.NotifyOnEntry);
                     writer.WriteBoolean("appearance", rule.NotifyOnAppearance);
+                    writer.WriteBoolean("exit", rule.NotifyOnExit);
                     writer.WriteNumber("cooldown", rule.CooldownMinutes);
+
+                    if (rule.WatchedHex != null)
+                    {
+                        writer.WriteString("hex", rule.WatchedHex);
+                    }
 
                     if (rule.Importance != AlertImportance.High)
                     {
@@ -198,7 +204,9 @@ namespace AdsbCarMap.Data
                 cooldown == null ? 30 : (int)cooldown.Value,
                 ReadString(element, "filter"),
                 ParseSchedule(element),
-                Enum.TryParse(ReadString(element, "importance"), out AlertImportance importance) ? importance : AlertImportance.High);
+                Enum.TryParse(ReadString(element, "importance"), out AlertImportance importance) ? importance : AlertImportance.High,
+                ReadBoolean(element, "exit", false),
+                ReadString(element, "hex"));
         }
 
         /// <summary>

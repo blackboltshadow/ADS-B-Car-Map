@@ -14,5 +14,10 @@ namespace AdsbCarMap.Data
         /// The aircraft showed up in the data already satisfying the alert, for example after taking off inside the area.
         /// </summary>
         Appeared,
+
+        /// <summary>
+        /// The aircraft was inside the area and is now outside it.
+        /// </summary>
+        Exited,
     }
 }

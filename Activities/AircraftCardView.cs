@@ -45,6 +45,11 @@ namespace AdsbCarMap.Activities
         private readonly TextView routeActionText;
 
         /// <summary>
+        /// Button that creates or removes the alert watching the aircraft.
+        /// </summary>
+        private readonly TextView watchButton;
+
+        /// <summary>
         /// Flight progress bar.
         /// </summary>
         private readonly RouteProgressView progressView;
@@ -88,6 +93,13 @@ namespace AdsbCarMap.Activities
             registrationText = CreateText(13f, Color.Rgb(170, 170, 170), false);
             registrationText.SetPadding(Dp(8), 0, Dp(8), 0);
             header.AddView(registrationText, new LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
+
+            watchButton = CreateText(14f, Color.Rgb(120, 190, 255), true);
+            watchButton.Text = Loc.T("Obserwuj");
+            watchButton.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
+            watchButton.Clickable = true;
+            watchButton.Click += (sender, args) => WatchClicked?.Invoke();
+            header.AddView(watchButton, new LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
 
             TextView followButton = CreateText(14f, Color.Rgb(120, 190, 255), true);
             followButton.Text = Loc.T("Śledź");
@@ -142,6 +154,11 @@ namespace AdsbCarMap.Activities
         public event System.Action? FollowClicked;
 
         /// <summary>
+        /// Event raised when the "Obserwuj" (watch) button is tapped.
+        /// </summary>
+        public event System.Action? WatchClicked;
+
+        /// <summary>
         /// Event raised when the close button is tapped.
         /// </summary>
         public event System.Action? CloseClicked;
@@ -150,6 +167,15 @@ namespace AdsbCarMap.Activities
         /// Event raised when the button that forces the route download is tapped.
         /// </summary>
         public event System.Action? RefreshRouteClicked;
+
+        /// <summary>
+        /// Shows whether an alert watches the aircraft of the card: the button then offers to stop watching.
+        /// </summary>
+        /// <param name="watched">True when a watch alert for this aircraft exists.</param>
+        public void SetWatched(bool watched)
+        {
+            watchButton.Text = watched ? Loc.T("Obserwowany âś“") : Loc.T("Obserwuj");
+        }
 
         /// <summary>
         /// Fills the card with the aircraft data.

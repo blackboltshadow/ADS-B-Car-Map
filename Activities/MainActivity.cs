@@ -363,6 +363,7 @@ namespace AdsbCarMap.Activities
             AppServices.Routes.Prioritize(callsign);
 
             aircraftCard.Bind(info, route, AppServices.Routes.GetState(callsign));
+            aircraftCard.SetWatched(AppServices.Alerts.Rules.Any((AlertRule rule) => rule.WatchedHex == info.Hex.ToLowerInvariant()));
             aircraftCard.Visibility = ViewStates.Visible;
         }
 
@@ -385,6 +386,41 @@ namespace AdsbCarMap.Activities
                 card.Top - mapView.Top,
                 card.Right - mapView.Left,
                 card.Bottom - mapView.Top));
+        }
+
+        /// <summary>
+        /// Creates the alert that watches the primary selected aircraft, or removes it when it already exists.
+        /// </summary>
+        private void OnWatchClicked()
+        {
+            SelectedAircraftInfo? info = controller.GetPrimaryInfo();
+
+            if (info == null)
+            {
+                return;
+            }
+
+            string hex = info.Hex.ToLowerInvariant();
+            List<AlertRule> existing = AppServices.Alerts.Rules.Where((AlertRule rule) => rule.WatchedHex == hex).ToList();
+
+            if (existing.Count > 0)
+            {
+                foreach (AlertRule rule in existing)
+                {
+                    AppServices.Alerts.Remove(rule.Id);
+                }
+
+                Toast.MakeText(this, Loc.T("Alert obserwowania usunięty"), ToastLength.Short)?.Show();
+            }
+            else
+            {
+                string name = info.Aircraft == null ? hex.ToUpperInvariant() : AircraftSearch.GetName(info.Aircraft);
+
+                AppServices.Alerts.Save(AlertBundle.CreateWatchRule(AlertRuleStore.CreateId(), Loc.T("Obserwuj: ") + name, hex));
+                Toast.MakeText(this, Loc.T("Alert obserwowania dodany (Alerty → edytuj, by zmienić obszar i zdarzenia)"), ToastLength.Long)?.Show();
+            }
+
+            UpdateCard();
         }
 
         /// <summary>
@@ -500,6 +536,7 @@ namespace AdsbCarMap.Activities
             aircraftCard.Visibility = ViewStates.Gone;
             aircraftCard.FollowClicked += () => controller.FollowPrimary();
             aircraftCard.CloseClicked += () => controller.ClearSelection();
+            aircraftCard.WatchClicked += OnWatchClicked;
             aircraftCard.RefreshRouteClicked += OnRefreshRouteClicked;
             aircraftCard.LayoutChange += (sender, args) => UpdateCoveredArea();
 
