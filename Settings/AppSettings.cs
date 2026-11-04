@@ -28,6 +28,16 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition FetchIntervalSetting = new SettingDefinition("fetch_interval_s", "Odświeżanie samolotów [s]", 3.0, 1.0, 60.0, false, Help: "Co ile sekund aplikacja pobiera z serwera ADS-B (adsb.lol) aktualną listę samolotów w widocznym obszarze mapy. Mniejsza wartość daje świeższe pozycje, ale więcej zapytań. Gdy serwer odmówi (kod 429, limit zapytań), aplikacja sama poczeka dłużej, a ikona stanu w lewym dolnym rogu pokaże odliczanie.");
 
         /// <summary>
+        /// Whether the mode that shows only military aircraft downloads all the military aircraft with one request.
+        /// </summary>
+        public static readonly SettingDefinition MilitaryGlobalSetting = SettingDefinition.CreateSwitch("military_global", "Wojskowe z całego świata", true, "Gdy włączony jest tryb „tylko samoloty wojskowe” (przycisk z myśliwcem), aplikacja pobiera wszystkie samoloty wojskowe jednym zapytaniem (adsb.lol, /v2/mil) zamiast tylko tych z widocznego obszaru. Dzięki temu widać je także po oddaleniu mapy poza zasięg zwykłego zapytania (250 mil morskich) i po przesunięciu mapy bez czekania na nowe pobranie. Zapytanie nie zawiera Twojego położenia. Odpowiedź jest duża (kilkaset samolotów z całego świata), więc jest pobierana rzadziej (suwak niżej). Po wyłączeniu trybu wojskowych aplikacja wraca do zwykłego pobierania obszaru. Gdy źródło nie ma takiego zapytania albo odmawia, aplikacja pobiera obszar jak zwykle. Alerty nie są sprawdzane na liście wojskowych z całego świata.");
+
+        /// <summary>
+        /// Shortest time between two downloads of all the military aircraft.
+        /// </summary>
+        public static readonly SettingDefinition MilitaryRefreshSecondsSetting = SettingDefinition.CreateSlider("military_refresh_s", "Odświeżanie wojskowych z całego świata", 30.0, 15.0, 120.0, 5.0, " s", "Najkrótsza przerwa między pobraniami wszystkich samolotów wojskowych w trybie „tylko samoloty wojskowe”. Odpowiedź ma ok. 150 kB, a serwis ma limit zapytań (zdarzają się odpowiedzi 429), więc ta przerwa jest zwykle dłuższa niż odświeżanie zwykłych samolotów. Gdy odświeżanie zwykłych samolotów jest dłuższe niż ten suwak, obowiązuje to dłuższe.");
+
+        /// <summary>
         /// Interval between drawing frames in milliseconds.
         /// </summary>
         public static readonly SettingDefinition RenderIntervalSetting = new SettingDefinition("render_interval_ms", "Odstęp klatek mapy [ms]", 33.0, 16.0, 1000.0, true, Help: "Czas między kolejnymi klatkami rysowania mapy w milisekundach. 33 ms to około 30 klatek na sekundę, 16 ms to około 60. Mniejsza wartość daje płynniejszy ruch, ale zużywa więcej baterii i procesora, co w samochodzie ma znaczenie dla płynności interfejsu.");
@@ -446,6 +456,8 @@ namespace AdsbCarMap.Settings
             TileCacheDaysSetting,
             FlightInfoCacheMinutesSetting,
             FetchIntervalSetting,
+            MilitaryGlobalSetting,
+            MilitaryRefreshSecondsSetting,
             RenderIntervalSetting,
             MinZoomSetting,
             MaxZoomSetting,
@@ -648,6 +660,16 @@ namespace AdsbCarMap.Settings
         /// Interval between aircraft requests.
         /// </summary>
         public static TimeSpan FetchInterval => TimeSpan.FromSeconds(Get(FetchIntervalSetting));
+
+        /// <summary>
+        /// Whether the mode that shows only military aircraft downloads all the military aircraft with one request.
+        /// </summary>
+        public static bool MilitaryGlobal => Get(MilitaryGlobalSetting) >= 0.5;
+
+        /// <summary>
+        /// Shortest time between two downloads of all the military aircraft.
+        /// </summary>
+        public static TimeSpan MilitaryRefreshInterval => TimeSpan.FromSeconds(Get(MilitaryRefreshSecondsSetting));
 
         /// <summary>
         /// Interval between drawing frames in milliseconds.
@@ -955,6 +977,8 @@ namespace AdsbCarMap.Settings
             DataSourceSetting,
             DataSourceFallbackSetting,
             DataSourceDetailsSetting,
+            MilitaryGlobalSetting,
+            MilitaryRefreshSecondsSetting,
         };
 
         /// <summary>

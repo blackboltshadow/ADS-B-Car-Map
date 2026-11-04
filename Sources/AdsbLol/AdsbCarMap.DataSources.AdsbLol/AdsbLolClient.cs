@@ -9,7 +9,7 @@ namespace AdsbCarMap.DataSources.AdsbLol
     /// <summary>
     /// Client of the adsb.lol API returning the aircraft within a radius of a point and the data of a single aircraft. It only fetches and converts the data; pausing the requests after limit responses is up to the manager.
     /// </summary>
-    public sealed class AdsbLolClient : IAircraftSource, IAircraftLookupSource
+    public sealed class AdsbLolClient : IAircraftSource, IAircraftLookupSource, IMilitaryAircraftSource
     {
         /// <summary>
         /// Default base address of the adsb.lol API.
@@ -59,6 +59,25 @@ namespace AdsbCarMap.DataSources.AdsbLol
             List<Aircraft> result = new List<Aircraft>();
 
             foreach (AdsbLolAircraftRecord record in await GetRecordsAsync(path, cancellationToken))
+            {
+                Aircraft? aircraft = record.ToAircraft();
+
+                if (aircraft != null)
+                {
+                    result.Add(aircraft);
+                }
+            }
+
+            return result;
+        }
+
+        /// <inheritdoc />
+        /// <exception cref="JsonException">Invalid JSON response.</exception>
+        public async Task<IReadOnlyList<Aircraft>?> GetMilitaryAircraftAsync(CancellationToken cancellationToken)
+        {
+            List<Aircraft> result = new List<Aircraft>();
+
+            foreach (AdsbLolAircraftRecord record in await GetRecordsAsync("v2/mil", cancellationToken))
             {
                 Aircraft? aircraft = record.ToAircraft();
 

@@ -23,6 +23,22 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Tells whether all the military aircraft should be downloaded with one request: the mode that shows only military aircraft is on and the setting allows it.
+        /// </summary>
+        /// <returns>True when the request for all the military aircraft is wanted.</returns>
+        private bool WantsGlobalMilitary()
+        {
+            bool militaryMode;
+
+            lock (stateLock)
+            {
+                militaryMode = militaryOnly;
+            }
+
+            return MilitaryQueryPolicy.UseGlobalRequest(militaryMode, AppSettings.MilitaryGlobal);
+        }
+
+        /// <summary>
         /// Returns the hex code of the primary selected aircraft.
         /// </summary>
         /// <returns>Hex code, or null when nothing is selected.</returns>

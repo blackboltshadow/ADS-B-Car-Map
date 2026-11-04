@@ -266,13 +266,21 @@ namespace AdsbCarMap.Map
         /// <param name="snapshot">State to apply.</param>
         private void ApplySelection(SelectionSnapshot snapshot)
         {
+            bool militaryChanged;
+
             lock (stateLock)
             {
                 selectedHexes = snapshot.Hexes;
                 primaryHex = snapshot.PrimaryHex;
                 isolateSelected = snapshot.Isolated;
+                militaryChanged = militaryOnly != snapshot.MilitaryOnly;
                 militaryOnly = snapshot.MilitaryOnly;
                 selectedAirport = AppServices.Airports.Find(snapshot.AirportIcao);
+            }
+
+            if (militaryChanged)
+            {
+                dataLoop.Wake();
             }
         }
 
@@ -469,6 +477,7 @@ namespace AdsbCarMap.Map
             }
 
             NotifySelectionChanged();
+            dataLoop.Wake();
 
             return enabled;
         }

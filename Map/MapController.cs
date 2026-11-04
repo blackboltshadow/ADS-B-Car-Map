@@ -467,7 +467,7 @@ namespace AdsbCarMap.Map
         /// <param name="keeper">Marks the visible flights as seen and closes the landed ones in the memory of the flight information, or null when it is not used.</param>
         public MapController(IAircraftSource adsbClient, TileProvider tileProvider, RouteCache routeCache, SelectionState selectionState, AircraftEnricher? enricher = null, FlightCacheKeeper? keeper = null)
         {
-            dataLoop = new AircraftDataLoop(adsbClient, enricher, keeper, GetQueryArea, GetPrimaryHex, PublishAircraft, MergeAircraftDetails);
+            dataLoop = new AircraftDataLoop(adsbClient, enricher, keeper, GetQueryArea, GetPrimaryHex, PublishAircraft, MergeAircraftDetails, WantsGlobalMilitary);
             tileLayer = new TileLayer(tileProvider);
             this.routeCache = routeCache;
             this.selectionState = selectionState;

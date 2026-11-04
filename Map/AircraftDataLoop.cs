@@ -1,3 +1,4 @@
+using AdsbCarMap.Data;
 using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Management.Enrichment;
@@ -22,6 +23,16 @@ namespace AdsbCarMap.Map
         /// Source of the aircraft positions.
         /// </summary>
         private readonly IAircraftSource source;
+
+        /// <summary>
+        /// The same source as <see cref="source"/> when it can return all the military aircraft with one request, otherwise null.
+        /// </summary>
+        private readonly IMilitaryAircraftSource? militarySource;
+
+        /// <summary>
+        /// Tells whether the request for all the military aircraft is wanted now.
+        /// </summary>
+        private readonly Func<bool> wantsGlobalMilitary;
 
         /// <summary>
         /// Completes the data of the selected aircraft from the other sources, or null when it is not used.
@@ -83,6 +94,7 @@ namespace AdsbCarMap.Map
         /// <param name="getPrimaryHex">Returns the hex code of the primary selected aircraft, or null when nothing is selected.</param>
         /// <param name="publish">Stores the downloaded aircraft and updates their trails.</param>
         /// <param name="mergeDetails">Merges the completed data of an aircraft into the current list.</param>
+        /// <param name="wantsGlobalMilitary">Tells whether the request for all the military aircraft is wanted now.</param>
         public AircraftDataLoop(
             IAircraftSource source,
             AircraftEnricher? enricher,
@@ -90,9 +102,12 @@ namespace AdsbCarMap.Map
             Func<(double Latitude, double Longitude, double RadiusNauticalMiles)> getQuery,
             Func<string?> getPrimaryHex,
             Action<IReadOnlyList<Aircraft>, DateTime> publish,
-            Action<Aircraft> mergeDetails)
+            Action<Aircraft> mergeDetails,
+            Func<bool> wantsGlobalMilitary)
         {
             this.source = source;
+            this.militarySource = source as IMilitaryAircraftSource;
+            this.wantsGlobalMilitary = wantsGlobalMilitary;
             this.enricher = enricher;
             this.keeper = keeper;
             this.getQuery = getQuery;
@@ -181,12 +196,16 @@ namespace AdsbCarMap.Map
 
                 TimeSpan delay = AppSettings.FetchInterval;
                 (double latitude, double longitude, double radiusNauticalMiles) = getQuery();
+                bool globalUsed = false;
 
                 Volatile.Write(ref loading, 1);
 
                 try
                 {
-                    IReadOnlyList<Aircraft> fetched = await source.GetAircraftAsync(latitude, longitude, radiusNauticalMiles, cancellationToken);
+                    IReadOnlyList<Aircraft>? fetchedMilitary = militarySource != null && wantsGlobalMilitary() ? await militarySource.GetMilitaryAircraftAsync(cancellationToken) : null;
+                    globalUsed = fetchedMilitary != null;
+                    delay = MilitaryQueryPolicy.GetInterval(globalUsed, delay, AppSettings.MilitaryRefreshInterval);
+                    IReadOnlyList<Aircraft> fetched = fetchedMilitary ?? await source.GetAircraftAsync(latitude, longitude, radiusNauticalMiles, cancellationToken);
 
                     if (enricher != null)
                     {
@@ -199,7 +218,12 @@ namespace AdsbCarMap.Map
 
                     publish(fetched, fetchedAtUtc);
                     LiveTraffic.Update(fetched, fetchedAtUtc, latitude, longitude);
-                    AlertMonitor.Process(fetched);
+
+                    if (!globalUsed)
+                    {
+                        AlertMonitor.Process(fetched);
+                    }
+
                     RequestSelectedAircraftDetails(fetched, cancellationToken);
                     Volatile.Write(ref failed, 0);
                 }

@@ -109,6 +109,7 @@
     <Compile Include="..\..\Data\AirspaceAlertEngine.cs" Link="Linked\AirspaceAlertEngine.cs" />
     <Compile Include="..\..\Data\AirspaceAltitudeScale.cs" Link="Linked\AirspaceAltitudeScale.cs" />
     <Compile Include="..\..\Data\PollingFeed.cs" Link="Linked\PollingFeed.cs" />
+    <Compile Include="..\..\Data\MilitaryQueryPolicy.cs" Link="Linked\MilitaryQueryPolicy.cs" />
     <Compile Include="..\..\Data\WarningCategories.cs" Link="Linked\WarningCategories.cs" />
     <Compile Include="..\..\Data\WarningProvinces.cs" Link="Linked\WarningProvinces.cs" />
     <Compile Include="..\..\Data\WarningFilterConfig.cs" Link="Linked\WarningFilterConfig.cs" />

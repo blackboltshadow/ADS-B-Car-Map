@@ -9,7 +9,7 @@ namespace AdsbCarMap.DataSources.Management.Privacy
     /// <summary>
     /// Source of the aircraft that sends the wrapped source the center of a query rounded to a grid, with the radius enlarged so that the real area stays covered. The options are read at every query, so a changed setting takes effect at once.
     /// </summary>
-    public sealed class PrivacyAircraftSource : IAircraftSource, IRateLimitedSource
+    public sealed class PrivacyAircraftSource : IAircraftSource, IRateLimitedSource, IMilitaryAircraftSource
     {
         /// <summary>
         /// Wrapped source.
@@ -52,6 +52,16 @@ namespace AdsbCarMap.DataSources.Management.Privacy
         public RateLimitStatus GetRateLimitStatus()
         {
             return inner is IRateLimitedSource limited ? limited.GetRateLimitStatus() : RateLimitStatus.None;
+        }
+
+        /// <summary>
+        /// Passes the request for all the military aircraft to the wrapped source. It carries no position, so there is nothing to round.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The military aircraft, or null when the wrapped source has no such request.</returns>
+        public Task<IReadOnlyList<Aircraft>?> GetMilitaryAircraftAsync(CancellationToken cancellationToken)
+        {
+            return inner is IMilitaryAircraftSource military ? military.GetMilitaryAircraftAsync(cancellationToken) : Task.FromResult<IReadOnlyList<Aircraft>?>(null);
         }
 
         /// <inheritdoc />
