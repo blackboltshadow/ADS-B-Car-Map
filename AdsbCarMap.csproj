@@ -10,6 +10,8 @@
     <ApplicationId>com.blackboltshadow.adsbcarmap</ApplicationId>
     <ApplicationVersion>1</ApplicationVersion>
     <ApplicationDisplayVersion>0.4</ApplicationDisplayVersion>
+    <AppDisplayName>ADS-B Car Map</AppDisplayName>
+    <IsDevBuild>false</IsDevBuild>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -20,11 +22,18 @@
   </PropertyGroup>
 	
     <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+	    <ApplicationId>com.blackboltshadow.adsbcarmap.debug</ApplicationId>
+	    <AppDisplayName>ADS-B (DEV) Car Map</AppDisplayName>
+	    <IsDevBuild>true</IsDevBuild>
 	    <AndroidPackageFormat>aab</AndroidPackageFormat>
 	    <AndroidKeyStore>true</AndroidKeyStore>
 	    <AndroidSigningKeyStore>$(USERPROFILE)\adsbcarmap-release.jks</AndroidSigningKeyStore>
 	    <AndroidSigningKeyAlias>adsbcarmap</AndroidSigningKeyAlias>
     </PropertyGroup>
+
+  <PropertyGroup>
+    <AndroidManifestPlaceholders>AppLabel=$(AppDisplayName)</AndroidManifestPlaceholders>
+  </PropertyGroup>
 
   <!-- The unit test project lives in Tests\ and the data source projects in Sources\; none of them is compiled into the app. -->
   <ItemGroup>
@@ -144,6 +153,14 @@
       <BuildInfoLine Include="        /// Build number incremented on every build, also the versionCode of the package." />
       <BuildInfoLine Include="        /// &lt;/summary&gt;" />
       <BuildInfoLine Include="        public const string Build = &quot;$(BuildNumber)&quot;%3B" />
+      <BuildInfoLine Include="        /// &lt;summary&gt;" />
+      <BuildInfoLine Include="        /// Name of the application shown to the user, with the (DEV) mark in the Debug build." />
+      <BuildInfoLine Include="        /// &lt;/summary&gt;" />
+      <BuildInfoLine Include="        public const string AppName = &quot;$(AppDisplayName)&quot;%3B" />
+      <BuildInfoLine Include="        /// &lt;summary&gt;" />
+      <BuildInfoLine Include="        /// Whether this is the development (Debug) build that is installed next to the released application." />
+      <BuildInfoLine Include="        /// &lt;/summary&gt;" />
+      <BuildInfoLine Include="        public const bool IsDev = $(IsDevBuild)%3B" />
       <BuildInfoLine Include="        /// &lt;summary&gt;" />
       <BuildInfoLine Include="        /// Contact sent to the data servers in the User-Agent header, loaded from the user file adsbcarmap-contact.props. Empty when the file does not exist." />
       <BuildInfoLine Include="        /// &lt;/summary&gt;" />

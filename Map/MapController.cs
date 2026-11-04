@@ -257,6 +257,11 @@ namespace AdsbCarMap.Map
         private string? lastRecordedPrimaryHex;
 
         /// <summary>
+        /// Distance in pixels by which the followed aircraft is drawn above the middle of the screen, so that it stays above a card or a popup that covers the bottom. It moves towards its target a little every frame and is used only by the drawing thread.
+        /// </summary>
+        private double followOffsetPixels;
+
+        /// <summary>
         /// Selected airport, or null. An airport and aircraft are never selected at the same time.
         /// </summary>
         private Airport? selectedAirport;

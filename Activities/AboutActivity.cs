@@ -64,7 +64,7 @@ namespace AdsbCarMap.Activities
             root.SetPadding(Dp(16), Dp(16), Dp(16), Dp(32));
             scrollView.AddView(root);
 
-            AddText(root, "ADS-B Car Map", 22f, Color.White, true, 0);
+            AddText(root, BuildInfo.AppName, 22f, Color.White, true, 0);
             AddText(root, Loc.T("Wersja ") + BuildInfo.Version + Loc.T(" (kompilacja ") + BuildInfo.Build + ")", 14f, Color.Rgb(180, 180, 180), false, 2);
             AddText(root, Loc.T("Mapa samolotów ADS-B na telefonie i w Android Auto. Aplikacja na licencji MIT, kod źródłowy: ") + RepositoryUrl, 14f, Color.White, false, 8, true);
 

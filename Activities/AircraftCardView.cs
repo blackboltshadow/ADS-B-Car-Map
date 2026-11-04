@@ -88,11 +88,13 @@ namespace AdsbCarMap.Activities
             AddView(header, new LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent));
 
             nameText = CreateText(20f, Color.White, true);
+            nameText.SetSingleLine(true);
+            nameText.Ellipsize = Android.Text.TextUtils.TruncateAt.End;
             header.AddView(nameText, new LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
 
             registrationText = CreateText(13f, Color.Rgb(170, 170, 170), false);
-            registrationText.SetPadding(Dp(8), 0, Dp(8), 0);
-            header.AddView(registrationText, new LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
+            registrationText.Visibility = ViewStates.Gone;
+            AddView(registrationText);
 
             watchButton = CreateText(14f, Color.Rgb(120, 190, 255), true);
             watchButton.Text = Loc.T("Obserwuj");
@@ -174,7 +176,7 @@ namespace AdsbCarMap.Activities
         /// <param name="watched">True when a watch alert for this aircraft exists.</param>
         public void SetWatched(bool watched)
         {
-            watchButton.Text = watched ? Loc.T("Obserwowany âś“") : Loc.T("Obserwuj");
+            watchButton.Text = watched ? Loc.T("Obserwuję ✓") : Loc.T("Obserwuj");
         }
 
         /// <summary>
@@ -192,6 +194,7 @@ namespace AdsbCarMap.Activities
             if (aircraft == null)
             {
                 registrationText.Text = string.Empty;
+                registrationText.Visibility = ViewStates.Gone;
                 airlineText.Visibility = ViewStates.Gone;
                 routeText.Visibility = ViewStates.Gone;
                 routeActionText.Visibility = ViewStates.Gone;
@@ -204,6 +207,7 @@ namespace AdsbCarMap.Activities
             }
 
             registrationText.Text = aircraft.Registration ?? string.Empty;
+            registrationText.Visibility = registrationText.Text.Length > 0 ? ViewStates.Visible : ViewStates.Gone;
 
             string descriptors = AircraftCardText.BuildDescriptors(aircraft, route);
 

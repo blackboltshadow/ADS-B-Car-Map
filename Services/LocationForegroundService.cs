@@ -231,7 +231,7 @@ namespace AdsbCarMap.Services
 
             builder
                 .SetSmallIcon(Resource.Drawable.ic_my_location)
-                .SetContentTitle("ADS-B Car Map")
+                .SetContentTitle(BuildInfo.AppName)
                 .SetContentText(Loc.T("Śledzenie pozycji dla mapy samolotów"))
                 .SetOngoing(true)
                 .SetContentIntent(contentIntent);

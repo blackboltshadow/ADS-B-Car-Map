@@ -428,15 +428,39 @@ namespace AdsbCarMap.Map
         /// </summary>
         public void ClearSelection()
         {
+            bool followReleased;
+
             lock (stateLock)
             {
                 selectedHexes = new HashSet<string>();
                 primaryHex = null;
                 isolateSelected = false;
                 selectedAirport = null;
+                followReleased = ReleaseFollowedAircraft();
             }
 
             NotifySelectionChanged();
+
+            if (followReleased)
+            {
+                PublishFollow();
+            }
+        }
+
+        /// <summary>
+        /// Stops following an aircraft, which is done when nothing is selected any more, so that the follow ring does not stay around an aircraft that has no card. Call it only with the state lock held.
+        /// </summary>
+        /// <returns>True when an aircraft was followed and is not any more.</returns>
+        private bool ReleaseFollowedAircraft()
+        {
+            if (followedHex == null)
+            {
+                return false;
+            }
+
+            followedHex = null;
+
+            return true;
         }
 
         /// <summary>
@@ -606,6 +630,8 @@ namespace AdsbCarMap.Map
                 }
             }
 
+            bool followReleased = false;
+
             lock (stateLock)
             {
                 if (tapped != null)
@@ -657,10 +683,16 @@ namespace AdsbCarMap.Map
                 {
                     isolateSelected = false;
                     primaryHex = null;
+                    followReleased = ReleaseFollowedAircraft();
                 }
             }
 
             NotifySelectionChanged();
+
+            if (followReleased)
+            {
+                PublishFollow();
+            }
         }
 
         /// <summary>

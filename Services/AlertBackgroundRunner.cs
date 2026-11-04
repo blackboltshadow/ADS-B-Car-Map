@@ -221,6 +221,7 @@ namespace AdsbCarMap.Services
 
             token.ThrowIfCancellationRequested();
             RequestRoutes(rules, all, myPosition);
+            AircraftSightingStore.Observe(all);
             AlertMonitor.ProcessBackground(all, rules);
             SetStatus(Loc.T("Działa, ostatnie sprawdzenie ") + DateTime.Now.ToString("HH:mm:ss") + ", co " + (int)AppSettings.AlertInterval.TotalSeconds + " s", token);
         }

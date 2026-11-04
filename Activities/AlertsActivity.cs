@@ -41,7 +41,7 @@ namespace AdsbCarMap.Activities
         /// <summary>
         /// Authority of the file provider that shares the exported file.
         /// </summary>
-        private const string FileProviderAuthority = "com.blackboltshadow.adsbcarmap.fileprovider";
+        private string FileProviderAuthority => PackageName + ".fileprovider";
 
         /// <summary>
         /// Largest file accepted for the import in bytes; larger files are not alert files.
@@ -508,7 +508,7 @@ namespace AdsbCarMap.Activities
                 Intent send = new Intent(Intent.ActionSend);
                 send.SetType("application/json");
                 send.PutExtra(Intent.ExtraStream, uri);
-                send.PutExtra(Intent.ExtraSubject, "ADS-B Car Map – alerty");
+                send.PutExtra(Intent.ExtraSubject, BuildInfo.AppName + " – alerty");
                 send.AddFlags(ActivityFlags.GrantReadUriPermission);
 
                 StartActivity(Intent.CreateChooser(send, Loc.T("Eksportuj alerty")));

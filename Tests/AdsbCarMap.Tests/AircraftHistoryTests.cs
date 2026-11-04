@@ -120,6 +120,49 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// The text search ignores case and diacritics and looks in the callsign, address, registration and type.
+        /// </summary>
+        [Fact]
+        public void GetForDisplay_SearchesAllFields()
+        {
+            AircraftHistory history = new AircraftHistory();
+            HashSet<string> none = new HashSet<string>();
+
+            history.Record("48a124", "LOT1", "SP-LWA", "B738", Start, false);
+            history.Record("3c6444", "DLH9ŁÓ", "D-AIXA", "A359", Start.AddMinutes(1), false);
+
+            Assert.Equal(2, history.GetForDisplay(null, AircraftHistoryFilterMode.All, none).Count);
+            Assert.Equal(2, history.GetForDisplay("  ", AircraftHistoryFilterMode.All, none).Count);
+            Assert.Equal("48a124", Assert.Single(history.GetForDisplay("lot", AircraftHistoryFilterMode.All, none)).Hex);
+            Assert.Equal("48a124", Assert.Single(history.GetForDisplay("sp-lw", AircraftHistoryFilterMode.All, none)).Hex);
+            Assert.Equal("3c6444", Assert.Single(history.GetForDisplay("A359", AircraftHistoryFilterMode.All, none)).Hex);
+            Assert.Equal("3c6444", Assert.Single(history.GetForDisplay("3C64", AircraftHistoryFilterMode.All, none)).Hex);
+            Assert.Equal("3c6444", Assert.Single(history.GetForDisplay("dlh9lo", AircraftHistoryFilterMode.All, none)).Hex);
+            Assert.Empty(history.GetForDisplay("zzz", AircraftHistoryFilterMode.All, none));
+        }
+
+        /// <summary>
+        /// The group filter keeps the pinned entries, or the watched ones including the aircraft watched now.
+        /// </summary>
+        [Fact]
+        public void GetForDisplay_FiltersByGroup()
+        {
+            AircraftHistory history = new AircraftHistory();
+
+            history.Record("a1", null, null, null, Start, false);
+            history.Record("a2", null, null, null, Start.AddMinutes(1), true);
+            history.Record("a3", null, null, null, Start.AddMinutes(2), false);
+            history.SetPinned("a1", true);
+
+            HashSet<string> watchedNow = new HashSet<string> { "a3" };
+
+            Assert.Equal(new List<string> { "a1" }, history.GetForDisplay(null, AircraftHistoryFilterMode.Pinned, watchedNow).Select((AircraftHistoryEntry entry) => entry.Hex).ToList());
+            Assert.Equal(new List<string> { "a3", "a2" }, history.GetForDisplay(null, AircraftHistoryFilterMode.Watched, watchedNow).Select((AircraftHistoryEntry entry) => entry.Hex).ToList());
+            Assert.Equal(new List<string> { "a2" }, history.GetForDisplay("a2", AircraftHistoryFilterMode.Watched, watchedNow).Select((AircraftHistoryEntry entry) => entry.Hex).ToList());
+            Assert.Empty(history.GetForDisplay("a2", AircraftHistoryFilterMode.Pinned, watchedNow));
+        }
+
+        /// <summary>
         /// MarkWatched sets the flag only for a known aircraft.
         /// </summary>
         [Fact]

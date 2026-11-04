@@ -22,7 +22,6 @@ namespace AdsbCarMap.Activities
     /// Start activity on the phone with the aircraft map, zoom and center buttons, and a menu leading to the search and the settings. It also asks for the location and notification permissions.
     /// </summary>
     [Activity(
-        Label = "ADS-B Car Map",
         MainLauncher = true,
         Exported = true,
         Theme = "@style/AppTheme.Main",

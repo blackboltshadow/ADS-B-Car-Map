@@ -218,6 +218,7 @@ namespace AdsbCarMap.Map
 
                     publish(fetched, fetchedAtUtc);
                     LiveTraffic.Update(fetched, fetchedAtUtc, latitude, longitude);
+                    AircraftSightingStore.Observe(fetched);
 
                     if (!globalUsed)
                     {

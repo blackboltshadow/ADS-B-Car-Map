@@ -20,7 +20,7 @@ namespace AdsbCarMap.Activities
         /// <summary>
         /// Authority of the file provider declared in the manifest.
         /// </summary>
-        private const string FileProviderAuthority = "com.blackboltshadow.adsbcarmap.fileprovider";
+        private string FileProviderAuthority => PackageName + ".fileprovider";
 
         /// <summary>
         /// Maximum number of entries drawn on the screen; the report contains all of them.
@@ -296,7 +296,7 @@ namespace AdsbCarMap.Activities
                 Intent send = new Intent(Intent.ActionSend);
                 send.SetType("text/plain");
                 send.PutExtra(Intent.ExtraStream, uri);
-                send.PutExtra(Intent.ExtraSubject, "ADS-B Car Map – Dev log");
+                send.PutExtra(Intent.ExtraSubject, BuildInfo.AppName + " – Dev log");
                 send.AddFlags(ActivityFlags.GrantReadUriPermission);
 
                 StartActivity(Intent.CreateChooser(send, Loc.T("Udostępnij Dev log")));

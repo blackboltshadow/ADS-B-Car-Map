@@ -94,6 +94,29 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Lists the areas of the map that are covered by the popup drawn on the map or by a view of the phone placed over it.
+        /// </summary>
+        /// <param name="popupArea">Area of the popup, or null.</param>
+        /// <returns>The areas as left, top, right and bottom.</returns>
+        private List<(double Left, double Top, double Right, double Bottom)> GetCoveringRectangles(RectF? popupArea)
+        {
+            List<(double Left, double Top, double Right, double Bottom)> rectangles = new List<(double Left, double Top, double Right, double Bottom)>();
+            RectF? covered = Volatile.Read(ref coveredArea);
+
+            if (covered != null)
+            {
+                rectangles.Add((covered.Left, covered.Top, covered.Right, covered.Bottom));
+            }
+
+            if (popupArea != null)
+            {
+                rectangles.Add((popupArea.Left, popupArea.Top, popupArea.Right, popupArea.Bottom));
+            }
+
+            return rectangles;
+        }
+
+        /// <summary>
         /// Draws the background, tiles, trails, aircraft, attribution and the version number.
         /// </summary>
         /// <param name="canvas">Surface canvas.</param>
@@ -143,14 +166,21 @@ namespace AdsbCarMap.Map
                 drawnAirport = selectedAirport;
             }
 
+            IReadOnlyList<PopupLine>? popup = ShowSelectionPopup ? GetPopupLines(frameStartUtc) : null;
+            RectF? popupArea = popup == null ? null : popupRenderer.Measure(popup, width, height, screenDensity);
+
             double elapsedSeconds = (DateTime.UtcNow - snapshotTimestampUtc).TotalSeconds;
             Aircraft? followedAircraft = followed == null ? null : snapshot.FirstOrDefault(item => item.Hex == followed);
 
             if (followedAircraft != null)
             {
                 (double Latitude, double Longitude) followedPosition = MapMath.Extrapolate(followedAircraft, elapsedSeconds);
-                latitude = followedPosition.Latitude;
-                longitude = followedPosition.Longitude;
+                double targetY = FollowFraming.GetTargetY(width, height, GetCoveringRectangles(popupArea));
+
+                followOffsetPixels = FollowFraming.Ease(followOffsetPixels, (height / 2.0) - targetY, deltaSeconds);
+
+                (double worldX, double worldY) = WebMercator.LatLonToWorldPixel(followedPosition.Latitude, followedPosition.Longitude, zoomLevel);
+                (latitude, longitude) = WebMercator.WorldPixelToLatLon(worldX, worldY + followOffsetPixels, zoomLevel);
 
                 lock (stateLock)
                 {
@@ -192,9 +222,6 @@ namespace AdsbCarMap.Map
 
             List<(Aircraft Item, float X, float Y)> projected = new List<(Aircraft Item, float X, float Y)>();
             List<(string Hex, float X, float Y)> hits = new List<(string Hex, float X, float Y)>();
-
-            IReadOnlyList<PopupLine>? popup = ShowSelectionPopup ? GetPopupLines(frameStartUtc) : null;
-            RectF? popupArea = popup == null ? null : popupRenderer.Measure(popup, width, height, screenDensity);
 
             IReadOnlyList<AircraftFilter> activeFilters = AppServices.Filters.ActiveFilters;
 
@@ -298,7 +325,7 @@ namespace AdsbCarMap.Map
             canvas.DrawText(TileProvider.OpenStreetMapAttribution, width - 8f * screenDensity, height - 8f * screenDensity, attributionPaint);
 
             versionPaint.TextSize = 11.0f * screenDensity;
-            string versionText = "v" + BuildInfo.Version + " (" + BuildInfo.Build + ")";
+            string versionText = (BuildInfo.IsDev ? "DEV " : string.Empty) + "v" + BuildInfo.Version + " (" + BuildInfo.Build + ")";
             float statusDiameter = 18f * screenDensity;
             float statusLeft = 8f * screenDensity;
             float baseline = height - 8f * screenDensity;

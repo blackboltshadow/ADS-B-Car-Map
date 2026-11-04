@@ -32,7 +32,9 @@
     <Compile Include="..\..\Data\AlertImportance.cs" Link="Linked\AlertImportance.cs" />
     <Compile Include="..\..\Data\AlertGrouper.cs" Link="Linked\AlertGrouper.cs" />
     <Compile Include="..\..\Data\AlertMuteList.cs" Link="Linked\AlertMuteList.cs" />
+    <Compile Include="..\..\Map\FollowFraming.cs" Link="Linked\FollowFraming.cs" />
     <Compile Include="..\..\Data\AircraftHistory.cs" Link="Linked\AircraftHistory.cs" />
+    <Compile Include="..\..\Data\AircraftSightings.cs" Link="Linked\AircraftSightings.cs" />
     <Compile Include="..\..\Data\AlertHistory.cs" Link="Linked\AlertHistory.cs" />
     <Compile Include="..\..\Data\AlertRule.cs" Link="Linked\AlertRule.cs" />
     <Compile Include="..\..\Data\AlertMatch.cs" Link="Linked\AlertMatch.cs" />

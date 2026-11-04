@@ -132,7 +132,7 @@ namespace AdsbCarMap.Services
         {
             List<string> header = new List<string>
             {
-                "ADS-B Car Map – Dev log",
+                BuildInfo.AppName + " – Dev log",
                 "Wersja: " + BuildInfo.Version + " (kompilacja " + BuildInfo.Build + ")",
                 "Urządzenie: " + Build.Manufacturer + " " + Build.Model + ", Android " + Build.VERSION.Release + " (API " + (int)Build.VERSION.SdkInt + ")",
                 "Źródła samolotów: " + string.Join(" > ", AppSettings.DataSourceOrder) + ", zapasowe źródło: " + (AppSettings.DataSourceFallback ? "tak" : "nie"),

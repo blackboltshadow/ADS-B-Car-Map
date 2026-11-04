@@ -80,6 +80,27 @@ namespace AdsbCarMap.Data
     }
 
     /// <summary>
+    /// Group of the entries shown on the history screen.
+    /// </summary>
+    public enum AircraftHistoryFilterMode
+    {
+        /// <summary>
+        /// All entries.
+        /// </summary>
+        All,
+
+        /// <summary>
+        /// Only the pinned entries.
+        /// </summary>
+        Pinned,
+
+        /// <summary>
+        /// Only the aircraft that were watched or are watched now.
+        /// </summary>
+        Watched
+    }
+
+    /// <summary>
     /// Bounded list of the aircraft that the user selected or watched, one entry per aircraft, with a text format for saving it.
     /// </summary>
     public sealed class AircraftHistory
@@ -117,6 +138,16 @@ namespace AdsbCarMap.Data
         /// Number of entries, pinned ones included.
         /// </summary>
         public int Count => entries.Count;
+
+        /// <summary>
+        /// Checks whether an aircraft is in the history.
+        /// </summary>
+        /// <param name="hex">ICAO address of the aircraft.</param>
+        /// <returns>True when the history has an entry for the aircraft.</returns>
+        public bool Contains(string hex)
+        {
+            return entries.ContainsKey(hex.Trim().ToLowerInvariant());
+        }
 
         /// <summary>
         /// Notes an aircraft: adds an entry or updates the existing one.
@@ -215,6 +246,32 @@ namespace AdsbCarMap.Data
             return entries.Values
                 .OrderByDescending((AircraftHistoryEntry entry) => entry.Pinned)
                 .ThenByDescending((AircraftHistoryEntry entry) => entry.LastSeenUtc)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Gives the entries for display, narrowed by a group and a text.
+        /// </summary>
+        /// <param name="text">Text searched in the callsign, address, registration and type code, ignoring case and diacritics; null or blank matches everything.</param>
+        /// <param name="mode">Group of the entries.</param>
+        /// <param name="watchedNow">Addresses (lower case) of the aircraft that have a watch alert now; they count as watched.</param>
+        /// <returns>Matching entries in the display order.</returns>
+        public List<AircraftHistoryEntry> GetForDisplay(string? text, AircraftHistoryFilterMode mode, ISet<string> watchedNow)
+        {
+            string folded = string.IsNullOrWhiteSpace(text) ? string.Empty : TextFolding.Fold(text.Trim());
+
+            return GetForDisplay()
+                .Where((AircraftHistoryEntry entry) => mode switch
+                {
+                    AircraftHistoryFilterMode.Pinned => entry.Pinned,
+                    AircraftHistoryFilterMode.Watched => entry.Watched || watchedNow.Contains(entry.Hex),
+                    _ => true
+                })
+                .Where((AircraftHistoryEntry entry) => folded.Length == 0
+                    || TextFolding.Fold(entry.Hex).Contains(folded)
+                    || (entry.Callsign != null && TextFolding.Fold(entry.Callsign).Contains(folded))
+                    || (entry.Registration != null && TextFolding.Fold(entry.Registration).Contains(folded))
+                    || (entry.TypeCode != null && TextFolding.Fold(entry.TypeCode).Contains(folded)))
                 .ToList();
         }
 

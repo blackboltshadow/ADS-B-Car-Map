@@ -77,6 +77,21 @@ namespace AdsbCarMap.Services
                 GetHistory().Remove(hex);
                 Save();
             }
+
+            AircraftSightingStore.Remove(hex);
+        }
+
+        /// <summary>
+        /// Checks whether an aircraft is in the history.
+        /// </summary>
+        /// <param name="hex">ICAO address of the aircraft.</param>
+        /// <returns>True when the history has an entry for the aircraft.</returns>
+        public static bool Contains(string hex)
+        {
+            lock (SyncRoot)
+            {
+                return GetHistory().Contains(hex);
+            }
         }
 
         /// <summary>
@@ -89,6 +104,8 @@ namespace AdsbCarMap.Services
                 GetHistory().ClearUnpinned();
                 Save();
             }
+
+            AircraftSightingStore.PruneToHistory();
         }
 
         /// <summary>
@@ -100,6 +117,21 @@ namespace AdsbCarMap.Services
             lock (SyncRoot)
             {
                 return GetHistory().GetForDisplay();
+            }
+        }
+
+        /// <summary>
+        /// Gives the entries for display, narrowed by a group and a text.
+        /// </summary>
+        /// <param name="text">Text searched in the callsign, address, registration and type code; null or blank matches everything.</param>
+        /// <param name="mode">Group of the entries.</param>
+        /// <param name="watchedNow">Addresses (lower case) of the aircraft that have a watch alert now.</param>
+        /// <returns>Matching entries, the pinned ones first.</returns>
+        public static List<AircraftHistoryEntry> GetForDisplay(string? text, AircraftHistoryFilterMode mode, ISet<string> watchedNow)
+        {
+            lock (SyncRoot)
+            {
+                return GetHistory().GetForDisplay(text, mode, watchedNow);
             }
         }
 

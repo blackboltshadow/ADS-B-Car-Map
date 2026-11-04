@@ -316,7 +316,7 @@ namespace AdsbCarMap.Activities
             LinearLayout developer = CreateAggregate(root, "Dev", "developer", 20f);
 
             TextView version = new TextView(this);
-            version.Text = "ADS-B Car Map v" + BuildInfo.Version + " (" + BuildInfo.Build + ")";
+            version.Text = BuildInfo.AppName + " v" + BuildInfo.Version + " (" + BuildInfo.Build + ")";
             version.TextSize = 12f;
             version.SetPadding(Dp(4), Dp(4), 0, Dp(4));
             developer.AddView(version);
