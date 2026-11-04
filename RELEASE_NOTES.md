@@ -2,6 +2,39 @@
 
 Opis tego, co zostało wydane w kolejnych wersjach, od najnowszej. Wersja ma postać `0.<druga>.<trzecia>` i jest w pliku `Build/Version.txt`: przy nowym wydaniu rośnie druga cyfra, a trzecia wraca do 0 (0.3.0), przy poprawce rośnie tylko trzecia (0.3.1); decyduje o tym osoba przygotowująca wydanie. Numer kompilacji (`versionCode`) nigdy nie jest zerowany. Do wersji 0.2.163 trzecia cyfra była numerem kompilacji. Od wersji 0.2.163 każdej wersji odpowiada tag w git (`v<wersja>`) i wiersz w `Build/release-history.csv` (commit, rozmiar i SHA-256 paczki). Podsumowanie commitów dla wersji można wygenerować skryptem `Scripts\Release-Notes.ps1`. Wcześniejsze wersje nie mają tagów.
 
+## 0.8.0 (2026-11-04)
+
+Zmiany od wersji 0.7.0.
+
+**Mapa i samoloty**
+- Ciemny motyw mapy (ustawienie „Motyw mapy”: automatyczny według systemu lub trybu nocnego hosta w samochodzie, jasny, ciemny); kafelki są przyciemniane filtrem koloru, który odwraca jasność i zachowuje odcienie.
+- Pełna trasa zaznaczonego samolotu (tar1090 z adsb.lol) rysowana na mapie, zapisywana w pliku do lądowania i po restarcie aplikacji.
+- Zaznaczone samoloty spoza obszaru zapytania nie znikają po przesunięciu mapy (zapytanie po adresach hex).
+- Tryb „tylko wojskowe” pokazuje samoloty wojskowe z całego świata, z ustawieniami wyłączenia i częstotliwości.
+- Konsola dev na mapie (zoom, środek, GPS, wysłany obszar po zaokrągleniu, liczba samolotów, źródło, limit).
+
+**Strefy i ostrzeżenia (tylko telefon)**
+- Warstwa stref przestrzeni powietrznej PAŻP z rezerwacjami, wyborem rodzajów i stanów, filtrem przedziału wysokości, kartą strefy i powiadomieniami o aktywacji stref w pobliżu.
+- Ekran komunikatów Regionalnego Systemu Ostrzegania (kanał TVP) z wyborem kategorii i województw oraz powiadomieniami o nowych komunikatach. To nie jest oficjalny system ostrzegania.
+
+**Historia i kopia zapasowa**
+- Historia samolotów (zaznaczone i obserwowane), ekran lotów i obserwacji z wyszukiwaniem i filtrami, oznaczanie nowych znaków wywoławczych i tras.
+- Kopia zapasowa na koncie Google z wyborem kategorii, stanem, „Zapisz teraz”, usuwaniem oraz eksportem i importem pliku.
+
+**Inne**
+- Adaptacyjna ikona aplikacji bez białych krawędzi.
+- Wersja Debug instaluje się obok wersji z Google Play („ADS-B (DEV) Car Map”).
+- Naprawa: pobieranie tras nie zatrzymuje się już na stałe po błędzie platformy (np. „Socket closed”), a kolejne źródło jest używane także przy przekroczeniu czasu.
+
+Tekst „Co nowego” w Google Play dla tej wersji:
+
+```
+Mapa: ciemny motyw, pełna trasa zaznaczonego samolotu, samoloty wojskowe z całego świata.
+Telefon: strefy przestrzeni powietrznej PAŻP i komunikaty RSO z powiadomieniami.
+Historia samolotów i kopia zapasowa na koncie Google.
+Nowa adaptacyjna ikona i poprawka pobierania tras.
+```
+
 ## 0.7.0 (2026-11-03)
 
 Zmiany od wersji 0.6.0.
