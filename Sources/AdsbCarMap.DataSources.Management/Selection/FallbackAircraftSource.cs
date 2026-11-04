@@ -8,7 +8,7 @@ namespace AdsbCarMap.DataSources.Management.Selection
     /// <summary>
     /// Aircraft source that queries the sources in the order chosen by the user and, when a source gives no data (limit response, network or server error, invalid answer), asks the next one.
     /// </summary>
-    public sealed class FallbackAircraftSource : IAircraftSource, IRateLimitedSource, IMilitaryAircraftSource
+    public sealed class FallbackAircraftSource : IAircraftSource, IRateLimitedSource, IMilitaryAircraftSource, IAircraftByHexSource
     {
         /// <summary>
         /// Sources in the order of registration.
@@ -193,6 +193,72 @@ namespace AdsbCarMap.DataSources.Management.Selection
                     anySupports = true;
                     hardFailure = exception;
                     report?.Invoke(SourceEventKind.Failure, "Aircraft source " + source.Name + " failed (" + exception.GetType().Name + ") on the request for military aircraft", exception);
+                }
+            }
+
+            if (!anySupports)
+            {
+                return null;
+            }
+
+            if (hardFailure != null)
+            {
+                throw hardFailure;
+            }
+
+            throw new RateLimitedException(shortestWait ?? TimeSpan.Zero);
+        }
+
+        /// <summary>
+        /// Downloads aircraft by their ICAO addresses from the preferred source that has such a request, falling back to the next one that has it when a source is paused or fails.
+        /// </summary>
+        /// <param name="hexes">ICAO addresses of the aircraft.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The aircraft that the source knows, or null when no source has such a request.</returns>
+        /// <exception cref="RateLimitedException">Every source that has the request is paused after a limit response.</exception>
+        /// <exception cref="HttpRequestException">Every source that has the request failed and at least one failure was not a limit response; the last such failure is rethrown.</exception>
+        public async Task<IReadOnlyList<Aircraft>?> GetAircraftByHexAsync(IReadOnlyList<string> hexes, CancellationToken cancellationToken)
+        {
+            Exception? hardFailure = null;
+            TimeSpan? shortestWait = null;
+            bool anySupports = false;
+
+            foreach (IRateLimitedAircraftSource source in GetOrdered())
+            {
+                if (source is not IAircraftByHexSource byHex)
+                {
+                    continue;
+                }
+
+                RateLimitStatus status = source.GetRateLimitStatus();
+
+                if (!status.CanQuery)
+                {
+                    anySupports = true;
+                    shortestWait = Shorter(shortestWait, status.RemainingBlock);
+                    continue;
+                }
+
+                try
+                {
+                    IReadOnlyList<Aircraft>? result = await byHex.GetAircraftByHexAsync(hexes, cancellationToken);
+
+                    if (result != null)
+                    {
+                        return result;
+                    }
+                }
+                catch (RateLimitedException exception)
+                {
+                    anySupports = true;
+                    shortestWait = Shorter(shortestWait, exception.RetryAfter);
+                    report?.Invoke(SourceEventKind.Failure, "Aircraft source " + source.Name + " answered with a limit response (429) to the request by ICAO addresses, paused", null);
+                }
+                catch (Exception exception) when (SourceFailures.IsFailure(exception, cancellationToken))
+                {
+                    anySupports = true;
+                    hardFailure = exception;
+                    report?.Invoke(SourceEventKind.Failure, "Aircraft source " + source.Name + " failed (" + exception.GetType().Name + ") on the request by ICAO addresses", exception);
                 }
             }
 

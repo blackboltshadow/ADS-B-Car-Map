@@ -494,7 +494,7 @@ namespace AdsbCarMap.Map
         public MapController(IAircraftSource adsbClient, TileProvider tileProvider, RouteCache routeCache, SelectionState selectionState, AircraftEnricher? enricher = null, FlightCacheKeeper? keeper = null, FlightTrackStore? tracks = null)
         {
             flightTracks = tracks;
-            dataLoop = new AircraftDataLoop(adsbClient, enricher, keeper, tracks, GetQueryArea, GetPrimaryHex, PublishAircraft, MergeAircraftDetails, WantsGlobalMilitary);
+            dataLoop = new AircraftDataLoop(adsbClient, enricher, keeper, tracks, GetQueryArea, GetPrimaryHex, GetSelectedHexes, PublishAircraft, MergeAircraftDetails, WantsGlobalMilitary);
             tileLayer = new TileLayer(tileProvider);
             this.routeCache = routeCache;
             this.selectionState = selectionState;

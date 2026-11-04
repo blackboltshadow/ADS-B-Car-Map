@@ -9,7 +9,7 @@ namespace AdsbCarMap.DataSources.Management.Privacy
     /// <summary>
     /// Source of the aircraft that sends the wrapped source the center of a query rounded to a grid, with the radius enlarged so that the real area stays covered. The options are read at every query, so a changed setting takes effect at once.
     /// </summary>
-    public sealed class PrivacyAircraftSource : IAircraftSource, IRateLimitedSource, IMilitaryAircraftSource
+    public sealed class PrivacyAircraftSource : IAircraftSource, IRateLimitedSource, IMilitaryAircraftSource, IAircraftByHexSource
     {
         /// <summary>
         /// Wrapped source.
@@ -69,6 +69,17 @@ namespace AdsbCarMap.DataSources.Management.Privacy
         public Task<IReadOnlyList<Aircraft>?> GetMilitaryAircraftAsync(CancellationToken cancellationToken)
         {
             return inner is IMilitaryAircraftSource military ? military.GetMilitaryAircraftAsync(cancellationToken) : Task.FromResult<IReadOnlyList<Aircraft>?>(null);
+        }
+
+        /// <summary>
+        /// Passes the request for aircraft by their ICAO addresses to the wrapped source. It carries no position, so there is nothing to round.
+        /// </summary>
+        /// <param name="hexes">ICAO addresses of the aircraft.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The aircraft, or null when the wrapped source has no such request.</returns>
+        public Task<IReadOnlyList<Aircraft>?> GetAircraftByHexAsync(IReadOnlyList<string> hexes, CancellationToken cancellationToken)
+        {
+            return inner is IAircraftByHexSource byHex ? byHex.GetAircraftByHexAsync(hexes, cancellationToken) : Task.FromResult<IReadOnlyList<Aircraft>?>(null);
         }
 
         /// <inheritdoc />

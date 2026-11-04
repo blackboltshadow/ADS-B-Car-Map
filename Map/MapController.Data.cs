@@ -51,6 +51,18 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Returns the hex codes of all selected aircraft.
+        /// </summary>
+        /// <returns>A copy of the hex codes; empty when nothing is selected.</returns>
+        private IReadOnlyCollection<string> GetSelectedHexes()
+        {
+            lock (stateLock)
+            {
+                return selectedHexes.ToList();
+            }
+        }
+
+        /// <summary>
         /// Stores the downloaded aircraft and updates their trails.
         /// </summary>
         /// <param name="fetched">Downloaded aircraft.</param>

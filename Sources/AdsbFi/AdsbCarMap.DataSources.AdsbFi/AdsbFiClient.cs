@@ -9,8 +9,13 @@ namespace AdsbCarMap.DataSources.AdsbFi
     /// <summary>
     /// Client of the adsb.fi API returning the aircraft within a radius of a point and the data of a single aircraft. It only fetches and converts the data; pausing the requests after limit responses is up to the manager.
     /// </summary>
-    public sealed class AdsbFiClient : IAircraftSource, IAircraftLookupSource
+    public sealed class AdsbFiClient : IAircraftSource, IAircraftLookupSource, IAircraftByHexSource
     {
+        /// <summary>
+        /// Largest number of ICAO addresses in one request by address.
+        /// </summary>
+        private const int MaxHexesPerRequest = 100;
+
         /// <summary>
         /// Default base address of the adsb.fi API.
         /// </summary>
@@ -65,6 +70,31 @@ namespace AdsbCarMap.DataSources.AdsbFi
                 if (aircraft != null)
                 {
                     result.Add(aircraft);
+                }
+            }
+
+            return result;
+        }
+
+        /// <inheritdoc />
+        /// <exception cref="JsonException">Invalid JSON response.</exception>
+        public async Task<IReadOnlyList<Aircraft>?> GetAircraftByHexAsync(IReadOnlyList<string> hexes, CancellationToken cancellationToken)
+        {
+            List<Aircraft> result = new List<Aircraft>();
+            List<string> distinct = hexes.Select(hex => hex.Trim().ToLowerInvariant()).Where(hex => hex.Length > 0).Distinct().ToList();
+
+            for (int offset = 0; offset < distinct.Count; offset += MaxHexesPerRequest)
+            {
+                string path = "v2/hex/" + string.Join(",", distinct.Skip(offset).Take(MaxHexesPerRequest).Select(Uri.EscapeDataString));
+
+                foreach (AdsbFiAircraftRecord record in await GetRecordsAsync(path, cancellationToken))
+                {
+                    Aircraft? aircraft = record.ToAircraft();
+
+                    if (aircraft != null)
+                    {
+                        result.Add(aircraft);
+                    }
                 }
             }
 

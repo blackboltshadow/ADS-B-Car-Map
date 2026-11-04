@@ -30,6 +30,16 @@ namespace AdsbCarMap.Map
         private readonly IMilitaryAircraftSource? militarySource;
 
         /// <summary>
+        /// The request of the source for aircraft by their ICAO addresses, or null when the source has none.
+        /// </summary>
+        private readonly IAircraftByHexSource? byHexSource;
+
+        /// <summary>
+        /// Returns the ICAO addresses of all selected aircraft.
+        /// </summary>
+        private readonly Func<IReadOnlyCollection<string>> getSelectedHexes;
+
+        /// <summary>
         /// Tells whether the request for all the military aircraft is wanted now.
         /// </summary>
         private readonly Func<bool> wantsGlobalMilitary;
@@ -98,6 +108,7 @@ namespace AdsbCarMap.Map
         /// <param name="tracks">Full recorded paths of the selected flights, or null when they are not used.</param>
         /// <param name="getQuery">Returns the center and the radius in nautical miles of the area to download.</param>
         /// <param name="getPrimaryHex">Returns the hex code of the primary selected aircraft, or null when nothing is selected.</param>
+        /// <param name="getSelectedHexes">Returns the ICAO addresses of all selected aircraft, which are followed even when they leave the queried area.</param>
         /// <param name="publish">Stores the downloaded aircraft and updates their trails.</param>
         /// <param name="mergeDetails">Merges the completed data of an aircraft into the current list.</param>
         /// <param name="wantsGlobalMilitary">Tells whether the request for all the military aircraft is wanted now.</param>
@@ -108,12 +119,15 @@ namespace AdsbCarMap.Map
             FlightTrackStore? tracks,
             Func<(double Latitude, double Longitude, double RadiusNauticalMiles)> getQuery,
             Func<string?> getPrimaryHex,
+            Func<IReadOnlyCollection<string>> getSelectedHexes,
             Action<IReadOnlyList<Aircraft>, DateTime> publish,
             Action<Aircraft> mergeDetails,
             Func<bool> wantsGlobalMilitary)
         {
             this.source = source;
             this.militarySource = source as IMilitaryAircraftSource;
+            this.byHexSource = source as IAircraftByHexSource;
+            this.getSelectedHexes = getSelectedHexes;
             this.wantsGlobalMilitary = wantsGlobalMilitary;
             this.enricher = enricher;
             this.keeper = keeper;
@@ -228,11 +242,14 @@ namespace AdsbCarMap.Map
                         fetched = enricher.Apply(fetched);
                     }
 
-                    keeper?.Observe(fetched);
+                    IReadOnlyList<Aircraft> pinned = await GetPinnedAircraftAsync(fetched, cancellationToken);
+                    IReadOnlyList<Aircraft> shown = pinned.Count == 0 ? fetched : fetched.Concat(pinned).ToList();
+
+                    keeper?.Observe(shown);
 
                     DateTime fetchedAtUtc = DateTime.UtcNow;
 
-                    publish(fetched, fetchedAtUtc);
+                    publish(shown, fetchedAtUtc);
                     LiveTraffic.Update(fetched, fetchedAtUtc, latitude, longitude);
                     AircraftSightingStore.Observe(fetched);
 
@@ -241,8 +258,8 @@ namespace AdsbCarMap.Map
                         AlertMonitor.Process(fetched);
                     }
 
-                    RequestSelectedAircraftDetails(fetched, cancellationToken);
-                    RequestSelectedTrack(fetched, cancellationToken);
+                    RequestSelectedAircraftDetails(shown, cancellationToken);
+                    RequestSelectedTrack(shown, cancellationToken);
                     Volatile.Write(ref failed, 0);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -271,6 +288,59 @@ namespace AdsbCarMap.Map
                 {
                     return;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Downloads the selected aircraft that are not in the queried area, so that they stay on the map and keep their trails after the map is moved away from them. A failure is logged and only leaves them out of this download.
+        /// </summary>
+        /// <param name="fetched">Aircraft just downloaded for the queried area.</param>
+        /// <param name="cancellationToken">Token that stops the request.</param>
+        /// <returns>The selected aircraft missing from the area, empty when there are none or the source cannot answer.</returns>
+        private async Task<IReadOnlyList<Aircraft>> GetPinnedAircraftAsync(IReadOnlyList<Aircraft> fetched, CancellationToken cancellationToken)
+        {
+            IReadOnlyCollection<string> selected = getSelectedHexes();
+
+            if (byHexSource == null || selected.Count == 0)
+            {
+                return Array.Empty<Aircraft>();
+            }
+
+            HashSet<string> present = new HashSet<string>(fetched.Select(item => item.Hex), StringComparer.OrdinalIgnoreCase);
+            List<string> missing = selected.Where(hex => !present.Contains(hex)).ToList();
+
+            if (missing.Count == 0)
+            {
+                return Array.Empty<Aircraft>();
+            }
+
+            try
+            {
+                IReadOnlyList<Aircraft>? result = await byHexSource.GetAircraftByHexAsync(missing, cancellationToken);
+
+                if (result == null)
+                {
+                    return Array.Empty<Aircraft>();
+                }
+
+                HashSet<string> wanted = new HashSet<string>(missing, StringComparer.OrdinalIgnoreCase);
+                IReadOnlyList<Aircraft> pinned = result.Where(item => wanted.Contains(item.Hex)).ToList();
+
+                return enricher != null ? enricher.Apply(pinned) : pinned;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (RateLimitedException)
+            {
+                return Array.Empty<Aircraft>();
+            }
+            catch (Exception exception)
+            {
+                DevLogger.Warn(LogTag, "Pobieranie zaznaczonych samolotów poza obszarem nie powiodło się", exception);
+
+                return Array.Empty<Aircraft>();
             }
         }
 

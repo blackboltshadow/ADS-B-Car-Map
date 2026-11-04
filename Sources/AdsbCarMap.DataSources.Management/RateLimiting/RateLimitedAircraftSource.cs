@@ -7,7 +7,7 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
     /// <summary>
     /// Wraps an aircraft source and pauses its requests after limit responses, so that the source itself only has to report them.
     /// </summary>
-    public sealed class RateLimitedAircraftSource : IRateLimitedAircraftSource, IAircraftLookupSource, IMilitaryAircraftSource
+    public sealed class RateLimitedAircraftSource : IRateLimitedAircraftSource, IAircraftLookupSource, IMilitaryAircraftSource, IAircraftByHexSource
     {
         /// <summary>
         /// The wrapped source.
@@ -68,6 +68,45 @@ namespace AdsbCarMap.DataSources.Management.RateLimiting
             {
                 AircraftDetails? result = await lookup.GetAircraftDetailsAsync(hex, cancellationToken);
                 limiter.Reset();
+
+                return result;
+            }
+            catch (RateLimitedException exception)
+            {
+                throw new RateLimitedException(limiter.RegisterRateLimit(exception.RetryAfter));
+            }
+            catch (Exception exception) when (SourceFailures.IsFailure(exception, cancellationToken))
+            {
+                limiter.RegisterFailure(exception);
+
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        /// <exception cref="RateLimitedException">The source is paused or has just answered with a limit response.</exception>
+        public async Task<IReadOnlyList<Aircraft>?> GetAircraftByHexAsync(IReadOnlyList<string> hexes, CancellationToken cancellationToken)
+        {
+            if (inner is not IAircraftByHexSource byHex)
+            {
+                return null;
+            }
+
+            TimeSpan remainingBlock = limiter.GetRemainingBlock();
+
+            if (remainingBlock > TimeSpan.Zero)
+            {
+                throw new RateLimitedException(remainingBlock);
+            }
+
+            try
+            {
+                IReadOnlyList<Aircraft>? result = await byHex.GetAircraftByHexAsync(hexes, cancellationToken);
+
+                if (result != null)
+                {
+                    limiter.Reset();
+                }
 
                 return result;
             }
