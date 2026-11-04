@@ -116,6 +116,16 @@ namespace AdsbCarMap.Activities
         private Button? developerDataButton;
 
         /// <summary>
+        /// Line of the backup card that says whether the newest data is in the backup that the system holds.
+        /// </summary>
+        private TextView? backupStatusText;
+
+        /// <summary>
+        /// Title of the backup section, which gets a mark when the newest data waits to be taken by the system, so that it is seen without opening the section.
+        /// </summary>
+        private TextView? backupSectionLabel;
+
+        /// <summary>
         /// Card shared by the settings of the developer log, created with the screen.
         /// </summary>
         private LinearLayout? devLogCard;
@@ -222,6 +232,61 @@ namespace AdsbCarMap.Activities
             UpdateDeveloperDataButton();
             UpdateDevLogButton();
             RefreshSourceStatus();
+            RefreshBackupStatus();
+        }
+
+        /// <summary>
+        /// Works out on a background thread whether the system backup holds the newest data, and shows it in the backup card.
+        /// </summary>
+        private void RefreshBackupStatus()
+        {
+            if (backupStatusText == null)
+            {
+                return;
+            }
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    BackupSyncState state = BackupService.GetSyncState(this);
+
+                    RunOnUiThread(() =>
+                    {
+                        if (backupStatusText == null)
+                        {
+                            return;
+                        }
+
+                        if (!state.Active)
+                        {
+                            backupStatusText.Text = Loc.T("Kopia nie jest przesyłana");
+                            backupStatusText.SetTextColor(Color.Rgb(160, 160, 160));
+                        }
+                        else if (state.IsUpToDate)
+                        {
+                            backupStatusText.Text = Loc.T("✓ Kopia na koncie Google jest aktualna");
+                            backupStatusText.SetTextColor(Color.Rgb(120, 220, 140));
+                        }
+                        else
+                        {
+                            backupStatusText.Text = Loc.T("⏳ Najnowsza wersja czeka na przesłanie: ") + string.Join(", ", state.PendingIds.Select((string id) => Loc.T(BackupCategories.Find(id)!.Title)));
+                            backupStatusText.SetTextColor(Color.Rgb(255, 190, 80));
+                        }
+
+                        backupStatusText.Visibility = Android.Views.ViewStates.Visible;
+
+                        if (backupSectionLabel != null)
+                        {
+                            backupSectionLabel.Text = Loc.T("Kopia zapasowa") + (state.Active && !state.IsUpToDate ? " ⏳" : string.Empty);
+                        }
+                    });
+                }
+                catch (Exception exception)
+                {
+                    DevLogger.Error("SettingsActivity", "Nie udało się sprawdzić stanu kopii zapasowej", exception);
+                }
+            });
         }
 
         /// <summary>
@@ -300,6 +365,10 @@ namespace AdsbCarMap.Activities
 
             LinearLayout alerts = CreateAggregate(root, Loc.T("Alerty"), "alertsSection", 20f);
             GetTitledCard("alerts", Loc.T("Sprawdzanie w tle"), alerts);
+
+            LinearLayout backup = CreateAggregate(root, Loc.T("Kopia zapasowa"), "backupSection", 20f);
+            backupSectionLabel = (TextView)((LinearLayout)root.GetChildAt(root.IndexOfChild(backup) - 1)!).GetChildAt(0)!;
+            GetTitledCard("backup", Loc.T("Kopia na koncie Google i przenoszenie danych"), backup);
 
             LinearLayout advanced = CreateAggregate(root, Loc.T("Zaawansowane"), "advanced", 20f);
             GetTitledCard("dataSource", Loc.T("Źródło danych"), advanced);
@@ -394,6 +463,23 @@ namespace AdsbCarMap.Activities
             airspaceChoice.Click += (sender, args) => StartActivity(new Android.Content.Intent(this, typeof(AirspaceActivity)));
             titledCards["airspace"].AddView(airspaceChoice);
             titledCards["airspace"].AddView(CreateResetButton(Loc.T("Przywróć domyślne strefy"), AppSettings.AirspaceSettings, Loc.T("Przywrócono domyślne ustawienia stref")));
+            TextView backupHint = new TextView(this);
+            backupHint.Text = Loc.T("Wybierz, co system zapisuje w kopii na koncie Google, zobacz jej rozmiar i stan, zapisz ją od razu albo usuń. Te same dane można przenieść przez plik.");
+            StyleSecondary(backupHint);
+            backupHint.SetPadding(0, Dp(4), 0, 0);
+            titledCards["backup"].AddView(backupHint);
+
+            backupStatusText = new TextView(this);
+            backupStatusText.TextSize = 14f;
+            backupStatusText.SetTypeface(null, TypefaceStyle.Bold);
+            backupStatusText.SetPadding(0, Dp(6), 0, Dp(2));
+            backupStatusText.Visibility = Android.Views.ViewStates.Gone;
+            titledCards["backup"].AddView(backupStatusText);
+
+            Button backupOpen = new Button(this);
+            backupOpen.Text = Loc.T("Otwórz kopię zapasową");
+            backupOpen.Click += (sender, args) => StartActivity(new Android.Content.Intent(this, typeof(BackupActivity)));
+            titledCards["backup"].AddView(backupOpen);
             Button warningsOpen = new Button(this);
             warningsOpen.Text = Loc.T("Otwórz ostrzeżenia");
             warningsOpen.Click += (sender, args) => StartActivity(new Android.Content.Intent(this, typeof(WarningsActivity)));
