@@ -78,11 +78,15 @@ namespace AdsbCarMap.Activities
             AddText(root, Loc.T("Dane lotnisk i pasów startowych pochodzą z projektu OurAirports (ourairports.com), udostępnionego jako domena publiczna. ") + GetAirportDataDate(), 14f, Color.White, false, 4, true);
             AddText(root, Loc.T("Dane są dołączone do aplikacji i aktualizowane przy każdym wydaniu. Lotnisko wojskowe jest rozpoznawane po nazwie, więc zdarzają się pomyłki."), 13f, Color.Rgb(180, 180, 180), false, 6);
 
+            AddSection(root, Loc.T("Ostrzeżenia i przestrzeń powietrzna"));
+            AddText(root, Loc.T("Zagrożenia powietrzne: NEPTUN (neptun.in.ua). Strefy przestrzeni powietrznej: PAŻP (airspace.pansa.pl). Komunikaty ostrzegawcze: publiczny kanał TVP (komunikaty.tvp.pl)."), 14f, Color.White, false, 4, true);
+            AddText(root, Loc.T("To nieoficjalne kanały danych. Aplikacja nie jest oficjalnym systemem ostrzegania ani nie służy do planowania lotów. W razie zagrożenia kieruj się komunikatami służb."), 13f, Color.Rgb(180, 180, 180), false, 6);
+
             AddSection(root, Loc.T("Prywatność"));
             AddText(root, Loc.T("Aplikacja nie ma kont ani analityki i nie wysyła niczego poza tym, co potrzebne do działania mapy: do serwera samolotów (adsb.lol, airplanes.live lub adsb.fi, a gdy pierwszy nie odpowiada i zapasowe źródło jest włączone, do kolejnych) środek i promień widocznego obszaru mapy (gdy mapa podąża za Tobą, jest to Twoja okolica), do serwisów tras i danych samolotów (adsbdb.com, adsb.lol, hexdb.io, w kolejności z ustawień, a przy braku danych do kolejnych) znak wywoławczy lub kod ICAO zaznaczonego lub wyszukiwanego lotu, do serwera kafelków numery kafelków. Do każdego z nich dochodzi nagłówek User-Agent z nazwą aplikacji i opcjonalnym kontaktem właściciela. Twoja pozycja GPS służy tylko do wyświetlania na mapie i liczenia odległości na urządzeniu."), 14f, Color.White, false, 4);
 
             AddSection(root, Loc.T("Biblioteki"));
-            AddText(root, "AndroidX Car App Library (Android Auto), .NET for Android.", 14f, Color.White, false, 4);
+            AddText(root, Loc.T("AndroidX Car App Library (Android Auto) i inne biblioteki AndroidX, Kotlin i Guava (licencja Apache 2.0) oraz .NET for Android i powiązania Xamarin (licencja MIT). Pełna lista i teksty licencji: ") + RepositoryUrl + "/blob/main/THIRD-PARTY-NOTICES.md", 14f, Color.White, false, 4, true);
 
             return scrollView;
         }
