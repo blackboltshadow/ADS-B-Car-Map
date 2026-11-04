@@ -451,7 +451,7 @@ namespace AdsbCarMap.Activities
                 (bool Known, double Latitude, double Longitude) user = controller.GetUserLocation();
 
                 aircraftCard.Visibility = ViewStates.Gone;
-                airportCard.Bind(airport, AppServices.Airports.GetRunways(airport), user.Known, user.Latitude, user.Longitude, AppServices.Favorites.Contains(airport.Icao));
+                airportCard.Bind(airport, AppServices.Airports.GetRunways(airport), AppServices.Airports.GetFrequencies(airport), user.Known, user.Latitude, user.Longitude, AppServices.Favorites.Contains(airport.Icao));
                 airportCard.Visibility = ViewStates.Visible;
                 UpdateCoveredArea();
 

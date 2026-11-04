@@ -155,4 +155,12 @@ namespace AdsbCarMap.Data
     /// <param name="HighEndLatitude">Latitude of the high-numbered end.</param>
     /// <param name="HighEndLongitude">Longitude of the high-numbered end.</param>
     public sealed record Runway(int LengthFeet, int WidthFeet, string Surface, bool IsLighted, string LowEndName, double LowEndLatitude, double LowEndLongitude, string HighEndName, double HighEndLatitude, double HighEndLongitude);
+
+    /// <summary>
+    /// Radio frequency of an airport.
+    /// </summary>
+    /// <param name="Type">Type of the service as in OurAirports, for example TWR, GND, ATIS or APP.</param>
+    /// <param name="Description">Description of the frequency, possibly empty.</param>
+    /// <param name="Megahertz">Frequency in MHz.</param>
+    public sealed record AirportFrequency(string Type, string Description, double Megahertz);
 }

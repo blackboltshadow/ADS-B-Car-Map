@@ -18,6 +18,11 @@ namespace AdsbCarMap.Data
         private const int RunwayColumns = 11;
 
         /// <summary>
+        /// Number of columns of the frequencies file.
+        /// </summary>
+        private const int FrequencyColumns = 4;
+
+        /// <summary>
         /// Length of a runway in feet from which the airport counts as having a long runway, about 800 m.
         /// </summary>
         private const int LongRunwayFeet = 2625;
@@ -56,6 +61,11 @@ namespace AdsbCarMap.Data
         /// Runways by the ICAO code of the airport, in upper case.
         /// </summary>
         private Dictionary<string, Runway[]> runways = new Dictionary<string, Runway[]>();
+
+        /// <summary>
+        /// Frequencies by the ICAO code of the airport, in upper case.
+        /// </summary>
+        private Dictionary<string, AirportFrequency[]> frequencies = new Dictionary<string, AirportFrequency[]>();
 
         /// <summary>
         /// Non-zero when the data is ready to use.
@@ -203,6 +213,16 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
+        /// Returns the radio frequencies of an airport.
+        /// </summary>
+        /// <param name="airport">Airport.</param>
+        /// <returns>Frequencies in the order of the file, possibly none.</returns>
+        public IReadOnlyList<AirportFrequency> GetFrequencies(Airport airport)
+        {
+            return frequencies.TryGetValue(airport.Icao.ToUpperInvariant(), out AirportFrequency[]? list) ? list : Array.Empty<AirportFrequency>();
+        }
+
+        /// <summary>
         /// Returns the runways of an airport.
         /// </summary>
         /// <param name="airport">Airport.</param>
@@ -347,7 +367,8 @@ namespace AdsbCarMap.Data
         /// </summary>
         /// <param name="airportLines">Tab separated lines of the airports file.</param>
         /// <param name="runwayLines">Tab separated lines of the runways file.</param>
-        public void LoadFrom(IEnumerable<string> airportLines, IEnumerable<string> runwayLines)
+        /// <param name="frequencyLines">Tab separated lines of the frequencies file, or null when there are none.</param>
+        public void LoadFrom(IEnumerable<string> airportLines, IEnumerable<string> runwayLines, IEnumerable<string>? frequencyLines = null)
         {
             List<Airport> list = new List<Airport>();
 
@@ -414,7 +435,32 @@ namespace AdsbCarMap.Data
                 runwayList.Add(runway);
             }
 
+            Dictionary<string, List<AirportFrequency>> frequencyLists = new Dictionary<string, List<AirportFrequency>>();
+
+            foreach (string line in frequencyLines ?? Array.Empty<string>())
+            {
+                string[] fields = line.Split('\t');
+
+                if (fields.Length < FrequencyColumns
+                    || !double.TryParse(fields[3], NumberStyles.Float, CultureInfo.InvariantCulture, out double megahertz)
+                    || megahertz <= 0.0)
+                {
+                    continue;
+                }
+
+                string key = fields[0].ToUpperInvariant();
+
+                if (!frequencyLists.TryGetValue(key, out List<AirportFrequency>? frequencyList))
+                {
+                    frequencyList = new List<AirportFrequency>();
+                    frequencyLists[key] = frequencyList;
+                }
+
+                frequencyList.Add(new AirportFrequency(fields[1].Trim().ToUpperInvariant(), fields[2], megahertz));
+            }
+
             airports = sorted;
+            frequencies = frequencyLists.ToDictionary(item => item.Key, item => item.Value.ToArray());
             grid = cells.ToDictionary(item => item.Key, item => item.Value.ToArray());
             byIcao = codes;
             runways = runwayLists.ToDictionary(item => item.Key, item => item.Value.ToArray());

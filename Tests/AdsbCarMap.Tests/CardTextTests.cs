@@ -476,6 +476,40 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// All frequencies are listed one per line: main types in a fixed order, other types after them, repeats once.
+        /// </summary>
+        [Fact]
+        public void AirportLines_AllFrequenciesOnePerLine()
+        {
+            List<AirportFrequency> frequencies = new List<AirportFrequency>
+            {
+                new AirportFrequency("GND", "Ground", 121.905),
+                new AirportFrequency("TWR", "Tower 2", 119.0),
+                new AirportFrequency("VOLMET", "Volmet", 127.6),
+                new AirportFrequency("TWR", "Tower", 118.3),
+                new AirportFrequency("TWR", "Tower again", 118.3),
+                new AirportFrequency("ATIS", string.Empty, 120.455),
+                new AirportFrequency("XYZ", "Unknown kind", 130.0),
+            };
+
+            List<string> lines = AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 0.0, 0.0, DisplayUnits.Default, frequencies);
+            int start = lines.IndexOf("Częstotliwości (MHz):");
+
+            Assert.True(start >= 0);
+            Assert.Equal(new string[] { "ATIS 120.455 · Automatyczna informacja o lotnisku", "TWR 118.300 · wieża · Tower", "TWR 119.000 · wieża · Tower 2", "GND 121.905 · kontrola ruchu naziemnego · Ground", "VOLMET 127.600 · pogoda dla załóg w locie (VOLMET) · Volmet", "XYZ 130.000 · Unknown kind" }, lines.Skip(start + 1).ToArray());
+        }
+
+        /// <summary>
+        /// No frequency lines are added without frequencies.
+        /// </summary>
+        [Fact]
+        public void AirportLines_NoFrequencyLinesWithoutFrequencies()
+        {
+            Assert.DoesNotContain(AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 0.0, 0.0, DisplayUnits.Default, null), item => item.StartsWith("Częstotliwości", StringComparison.Ordinal));
+            Assert.DoesNotContain(AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 0.0, 0.0, DisplayUnits.Default, Array.Empty<AirportFrequency>()), item => item.StartsWith("Częstotliwości", StringComparison.Ordinal));
+        }
+
+        /// <summary>
         /// The full type name is shown with the manufacturer and the type code, without repeating either of them.
         /// </summary>
         [Fact]

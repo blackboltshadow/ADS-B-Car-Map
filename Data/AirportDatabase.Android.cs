@@ -26,6 +26,11 @@ namespace AdsbCarMap.Data
         private const string RunwaysAsset = "Airports/runways.tsv";
 
         /// <summary>
+        /// Asset with the frequencies.
+        /// </summary>
+        private const string FrequenciesAsset = "Airports/frequencies.tsv";
+
+        /// <summary>
         /// Non-zero when the loading has been started.
         /// </summary>
         private int loadStarted;
@@ -58,7 +63,7 @@ namespace AdsbCarMap.Data
                     return;
                 }
 
-                LoadFrom(ReadLines(assets, AirportsAsset), ReadLines(assets, RunwaysAsset));
+                LoadFrom(ReadLines(assets, AirportsAsset), ReadLines(assets, RunwaysAsset), ReadLines(assets, FrequenciesAsset));
                 Log.Info(LogTag, string.Format(CultureInfo.InvariantCulture, "Wczytano {0} lotnisk i {1} pasów w {2} ms", Count, RunwayCount, Environment.TickCount64 - started));
             }
             catch (Exception exception)

@@ -1,12 +1,13 @@
 <#
 .SYNOPSIS
-Downloads the newest OurAirports data and writes the compact airport and runway files bundled with the application.
+Downloads the newest OurAirports data and writes the compact airport, runway and frequency files bundled with the application.
 
 .DESCRIPTION
-Source: https://ourairports.com/data/ (public domain). The script downloads airports.csv and runways.csv, keeps large, medium and small airports and heliports (seaplane bases and closed airports are dropped) and the runways of those airports that have coordinates at both ends, and writes tab separated files with only the columns the application needs:
+Source: https://ourairports.com/data/ (public domain). The script downloads airports.csv, runways.csv and airport-frequencies.csv, keeps large, medium and small airports and heliports (seaplane bases and closed airports are dropped) and the runways of those airports that have coordinates at both ends, and writes tab separated files with only the columns the application needs:
 
 airports.tsv: icao, iata, type (L large, M medium, S small, H heliport), name, municipality, country, latitude, longitude, elevation in feet, scheduled service (0/1), military (0/1, guessed from the name).
 runways.tsv: icao, length in feet, width in feet, surface, lighted (0/1), low end ident, low end latitude, low end longitude, high end ident, high end latitude, high end longitude.
+frequencies.tsv: icao, type (TWR, GND, ATIS...), description, frequency in MHz (the frequencies of the kept airports).
 
 Files are rewritten only when their content changed, and airports.meta (counts and SHA-256 of the files) only then, so a run with unchanged data leaves the working tree clean. Release.ps1 runs this script first; when the data changed it asks to commit the new files before building.
 
@@ -34,7 +35,7 @@ $download = Join-Path ([IO.Path]::GetTempPath()) ("airport-data-" + [Guid]::NewG
 New-Item -ItemType Directory -Force $download | Out-Null
 
 try {
-    foreach ($name in "airports.csv", "runways.csv") {
+    foreach ($name in "airports.csv", "runways.csv", "airport-frequencies.csv") {
         Write-Host "Downloading $name ..."
         Invoke-WebRequest -UseBasicParsing -Uri "$Url/$name" -OutFile (Join-Path $download $name)
     }
@@ -86,11 +87,24 @@ try {
 
     $runwayLines.Sort([StringComparer]::Ordinal)
 
+    $frequencyLines = New-Object System.Collections.Generic.List[string]
+
+    foreach ($row in (Import-Csv -Path (Join-Path $download "airport-frequencies.csv") -Encoding UTF8)) {
+        if (-not $included.ContainsKey($row.airport_ident)) { continue }
+        if (-not $row.frequency_mhz) { continue }
+
+        $fields = @((Clean $included[$row.airport_ident]), (Clean $row.type), (Clean $row.description), (Clean $row.frequency_mhz))
+
+        $frequencyLines.Add($fields -join "`t")
+    }
+
+    $frequencyLines.Sort([StringComparer]::Ordinal)
+
     New-Item -ItemType Directory -Force $OutputDirectory | Out-Null
 
     $changed = $false
 
-    foreach ($pair in @(@("airports.tsv", $airportLines), @("runways.tsv", $runwayLines))) {
+    foreach ($pair in @(@("airports.tsv", $airportLines), @("runways.tsv", $runwayLines), @("frequencies.tsv", $frequencyLines))) {
         $path = Join-Path $OutputDirectory $pair[0]
         $text = ($pair[1] -join "`n") + "`n"
         $existing = if (Test-Path $path) { [IO.File]::ReadAllText($path, $utf8) } else { $null }
@@ -108,7 +122,8 @@ try {
     if ($changed) {
         $airportHash = (Get-FileHash (Join-Path $OutputDirectory "airports.tsv") -Algorithm SHA256).Hash
         $runwayHash = (Get-FileHash (Join-Path $OutputDirectory "runways.tsv") -Algorithm SHA256).Hash
-        $meta = "source=OurAirports (public domain)`ndate=$((Get-Date).ToString('yyyy-MM-dd'))`nairports=$($airportLines.Count)`nrunways=$($runwayLines.Count)`nairports.sha256=$airportHash`nrunways.sha256=$runwayHash`n"
+        $frequencyHash = (Get-FileHash (Join-Path $OutputDirectory "frequencies.tsv") -Algorithm SHA256).Hash
+        $meta = "source=OurAirports (public domain)`ndate=$((Get-Date).ToString('yyyy-MM-dd'))`nairports=$($airportLines.Count)`nrunways=$($runwayLines.Count)`nfrequencies=$($frequencyLines.Count)`nairports.sha256=$airportHash`nrunways.sha256=$runwayHash`nfrequencies.sha256=$frequencyHash`n"
 
         [IO.File]::WriteAllText((Join-Path $OutputDirectory "airports.meta"), $meta, $utf8)
         Write-Host "Airport data changed. Commit the files in $OutputDirectory." -ForegroundColor Yellow

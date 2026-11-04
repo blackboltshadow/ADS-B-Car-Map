@@ -364,6 +364,26 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// Frequencies are grouped by airport, read in the right order, and invalid lines are skipped.
+        /// </summary>
+        [Fact]
+        public void GetFrequencies_ReturnsParsedFrequenciesOfAirport()
+        {
+            AirportDatabase database = new AirportDatabase();
+            database.LoadFrom(
+                new string[] { AirportLine("EPWA", "WAW", "L", "Chopin", "Warsaw", 52.0, 21.0), AirportLine("EPKK", "KRK", "L", "Balice", "Krakow", 50.0, 19.8) },
+                Array.Empty<string>(),
+                new string[] { "EPWA\tTWR\tOkecie TOWER\t118.305", "epwa\tatis\t\t120.455", "EPWA\tGND\tbad\tx", "EPWA\tAPP\tzero\t0", "short\tline" });
+
+            IReadOnlyList<AirportFrequency> frequencies = database.GetFrequencies(database.Find("EPWA")!);
+
+            Assert.Equal(2, frequencies.Count);
+            Assert.Equal(new AirportFrequency("TWR", "Okecie TOWER", 118.305), frequencies[0]);
+            Assert.Equal("ATIS", frequencies[1].Type);
+            Assert.Empty(database.GetFrequencies(database.Find("EPKK")!));
+        }
+
+        /// <summary>
         /// A runway line with invalid coordinates is skipped.
         /// </summary>
         [Fact]

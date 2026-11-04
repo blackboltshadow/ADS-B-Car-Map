@@ -339,7 +339,7 @@ namespace AdsbCarMap.Activities
             (bool Known, double Latitude, double Longitude) user = LiveTraffic.GetUserLocation();
             List<string> lines = new List<string> { AirportCardText.BuildDescriptor(airport) };
 
-            lines.AddRange(AirportCardText.BuildLines(airport, AppServices.Airports.GetRunways(airport), user.Known, user.Latitude, user.Longitude));
+            lines.AddRange(AirportCardText.BuildLines(airport, AppServices.Airports.GetRunways(airport), user.Known, user.Latitude, user.Longitude, AppServices.Airports.GetFrequencies(airport)));
 
             bool isFavorite = AppServices.Favorites.Contains(airport.Icao);
             string icao = airport.Icao;

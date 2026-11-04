@@ -106,7 +106,7 @@ namespace AdsbCarMap.Map
             lines.Add(new PopupLine(AirportCardText.BuildTitle(airport), PopupLineStyle.Bold, 0.0f));
             lines.Add(new PopupLine(AirportCardText.BuildDescriptor(airport) + (AppServices.Favorites.Contains(airport.Icao) ? Loc.T(" · ★ ulubione") : string.Empty), PopupLineStyle.Accent, 0.0f));
 
-            foreach (string text in AirportCardText.BuildLines(airport, AppServices.Airports.GetRunways(airport), known, latitude, longitude))
+            foreach (string text in AirportCardText.BuildLines(airport, AppServices.Airports.GetRunways(airport), known, latitude, longitude, AppServices.Airports.GetFrequencies(airport)))
             {
                 lines.Add(new PopupLine(text, PopupLineStyle.Normal, 0.0f));
             }

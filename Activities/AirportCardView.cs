@@ -102,16 +102,17 @@ namespace AdsbCarMap.Activities
         /// </summary>
         /// <param name="airport">Airport.</param>
         /// <param name="runways">Runways of the airport.</param>
+        /// <param name="frequencies">Radio frequencies of the airport.</param>
         /// <param name="hasUserLocation">Whether the user position is known.</param>
         /// <param name="userLatitude">Latitude of the user.</param>
         /// <param name="userLongitude">Longitude of the user.</param>
         /// <param name="isFavorite">Whether the airport is a favorite.</param>
-        public void Bind(Airport airport, IReadOnlyList<Runway> runways, bool hasUserLocation, double userLatitude, double userLongitude, bool isFavorite)
+        public void Bind(Airport airport, IReadOnlyList<Runway> runways, IReadOnlyList<AirportFrequency> frequencies, bool hasUserLocation, double userLatitude, double userLongitude, bool isFavorite)
         {
             nameText.Text = AirportCardText.BuildTitle(airport);
             favoriteButton.Text = isFavorite ? "★" : "☆";
             descriptorText.Text = AirportCardText.BuildDescriptor(airport);
-            detailsText.Text = string.Join("\n", AirportCardText.BuildLines(airport, runways, hasUserLocation, userLatitude, userLongitude));
+            detailsText.Text = string.Join("\n", AirportCardText.BuildLines(airport, runways, hasUserLocation, userLatitude, userLongitude, frequencies));
         }
 
         /// <summary>

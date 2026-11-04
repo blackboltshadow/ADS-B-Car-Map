@@ -70,9 +70,9 @@ Zapis „MIT AND Apache-2.0” oznacza: powiązanie (binding) dla .NET napisane 
 
 | Dane | Źródło | Licencja |
 |---|---|---|
-| Lotniska, helipady i pasy startowe (`Assets/Airports`) | OurAirports, https://ourairports.com/data/ (pliki publikowane na https://davidmegginson.github.io/ourairports-data), autor David Megginson | domena publiczna |
+| Lotniska, helipady, pasy startowe i częstotliwości (`Assets/Airports`) | OurAirports, https://ourairports.com/data/ (pliki publikowane na https://davidmegginson.github.io/ourairports-data), autor David Megginson | domena publiczna |
 
-Dane są dołączone do aplikacji w uproszczonej postaci: aplikacja zachowuje duże, średnie i małe lotniska oraz helipady (bez wodnosamolotowych i zamkniętych) i pasy startowe, które mają współrzędne obu końców, oraz tylko kolumny potrzebne do działania. Stan na 2026-11-04: 71 343 lotnisk i 14 390 pasów. Skrót SHA-256 plików i datę pobrania zapisuje `Assets/Airports/airports.meta`, a dane odświeża `Scripts\Update-AirportData.ps1` przed każdym wydaniem. OurAirports udostępnia dane bez gwarancji dokładności i kompletności, więc nie wolno używać ich do nawigacji lotniczej ani planowania lotów. Aplikacja pokazuje te informacje także na ekranie „O aplikacji”.
+Dane są dołączone do aplikacji w uproszczonej postaci: aplikacja zachowuje duże, średnie i małe lotniska oraz helipady (bez wodnosamolotowych i zamkniętych) i pasy startowe, które mają współrzędne obu końców, oraz częstotliwości radiowe tych lotnisk, a z kolumn tylko te potrzebne do działania. Stan na 2026-11-04: 71 343 lotnisk, 14 390 pasów i 29 670 częstotliwości. Skrót SHA-256 plików i datę pobrania zapisuje `Assets/Airports/airports.meta`, a dane odświeża `Scripts\Update-AirportData.ps1` przed każdym wydaniem. OurAirports udostępnia dane bez gwarancji dokładności i kompletności, więc nie wolno używać ich do nawigacji lotniczej ani planowania lotów. Aplikacja pokazuje te informacje także na ekranie „O aplikacji”.
 
 ## Licencja Apache 2.0
 
