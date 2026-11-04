@@ -10,7 +10,7 @@
 	<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 	<uses-permission android:name="androidx.car.app.NAVIGATION_TEMPLATES" />
 	<uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />
-	<application android:label="${AppLabel}" android:icon="@drawable/ic_launcher" android:allowBackup="true" android:fullBackupOnly="true" android:backupAgent="com.blackboltshadow.adsbcarmap.AppBackupAgent" android:fullBackupContent="@xml/backup_rules" android:dataExtractionRules="@xml/data_extraction_rules">
+	<application android:label="${AppLabel}" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:fullBackupOnly="true" android:backupAgent="com.blackboltshadow.adsbcarmap.AppBackupAgent" android:fullBackupContent="@xml/backup_rules" android:dataExtractionRules="@xml/data_extraction_rules">
 		<meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
 		<meta-data android:name="androidx.car.app.minCarApiLevel" android:value="1" />
 		<provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider" android:exported="false" android:grantUriPermissions="true">
