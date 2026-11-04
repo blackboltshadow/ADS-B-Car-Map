@@ -91,7 +91,7 @@ namespace AdsbCarMap.Activities
         /// <summary>
         /// Controller of the map drawn on the phone screen.
         /// </summary>
-        private readonly MapController controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes, AppServices.Selection, AppServices.Enricher, AppServices.FlightKeeper);
+        private readonly MapController controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes, AppServices.Selection, AppServices.Enricher, AppServices.FlightKeeper, AppServices.FlightTracks);
 
         /// <summary>
         /// Button that isolates the selected aircraft.

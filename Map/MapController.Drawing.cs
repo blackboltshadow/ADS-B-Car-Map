@@ -135,6 +135,7 @@ namespace AdsbCarMap.Map
             double currentUserLatitude;
             double currentUserLongitude;
             string? followed;
+            string? primary;
             IReadOnlySet<string> selection;
             bool isolated;
             bool onlyMilitary;
@@ -160,6 +161,7 @@ namespace AdsbCarMap.Map
                 currentUserLatitude = userLatitude;
                 currentUserLongitude = userLongitude;
                 followed = followedHex;
+                primary = primaryHex;
                 selection = selectedHexes;
                 isolated = isolateSelected;
                 onlyMilitary = militaryOnly;
@@ -224,6 +226,7 @@ namespace AdsbCarMap.Map
             List<(string Hex, float X, float Y)> hits = new List<(string Hex, float X, float Y)>();
 
             IReadOnlyList<AircraftFilter> activeFilters = AppServices.Filters.ActiveFilters;
+            bool trailsEnabled = AppSettings.TrailDuration > TimeSpan.Zero;
 
             foreach (Aircraft item in snapshot)
             {
@@ -240,8 +243,15 @@ namespace AdsbCarMap.Map
                 (double Latitude, double Longitude) position = MapMath.Extrapolate(item, elapsedSeconds);
                 (float X, float Y) screen = WebMercator.ProjectToScreen(position.Latitude, position.Longitude, latitude, longitude, zoomLevel, width, height);
 
-                if (selection.Contains(item.Hex) && trails.TryGetValue(item.Hex, out TrailPoint[]? trail))
+                if (selection.Contains(item.Hex))
                 {
+                    TrailPoint[] trail = trails.TryGetValue(item.Hex, out TrailPoint[]? local) ? local : Array.Empty<TrailPoint>();
+
+                    if (flightTracks != null && trailsEnabled && item.Hex == primary)
+                    {
+                        trail = flightTracks.Compose(item.Hex, trail);
+                    }
+
                     DrawTrail(canvas, trail, item, screen.X, screen.Y, latitude, longitude, zoomLevel, width, height);
                 }
 

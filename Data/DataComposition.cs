@@ -34,6 +34,11 @@ namespace AdsbCarMap.Data
         public static readonly TimeSpan FlightInfoSaveDelay = TimeSpan.FromSeconds(5);
 
         /// <summary>
+        /// Minimum time between two downloads of the full path of the same flight.
+        /// </summary>
+        public static readonly TimeSpan FlightTrackRefreshInterval = TimeSpan.FromSeconds(60);
+
+        /// <summary>
         /// Creates everything.
         /// </summary>
         /// <param name="flightCacheDirectory">Directory in which the memory of the flight information is kept in files.</param>
@@ -75,6 +80,7 @@ namespace AdsbCarMap.Data
 
             Enricher = new AircraftEnricher(AircraftSources, new List<IRateLimitedSource> { adsbdb, hexdb }, settings.DetailsEnabled, AircraftMemory);
             Keeper = new FlightCacheKeeper(RouteMemory, AircraftMemory);
+            Tracks = new FlightTrackStore(new RateLimitedTrackSource(new AdsbLolTrackClient(createHttpClient(AdsbLolTrackClient.DefaultBaseAddress))), FlightTrackRefreshInterval);
         }
 
         /// <summary>
@@ -111,6 +117,11 @@ namespace AdsbCarMap.Data
         /// Keeps the memory of the flight information in line with the visible aircraft: marks the visible flights as seen and closes those that have landed.
         /// </summary>
         public FlightCacheKeeper Keeper { get; }
+
+        /// <summary>
+        /// Full recorded paths of the selected flights, which extend the trail collected on the phone back to the takeoff.
+        /// </summary>
+        public FlightTrackStore Tracks { get; }
 
         /// <summary>
         /// Number of flights and aircraft whose information is kept in the memory, including the answers that nothing is known.

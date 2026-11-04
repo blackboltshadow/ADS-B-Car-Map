@@ -177,6 +177,11 @@ namespace AdsbCarMap.Map
         private readonly TrailPainter trailPainter = new TrailPainter();
 
         /// <summary>
+        /// Full recorded paths that extend the trail of the selected aircraft back to the takeoff, or null when they are not used.
+        /// </summary>
+        private readonly FlightTrackStore? flightTracks;
+
+        /// <summary>
         /// Paint used to draw the aircraft labels.
         /// </summary>
         private readonly Paint labelPaint = new Paint(PaintFlags.AntiAlias);
@@ -485,9 +490,11 @@ namespace AdsbCarMap.Map
         /// <param name="selectionState">Selection and filters shared with the other map.</param>
         /// <param name="enricher">Completes the data of the selected aircraft from the other sources, or null when it is not used.</param>
         /// <param name="keeper">Marks the visible flights as seen and closes the landed ones in the memory of the flight information, or null when it is not used.</param>
-        public MapController(IAircraftSource adsbClient, TileProvider tileProvider, RouteCache routeCache, SelectionState selectionState, AircraftEnricher? enricher = null, FlightCacheKeeper? keeper = null)
+        /// <param name="tracks">Full recorded paths that extend the trail of the selected aircraft back to the takeoff, or null when they are not used.</param>
+        public MapController(IAircraftSource adsbClient, TileProvider tileProvider, RouteCache routeCache, SelectionState selectionState, AircraftEnricher? enricher = null, FlightCacheKeeper? keeper = null, FlightTrackStore? tracks = null)
         {
-            dataLoop = new AircraftDataLoop(adsbClient, enricher, keeper, GetQueryArea, GetPrimaryHex, PublishAircraft, MergeAircraftDetails, WantsGlobalMilitary);
+            flightTracks = tracks;
+            dataLoop = new AircraftDataLoop(adsbClient, enricher, keeper, tracks, GetQueryArea, GetPrimaryHex, PublishAircraft, MergeAircraftDetails, WantsGlobalMilitary);
             tileLayer = new TileLayer(tileProvider);
             this.routeCache = routeCache;
             this.selectionState = selectionState;

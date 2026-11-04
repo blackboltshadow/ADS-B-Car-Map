@@ -45,6 +45,11 @@ namespace AdsbCarMap.Map
         private readonly FlightCacheKeeper? keeper;
 
         /// <summary>
+        /// Full recorded paths of the selected flights, or null when they are not used.
+        /// </summary>
+        private readonly FlightTrackStore? tracks;
+
+        /// <summary>
         /// Returns the center and the radius in nautical miles of the area to download.
         /// </summary>
         private readonly Func<(double Latitude, double Longitude, double RadiusNauticalMiles)> getQuery;
@@ -90,6 +95,7 @@ namespace AdsbCarMap.Map
         /// <param name="source">Source of the aircraft positions.</param>
         /// <param name="enricher">Completes the data of the selected aircraft from the other sources, or null when it is not used.</param>
         /// <param name="keeper">Marks the visible flights as seen and closes the landed ones in the memory of the flight information, or null when it is not used.</param>
+        /// <param name="tracks">Full recorded paths of the selected flights, or null when they are not used.</param>
         /// <param name="getQuery">Returns the center and the radius in nautical miles of the area to download.</param>
         /// <param name="getPrimaryHex">Returns the hex code of the primary selected aircraft, or null when nothing is selected.</param>
         /// <param name="publish">Stores the downloaded aircraft and updates their trails.</param>
@@ -99,6 +105,7 @@ namespace AdsbCarMap.Map
             IAircraftSource source,
             AircraftEnricher? enricher,
             FlightCacheKeeper? keeper,
+            FlightTrackStore? tracks,
             Func<(double Latitude, double Longitude, double RadiusNauticalMiles)> getQuery,
             Func<string?> getPrimaryHex,
             Action<IReadOnlyList<Aircraft>, DateTime> publish,
@@ -110,6 +117,7 @@ namespace AdsbCarMap.Map
             this.wantsGlobalMilitary = wantsGlobalMilitary;
             this.enricher = enricher;
             this.keeper = keeper;
+            this.tracks = tracks;
             this.getQuery = getQuery;
             this.getPrimaryHex = getPrimaryHex;
             this.publish = publish;
@@ -234,6 +242,7 @@ namespace AdsbCarMap.Map
                     }
 
                     RequestSelectedAircraftDetails(fetched, cancellationToken);
+                    RequestSelectedTrack(cancellationToken);
                     Volatile.Write(ref failed, 0);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -263,6 +272,38 @@ namespace AdsbCarMap.Map
                     return;
                 }
             }
+        }
+
+        /// <summary>
+        /// Starts downloading the full recorded path of the primary selected aircraft, unless the trails are switched off in the settings.
+        /// </summary>
+        /// <param name="cancellationToken">Token that stops the request.</param>
+        private void RequestSelectedTrack(CancellationToken cancellationToken)
+        {
+            string? hex = getPrimaryHex();
+
+            if (tracks == null || hex == null || AppSettings.TrailDuration <= TimeSpan.Zero)
+            {
+                return;
+            }
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await tracks.RefreshAsync(hex, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                }
+                catch (RateLimitedException)
+                {
+                }
+                catch (Exception exception)
+                {
+                    DevLogger.Warn(LogTag, "Pobieranie pełnego śladu lotu nie powiodło się", exception);
+                }
+            }, cancellationToken);
         }
 
         /// <summary>

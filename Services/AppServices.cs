@@ -110,6 +110,11 @@ namespace AdsbCarMap.Services
         public static FlightCacheKeeper FlightKeeper => Composition.Value.Keeper;
 
         /// <summary>
+        /// Full recorded paths of the selected flights, which extend the trail collected on the phone back to the takeoff.
+        /// </summary>
+        public static FlightTrackStore FlightTracks => Composition.Value.Tracks;
+
+        /// <summary>
         /// Cache of the flight routes downloaded from the route sources.
         /// </summary>
         public static RouteCache Routes => RouteCacheInstance.Value;
