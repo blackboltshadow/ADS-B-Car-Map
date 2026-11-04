@@ -87,7 +87,7 @@ namespace AdsbCarMap.Services
             {
                 AirspaceConfigStore store = AppServices.AirspaceConfig;
                 AirspaceAlertOptions options = store.AlertOptions;
-                IReadOnlyList<DataSources.Models.AirspaceZone> zones = AppServices.Airspace.Zones;
+                IReadOnlyList<DataSources.Models.AirspaceZone> zones = AppServices.Airspace.Items;
                 (bool known, double latitude, double longitude) = LiveTraffic.GetUserLocation();
 
                 if (!options.Enabled || zones.Count == 0 || !known)

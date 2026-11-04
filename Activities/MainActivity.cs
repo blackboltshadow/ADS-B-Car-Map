@@ -929,8 +929,8 @@ namespace AdsbCarMap.Activities
                 return;
             }
 
-            AirspaceFeed feed = AppServices.Airspace;
-            int shown = AppServices.AirspaceConfig.Config.Select(feed.Zones, DateTime.UtcNow).Count;
+            PollingFeed<AirspaceZone> feed = AppServices.Airspace;
+            int shown = AppServices.AirspaceConfig.Config.Select(feed.Items, DateTime.UtcNow).Count;
             string attribution = AirspaceText.Attribution;
             SpannableString text = new SpannableString(attribution + " · " + AirspaceText.BuildStateText(feed.State, shown));
 

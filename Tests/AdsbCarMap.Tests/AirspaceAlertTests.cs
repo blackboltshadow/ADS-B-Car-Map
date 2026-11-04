@@ -309,7 +309,7 @@ namespace AdsbCarMap.Tests
             int calls = 0;
             DateTime clock = Now;
             Func<IReadOnlyList<AirspaceZone>> answer = () => new List<AirspaceZone>();
-            AirspaceFeed feed = new AirspaceFeed(new CountingSource(() => { calls++; return answer(); }), () => clock, (TimeSpan time, CancellationToken token) => Task.CompletedTask, () => TimeSpan.FromMinutes(5), null);
+            PollingFeed<AirspaceZone> feed = new PollingFeed<AirspaceZone>("counting", new CountingSource(() => { calls++; return answer(); }).GetZonesAsync, () => clock, (TimeSpan time, CancellationToken token) => Task.CompletedTask, () => TimeSpan.FromMinutes(5), null);
 
             Assert.True(await feed.RefreshIfDueAsync(CancellationToken.None));
             Assert.False(await feed.RefreshIfDueAsync(CancellationToken.None));

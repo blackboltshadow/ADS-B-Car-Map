@@ -98,7 +98,7 @@ namespace AdsbCarMap.Data
         /// <param name="failure">The last failure, or null when there was none.</param>
         /// <param name="utcNow">Current time in UTC, used for the age of the update and of the failure.</param>
         /// <returns>The text of the group, without a trailing new line.</returns>
-        public static string FormatAirspaceFeed(bool layerOn, AirspaceFeedState state, int count, DateTime? lastUpdateUtc, AirspaceFeedFailure? failure, DateTime utcNow)
+        public static string FormatAirspaceFeed(bool layerOn, PollingFeedState state, int count, DateTime? lastUpdateUtc, PollingFeedFailure? failure, DateTime utcNow)
         {
             StringBuilder builder = new StringBuilder();
 
@@ -124,7 +124,7 @@ namespace AdsbCarMap.Data
         /// <param name="state">State of the feed.</param>
         /// <param name="count">Number of the areas the feed holds.</param>
         /// <returns>The description.</returns>
-        public static string DescribeAirspaceFeed(bool layerOn, AirspaceFeedState state, int count)
+        public static string DescribeAirspaceFeed(bool layerOn, PollingFeedState state, int count)
         {
             if (!layerOn)
             {
@@ -133,11 +133,11 @@ namespace AdsbCarMap.Data
 
             switch (state)
             {
-                case AirspaceFeedState.Loading:
+                case PollingFeedState.Loading:
                     return Loc.T("pobieranie…");
-                case AirspaceFeedState.Ready:
+                case PollingFeedState.Ready:
                     return Loc.F("działa, stref: {0}", count);
-                case AirspaceFeedState.Offline:
+                case PollingFeedState.Offline:
                     return Loc.T("brak połączenia, aplikacja ponawia próby");
                 default:
                     return Loc.T("wstrzymane, mapa jest w tle");

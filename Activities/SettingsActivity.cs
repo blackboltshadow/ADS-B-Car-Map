@@ -1850,7 +1850,7 @@ namespace AdsbCarMap.Activities
             DateTime now = DateTime.UtcNow;
             DataSources.Interfaces.IThreatFeed feed = AppServices.Threats;
 
-            sourceStatusText.Text = SourceStateText.Format(AppServices.GetSourceStates(), now) + "\n\n" + SourceStateText.FormatThreatFeed(AppSettings.ShowThreats, feed.State, AppSettings.ThreatTransportIndex, feed.Threats.Count, feed.LastUpdateUtc, feed.LastFailure, now) + "\n\n" + SourceStateText.FormatAirspaceFeed(AppSettings.ShowAirspace, AppServices.Airspace.State, AppServices.Airspace.Zones.Count, AppServices.Airspace.LastUpdateUtc, AppServices.Airspace.LastFailure, now) + "\n\n" + WarningText.FormatFeed(true, AppServices.Warnings.State, AppServices.Warnings.Items.Count, AppServices.Warnings.LastUpdateUtc, AppServices.Warnings.LastFailure, now);
+            sourceStatusText.Text = SourceStateText.Format(AppServices.GetSourceStates(), now) + "\n\n" + SourceStateText.FormatThreatFeed(AppSettings.ShowThreats, feed.State, AppSettings.ThreatTransportIndex, feed.Threats.Count, feed.LastUpdateUtc, feed.LastFailure, now) + "\n\n" + SourceStateText.FormatAirspaceFeed(AppSettings.ShowAirspace, AppServices.Airspace.State, AppServices.Airspace.Items.Count, AppServices.Airspace.LastUpdateUtc, AppServices.Airspace.LastFailure, now) + "\n\n" + WarningText.FormatFeed(true, AppServices.Warnings.State, AppServices.Warnings.Items.Count, AppServices.Warnings.LastUpdateUtc, AppServices.Warnings.LastFailure, now);
             sourceStatusText.RemoveCallbacks(sourceStatusRefresh);
             sourceStatusText.PostDelayed(sourceStatusRefresh, 1000);
         }

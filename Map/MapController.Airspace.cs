@@ -51,7 +51,7 @@ namespace AdsbCarMap.Map
         /// <returns>The areas with their states.</returns>
         private IReadOnlyList<AirspaceZoneView> GetAirspaceViews()
         {
-            IReadOnlyList<AirspaceZone> zones = AppServices.Airspace.Zones;
+            IReadOnlyList<AirspaceZone> zones = AppServices.Airspace.Items;
             AirspaceLayerConfig config = AppServices.AirspaceConfig.Config;
             DateTime nowUtc = DateTime.UtcNow;
             long minute = nowUtc.Ticks / TimeSpan.TicksPerMinute;

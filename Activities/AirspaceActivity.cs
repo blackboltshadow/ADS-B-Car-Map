@@ -1,3 +1,4 @@
+using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.Data;
 using AdsbCarMap.Localization;
 using AdsbCarMap.Map;
@@ -66,7 +67,7 @@ namespace AdsbCarMap.Activities
             AppServices.Airspace.Changed -= OnFeedChanged;
             AppServices.Airspace.Changed += OnFeedChanged;
 
-            if (AppServices.Airspace.State == AirspaceFeedState.Stopped)
+            if (AppServices.Airspace.State == PollingFeedState.Stopped)
             {
                 AppServices.Airspace.Start();
                 startedFeed = true;
@@ -327,8 +328,8 @@ namespace AdsbCarMap.Activities
         /// <param name="config">Current configuration.</param>
         private void AddTypeSwitches(AirspaceLayerConfig config)
         {
-            AirspaceFeed feed = AppServices.Airspace;
-            IReadOnlyList<AirspaceTypeCount> counts = AirspaceTypes.Count(feed.Zones, DateTime.UtcNow);
+            PollingFeed<AirspaceZone> feed = AppServices.Airspace;
+            IReadOnlyList<AirspaceTypeCount> counts = AirspaceTypes.Count(feed.Items, DateTime.UtcNow);
             List<AirspaceTypeCount> entries = new List<AirspaceTypeCount>(counts);
 
             foreach (string type in config.DecidedTypes)
@@ -341,7 +342,7 @@ namespace AdsbCarMap.Activities
 
             if (counts.Count == 0)
             {
-                AddText(feed.State == AirspaceFeedState.Offline ? Loc.T("Nie udało się pobrać stref. Lista rodzajów pojawi się po udanym pobraniu.") : Loc.T("Pobieranie stref… Lista rodzajów pojawi się po pobraniu."), 13f, Color.Rgb(180, 180, 180));
+                AddText(feed.State == PollingFeedState.Offline ? Loc.T("Nie udało się pobrać stref. Lista rodzajów pojawi się po udanym pobraniu.") : Loc.T("Pobieranie stref… Lista rodzajów pojawi się po pobraniu."), 13f, Color.Rgb(180, 180, 180));
             }
 
             entries.Sort((AirspaceTypeCount a, AirspaceTypeCount b) =>

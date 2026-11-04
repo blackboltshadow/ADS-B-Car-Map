@@ -112,7 +112,6 @@
     <Compile Include="..\..\Data\AirspaceTypes.cs" Link="Linked\AirspaceTypes.cs" />
     <Compile Include="..\..\Data\AirspaceLayerConfig.cs" Link="Linked\AirspaceLayerConfig.cs" />
     <Compile Include="..\..\Data\AirspaceGeometry.cs" Link="Linked\AirspaceGeometry.cs" />
-    <Compile Include="..\..\Data\AirspaceFeed.cs" Link="Linked\AirspaceFeed.cs" />
     <Compile Include="..\..\Data\AirspaceAlertEngine.cs" Link="Linked\AirspaceAlertEngine.cs" />
     <Compile Include="..\..\Data\AirspaceAltitudeScale.cs" Link="Linked\AirspaceAltitudeScale.cs" />
     <Compile Include="..\..\Data\PollingFeed.cs" Link="Linked\PollingFeed.cs" />

@@ -66,15 +66,15 @@ namespace AdsbCarMap.Map
         /// <param name="state">State of the feed.</param>
         /// <param name="shown">Number of the areas that pass the configuration of the layer.</param>
         /// <returns>The description.</returns>
-        public static string BuildStateText(AirspaceFeedState state, int shown)
+        public static string BuildStateText(PollingFeedState state, int shown)
         {
             switch (state)
             {
-                case AirspaceFeedState.Loading:
+                case PollingFeedState.Loading:
                     return Loc.T("ładowanie…");
-                case AirspaceFeedState.Offline:
+                case PollingFeedState.Offline:
                     return shown > 0 ? Loc.F("brak połączenia, dane mogą być nieaktualne, stref: {0}", shown) : Loc.T("brak połączenia");
-                case AirspaceFeedState.Ready:
+                case PollingFeedState.Ready:
                     return Loc.F("stref: {0}", shown);
                 default:
                     return string.Empty;

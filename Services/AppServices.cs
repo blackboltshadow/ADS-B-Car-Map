@@ -52,7 +52,7 @@ namespace AdsbCarMap.Services
         /// <summary>
         /// Feed of the airspace areas from PAŻP, created at the first use. It does nothing until it is started, which only the phone map does, and only while the airspace layer is switched on.
         /// </summary>
-        private static readonly Lazy<AirspaceFeed> AirspaceFeedInstance = new Lazy<AirspaceFeed>(CreateAirspaceFeed);
+        private static readonly Lazy<PollingFeed<AirspaceZone>> AirspaceFeedInstance = new Lazy<PollingFeed<AirspaceZone>>(CreateAirspaceFeed);
 
         /// <summary>
         /// Choice of the kinds and states of the airspace areas that the layer shows, read from the device at the first use.
@@ -82,7 +82,7 @@ namespace AdsbCarMap.Services
         /// <summary>
         /// Feed of the airspace areas from PAŻP, used by the layer on the phone map.
         /// </summary>
-        public static AirspaceFeed Airspace => AirspaceFeedInstance.Value;
+        public static PollingFeed<AirspaceZone> Airspace => AirspaceFeedInstance.Value;
 
         /// <summary>
         /// Choice of the kinds and states of the airspace areas that the layer shows.
@@ -216,13 +216,16 @@ namespace AdsbCarMap.Services
         /// Creates the feed of the airspace areas. The map is bigger than a typical answer of the other servers, so the client waits longer for it.
         /// </summary>
         /// <returns>The feed, stopped.</returns>
-        private static AirspaceFeed CreateAirspaceFeed()
+        private static PollingFeed<AirspaceZone> CreateAirspaceFeed()
         {
             HttpClient client = CreateHttpClient(PansaClient.DefaultBaseAddress);
             client.Timeout = TimeSpan.FromSeconds(30);
 
-            return new AirspaceFeed(
-                new PansaClient(client),
+            PansaClient source = new PansaClient(client);
+
+            return new PollingFeed<AirspaceZone>(
+                source.Name,
+                source.GetZonesAsync,
                 () => DateTime.UtcNow,
                 (TimeSpan time, CancellationToken token) => Task.Delay(time, token),
                 () => TimeSpan.FromMinutes(AppSettings.AirspaceRefreshMinutes),

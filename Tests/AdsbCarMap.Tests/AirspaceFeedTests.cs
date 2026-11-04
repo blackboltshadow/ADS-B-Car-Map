@@ -73,9 +73,9 @@ namespace AdsbCarMap.Tests
         /// <param name="source">Source of the areas.</param>
         /// <param name="events">List that receives the reported events.</param>
         /// <returns>The feed.</returns>
-        private static AirspaceFeed CreateFeed(FakeSource source, List<string> events)
+        private static PollingFeed<AirspaceZone> CreateFeed(FakeSource source, List<string> events)
         {
-            return new AirspaceFeed(source, () => Now, (TimeSpan time, CancellationToken token) => Task.CompletedTask, () => TimeSpan.FromMinutes(5), (SourceEventKind kind, string message, Exception? exception) => events.Add(kind + ":" + message));
+            return new PollingFeed<AirspaceZone>(source.Name, source.GetZonesAsync, () => Now, (TimeSpan time, CancellationToken token) => Task.CompletedTask, () => TimeSpan.FromMinutes(5), (SourceEventKind kind, string message, Exception? exception) => events.Add(kind + ":" + message));
         }
 
         /// <summary>
@@ -85,15 +85,15 @@ namespace AdsbCarMap.Tests
         public async Task RefreshAsync_StoresZonesAndReturnsInterval()
         {
             FakeSource source = new FakeSource { Answer = () => new List<AirspaceZone> { Square("A", 50, 20, 1) } };
-            AirspaceFeed feed = CreateFeed(source, new List<string>());
+            PollingFeed<AirspaceZone> feed = CreateFeed(source, new List<string>());
             int changes = 0;
             feed.Changed += () => changes++;
 
             TimeSpan wait = await feed.RefreshAsync(CancellationToken.None);
 
             Assert.Equal(TimeSpan.FromMinutes(5), wait);
-            Assert.Single(feed.Zones);
-            Assert.Equal(AirspaceFeedState.Ready, feed.State);
+            Assert.Single(feed.Items);
+            Assert.Equal(PollingFeedState.Ready, feed.State);
             Assert.Equal(Now, feed.LastUpdateUtc);
             Assert.Null(feed.LastFailure);
             Assert.Equal("fake", feed.Name);
@@ -108,7 +108,7 @@ namespace AdsbCarMap.Tests
         {
             FakeSource source = new FakeSource { Answer = () => new List<AirspaceZone> { Square("A", 50, 20, 1) } };
             List<string> events = new List<string>();
-            AirspaceFeed feed = CreateFeed(source, events);
+            PollingFeed<AirspaceZone> feed = CreateFeed(source, events);
             await feed.RefreshAsync(CancellationToken.None);
             source.Answer = () => throw new HttpRequestException("down", null, HttpStatusCode.BadGateway);
 
@@ -125,8 +125,8 @@ namespace AdsbCarMap.Tests
             Assert.Equal(TimeSpan.FromSeconds(240), fourth);
             Assert.Equal(TimeSpan.FromMinutes(5), fifth);
             Assert.Equal(TimeSpan.FromMinutes(5), sixth);
-            Assert.Single(feed.Zones);
-            Assert.Equal(AirspaceFeedState.Offline, feed.State);
+            Assert.Single(feed.Items);
+            Assert.Equal(PollingFeedState.Offline, feed.State);
             Assert.Equal("błąd serwera", feed.LastFailure?.Description);
             Assert.Equal(Now, feed.LastFailure?.OccurredUtc);
             Assert.Equal(6, events.Count);
@@ -140,7 +140,7 @@ namespace AdsbCarMap.Tests
         public async Task RefreshAsync_SuccessResetsBackoff()
         {
             FakeSource source = new FakeSource { Answer = () => throw new HttpRequestException("down") };
-            AirspaceFeed feed = CreateFeed(source, new List<string>());
+            PollingFeed<AirspaceZone> feed = CreateFeed(source, new List<string>());
             await feed.RefreshAsync(CancellationToken.None);
             await feed.RefreshAsync(CancellationToken.None);
             source.Answer = () => new List<AirspaceZone>();
@@ -160,7 +160,7 @@ namespace AdsbCarMap.Tests
         public async Task RefreshAsync_RateLimitWaitsForRetryAfter()
         {
             FakeSource source = new FakeSource { Answer = () => throw new RateLimitedException(TimeSpan.FromMinutes(20)) };
-            AirspaceFeed feed = CreateFeed(source, new List<string>());
+            PollingFeed<AirspaceZone> feed = CreateFeed(source, new List<string>());
 
             TimeSpan longWait = await feed.RefreshAsync(CancellationToken.None);
             source.Answer = () => throw new RateLimitedException(TimeSpan.FromSeconds(10));
@@ -169,7 +169,7 @@ namespace AdsbCarMap.Tests
             Assert.Equal(TimeSpan.FromMinutes(20), longWait);
             Assert.Equal(TimeSpan.FromMinutes(5), shortWait);
             Assert.Equal("limit zapytań (429)", feed.LastFailure?.Description);
-            Assert.Equal(AirspaceFeedState.Offline, feed.State);
+            Assert.Equal(PollingFeedState.Offline, feed.State);
         }
 
         /// <summary>
@@ -179,7 +179,7 @@ namespace AdsbCarMap.Tests
         public async Task RefreshAsync_TreatsInvalidAnswerAndTimeoutAsFailures()
         {
             FakeSource source = new FakeSource { Answer = () => throw new System.Text.Json.JsonException("bad") };
-            AirspaceFeed feed = CreateFeed(source, new List<string>());
+            PollingFeed<AirspaceZone> feed = CreateFeed(source, new List<string>());
 
             await feed.RefreshAsync(CancellationToken.None);
             Assert.Equal("nieprawidłowa odpowiedź", feed.LastFailure?.Description);
@@ -196,13 +196,13 @@ namespace AdsbCarMap.Tests
         public async Task RefreshAsync_PropagatesRequestedCancellation()
         {
             FakeSource source = new FakeSource { Answer = () => new List<AirspaceZone> { Square("A", 50, 20, 1) } };
-            AirspaceFeed feed = CreateFeed(source, new List<string>());
+            PollingFeed<AirspaceZone> feed = CreateFeed(source, new List<string>());
             using CancellationTokenSource cancellation = new CancellationTokenSource();
             cancellation.Cancel();
 
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => feed.RefreshAsync(cancellation.Token));
 
-            Assert.Empty(feed.Zones);
+            Assert.Empty(feed.Items);
             Assert.Null(feed.LastFailure);
         }
 
@@ -214,8 +214,9 @@ namespace AdsbCarMap.Tests
         {
             FakeSource source = new FakeSource { Answer = () => new List<AirspaceZone> { Square("A", 50, 20, 1) } };
             TaskCompletionSource<bool> twoCalls = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            AirspaceFeed feed = new AirspaceFeed(
-                source,
+            PollingFeed<AirspaceZone> feed = new PollingFeed<AirspaceZone>(
+                source.Name,
+                source.GetZonesAsync,
                 () => Now,
                 async (TimeSpan time, CancellationToken token) =>
                 {
@@ -228,7 +229,7 @@ namespace AdsbCarMap.Tests
                 () => TimeSpan.FromMinutes(5),
                 null);
 
-            Assert.Equal(AirspaceFeedState.Stopped, feed.State);
+            Assert.Equal(PollingFeedState.Stopped, feed.State);
             feed.Stop();
             feed.Start();
             feed.Start();
@@ -236,12 +237,12 @@ namespace AdsbCarMap.Tests
             feed.Stop();
             feed.Stop();
 
-            Assert.Equal(AirspaceFeedState.Stopped, feed.State);
-            Assert.Single(feed.Zones);
+            Assert.Equal(PollingFeedState.Stopped, feed.State);
+            Assert.Single(feed.Items);
             Assert.NotNull(feed.LastUpdateUtc);
 
             feed.Start();
-            Assert.Equal(AirspaceFeedState.Ready, feed.State);
+            Assert.Equal(PollingFeedState.Ready, feed.State);
             feed.Stop();
         }
 
@@ -253,14 +254,14 @@ namespace AdsbCarMap.Tests
         {
             TaskCompletionSource<bool> release = new TaskCompletionSource<bool>();
             FakeSource source = new FakeSource();
-            AirspaceFeed feed = new AirspaceFeed(source, () => Now, (TimeSpan time, CancellationToken token) => Task.Delay(Timeout.Infinite, token), () => TimeSpan.FromMinutes(5), null);
+            PollingFeed<AirspaceZone> feed = new PollingFeed<AirspaceZone>(source.Name, source.GetZonesAsync, () => Now, (TimeSpan time, CancellationToken token) => Task.Delay(Timeout.Infinite, token), () => TimeSpan.FromMinutes(5), null);
 
             feed.Start();
-            AirspaceFeedState state = feed.State;
+            PollingFeedState state = feed.State;
             feed.Stop();
             release.TrySetResult(true);
 
-            Assert.True(state == AirspaceFeedState.Loading || state == AirspaceFeedState.Ready);
+            Assert.True(state == PollingFeedState.Loading || state == PollingFeedState.Ready);
         }
 
         /// <summary>
@@ -329,11 +330,11 @@ namespace AdsbCarMap.Tests
         {
             Loc.Language = AppLanguage.Polish;
 
-            Assert.Equal("ładowanie…", AirspaceText.BuildStateText(AirspaceFeedState.Loading, 0));
-            Assert.Equal("stref: 12", AirspaceText.BuildStateText(AirspaceFeedState.Ready, 12));
-            Assert.Equal("brak połączenia", AirspaceText.BuildStateText(AirspaceFeedState.Offline, 0));
-            Assert.Equal("brak połączenia, dane mogą być nieaktualne, stref: 3", AirspaceText.BuildStateText(AirspaceFeedState.Offline, 3));
-            Assert.Equal(string.Empty, AirspaceText.BuildStateText(AirspaceFeedState.Stopped, 5));
+            Assert.Equal("ładowanie…", AirspaceText.BuildStateText(PollingFeedState.Loading, 0));
+            Assert.Equal("stref: 12", AirspaceText.BuildStateText(PollingFeedState.Ready, 12));
+            Assert.Equal("brak połączenia", AirspaceText.BuildStateText(PollingFeedState.Offline, 0));
+            Assert.Equal("brak połączenia, dane mogą być nieaktualne, stref: 3", AirspaceText.BuildStateText(PollingFeedState.Offline, 3));
+            Assert.Equal(string.Empty, AirspaceText.BuildStateText(PollingFeedState.Stopped, 5));
         }
 
         /// <summary>
@@ -363,10 +364,10 @@ namespace AdsbCarMap.Tests
         {
             Loc.Language = AppLanguage.Polish;
             DateTime update = Now.AddMinutes(-3);
-            AirspaceFeedFailure failure = new AirspaceFeedFailure("limit zapytań (429)", Now.AddMinutes(-10));
+            PollingFeedFailure failure = new PollingFeedFailure("limit zapytań (429)", Now.AddMinutes(-10));
 
-            string on = SourceStateText.FormatAirspaceFeed(true, AirspaceFeedState.Ready, 188, update, failure, Now);
-            string off = SourceStateText.FormatAirspaceFeed(false, AirspaceFeedState.Stopped, 0, null, null, Now);
+            string on = SourceStateText.FormatAirspaceFeed(true, PollingFeedState.Ready, 188, update, failure, Now);
+            string off = SourceStateText.FormatAirspaceFeed(false, PollingFeedState.Stopped, 0, null, null, Now);
 
             Assert.StartsWith("Strefy przestrzeni powietrznej:\n• PAŻP — działa, stref: 188\n", on);
             Assert.Contains("ostatnia aktualizacja: ", on);
@@ -382,10 +383,10 @@ namespace AdsbCarMap.Tests
         {
             Loc.Language = AppLanguage.Polish;
 
-            Assert.Equal("pobieranie…", SourceStateText.DescribeAirspaceFeed(true, AirspaceFeedState.Loading, 0));
-            Assert.Equal("działa, stref: 5", SourceStateText.DescribeAirspaceFeed(true, AirspaceFeedState.Ready, 5));
-            Assert.Equal("brak połączenia, aplikacja ponawia próby", SourceStateText.DescribeAirspaceFeed(true, AirspaceFeedState.Offline, 0));
-            Assert.Equal("wstrzymane, mapa jest w tle", SourceStateText.DescribeAirspaceFeed(true, AirspaceFeedState.Stopped, 0));
+            Assert.Equal("pobieranie…", SourceStateText.DescribeAirspaceFeed(true, PollingFeedState.Loading, 0));
+            Assert.Equal("działa, stref: 5", SourceStateText.DescribeAirspaceFeed(true, PollingFeedState.Ready, 5));
+            Assert.Equal("brak połączenia, aplikacja ponawia próby", SourceStateText.DescribeAirspaceFeed(true, PollingFeedState.Offline, 0));
+            Assert.Equal("wstrzymane, mapa jest w tle", SourceStateText.DescribeAirspaceFeed(true, PollingFeedState.Stopped, 0));
         }
     }
 }
