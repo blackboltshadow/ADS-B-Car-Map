@@ -239,7 +239,7 @@ namespace AdsbCarMap.Services
             client.Timeout = TimeSpan.FromSeconds(20);
             RsoClient source = new RsoClient(client);
 
-            return new PollingFeed<Warning>(
+            PollingFeed<Warning> feed = new PollingFeed<Warning>(
                 source.Name,
                 (CancellationToken token) =>
                 {
@@ -251,6 +251,16 @@ namespace AdsbCarMap.Services
                 (TimeSpan time, CancellationToken token) => Task.Delay(time, token),
                 () => TimeSpan.FromMinutes(AppSettings.WarningsRefreshMinutes),
                 ReportSourceEvent);
+
+            feed.Changed += () =>
+            {
+                if (feed.State == PollingFeedState.Ready)
+                {
+                    _ = Task.Run(WarningAlertMonitor.Check);
+                }
+            };
+
+            return feed;
         }
 
         /// <summary>

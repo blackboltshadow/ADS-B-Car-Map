@@ -114,6 +114,7 @@
     <Compile Include="..\..\Data\WarningProvinces.cs" Link="Linked\WarningProvinces.cs" />
     <Compile Include="..\..\Data\WarningFilterConfig.cs" Link="Linked\WarningFilterConfig.cs" />
     <Compile Include="..\..\Data\WarningText.cs" Link="Linked\WarningText.cs" />
+    <Compile Include="..\..\Data\WarningAlertEngine.cs" Link="Linked\WarningAlertEngine.cs" />
     <Compile Include="..\..\Map\AirspaceText.cs" Link="Linked\AirspaceText.cs" />
     <Compile Include="..\..\Map\AirportCardText.cs" Link="Linked\AirportCardText.cs" />
     <Compile Include="..\..\Map\SelectionState.cs" Link="Linked\SelectionState.cs" />

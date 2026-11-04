@@ -302,6 +302,7 @@ namespace AdsbCarMap.Activities
             AppServices.AirspaceConfig.Changed -= OnAirspaceFeedChanged;
             AppServices.AirspaceConfig.Changed += OnAirspaceFeedChanged;
             ApplyAirspaceFeed();
+            ApplyWarningFeed();
             UpdateModeButtons();
             cardRefreshRunnable = new Java.Lang.Runnable(CardRefreshTick);
             handler.Post(cardRefreshRunnable);
@@ -318,6 +319,7 @@ namespace AdsbCarMap.Activities
             AppServices.Airspace.Changed -= OnAirspaceFeedChanged;
             AppServices.AirspaceConfig.Changed -= OnAirspaceFeedChanged;
             AppServices.Airspace.Stop();
+            AppServices.Warnings.Stop();
 
             if (cardRefreshRunnable != null)
             {
@@ -875,6 +877,17 @@ namespace AdsbCarMap.Activities
             }
 
             UpdateAirspaceUi();
+        }
+
+        /// <summary>
+        /// Starts the feed of the official notices while the notifications about them are on, so that new notices are noticed while the map is open. Without the notifications the feed runs only while the screen of the notices is open.
+        /// </summary>
+        private void ApplyWarningFeed()
+        {
+            if (AppServices.WarningConfig.AlertOptions.Enabled)
+            {
+                AppServices.Warnings.Start();
+            }
         }
 
         /// <summary>

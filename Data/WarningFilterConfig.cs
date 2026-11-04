@@ -114,6 +114,16 @@ namespace AdsbCarMap.Data
                 return false;
             }
 
+            return IsRegionWanted(warning);
+        }
+
+        /// <summary>
+        /// Tells whether a notice applies to a wanted voivodeship.
+        /// </summary>
+        /// <param name="warning">The notice.</param>
+        /// <returns>True when all voivodeships are wanted, when the notice has no voivodeship (it applies to the whole country), or when one of its voivodeships is chosen.</returns>
+        public bool IsRegionWanted(Warning warning)
+        {
             return provinces.Count == 0 || warning.Provinces.Count == 0 || warning.Provinces.Any((WarningProvince province) => provinces.Contains(province.Slug));
         }
 

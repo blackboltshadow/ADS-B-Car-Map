@@ -185,6 +185,7 @@ namespace AdsbCarMap.Services
         private static async Task CheckAsync(CancellationToken token)
         {
             await AirspaceAlertMonitor.CheckAsync(token);
+            await WarningAlertMonitor.CheckAsync(token);
 
             List<AlertRule> rules = AppServices.Alerts.GetActiveRules();
 

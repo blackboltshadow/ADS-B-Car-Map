@@ -22,6 +22,11 @@ namespace AdsbCarMap.Activities
         private const int MaximumListed = 100;
 
         /// <summary>
+        /// Code of the request for the permission to show notifications.
+        /// </summary>
+        private const int NotificationRequestCode = 3102;
+
+        /// <summary>
         /// Container of the whole content, rebuilt when the data changes.
         /// </summary>
         private LinearLayout? content;
@@ -118,6 +123,7 @@ namespace AdsbCarMap.Activities
             AddText(WarningText.Disclaimer, 13f, Color.Rgb(180, 180, 180));
 
             AddFilters(config, feed);
+            AddAlertSection();
             AddSection(Loc.T("Komunikaty"));
 
             if (selected.Count == 0)
@@ -182,6 +188,45 @@ namespace AdsbCarMap.Activities
             reset.Text = Loc.T("Przywróć domyślny wybór");
             reset.Click += (sender, args) => ApplyConfig(WarningFilterConfig.Default);
             content.AddView(reset);
+        }
+
+        /// <summary>
+        /// Adds the notifications about new notices. They use the categories and voivodeships chosen above.
+        /// </summary>
+        private void AddAlertSection()
+        {
+            WarningAlertOptions options = AppServices.WarningConfig.AlertOptions;
+
+            AddSection(Loc.T("Powiadomienia o nowych komunikatach"));
+            AddText(Loc.T("Powiadomienie o nowym komunikacie z wybranych wyżej kategorii i województw (stany wód, czyli odczyty wodowskazów, nie dają powiadomień). Każdy komunikat jest zgłaszany raz, także po ponownym uruchomieniu aplikacji, a komunikat, który później zostanie oznaczony jako alarm, jeszcze raz. Zaraz po włączeniu albo po zmianie kategorii lub województw aplikacja nie zgłasza komunikatów, które już są na liście. Sprawdzanie działa, gdy mapa jest otwarta, oraz razem z trybem w tle alertów (Alerty → Sprawdzanie w tle), a przy otwartym tym ekranie lista odświeża się co kilka minut. To nie jest oficjalny system ostrzegania i powiadomienie może przyjść ze spóźnieniem."), 13f, Color.Rgb(180, 180, 180));
+
+            Switch enabledSwitch = CreateSwitch(Loc.T("Powiadamiaj o nowych komunikatach"), options.Enabled);
+            enabledSwitch.CheckedChange += (sender, args) =>
+            {
+                AppServices.WarningConfig.SaveAlertOptions(AppServices.WarningConfig.AlertOptions with { Enabled = args.IsChecked });
+                WarningAlertMonitor.Reset();
+
+                if (args.IsChecked && !AlertMonitor.HasNotificationPermission())
+                {
+                    RequestPermissions(new string[] { Android.Manifest.Permission.PostNotifications }, NotificationRequestCode);
+                }
+
+                Rebuild();
+            };
+            content!.AddView(enabledSwitch);
+
+            if (!options.Enabled)
+            {
+                return;
+            }
+
+            Switch alarmsSwitch = CreateSwitch(Loc.T("Tylko komunikaty oznaczone jako alarm"), options.OnlyAlarms);
+            alarmsSwitch.CheckedChange += (sender, args) =>
+            {
+                AppServices.WarningConfig.SaveAlertOptions(AppServices.WarningConfig.AlertOptions with { OnlyAlarms = args.IsChecked });
+                Rebuild();
+            };
+            content.AddView(alarmsSwitch);
         }
 
         /// <summary>

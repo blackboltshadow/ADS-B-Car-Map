@@ -59,6 +59,39 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
+        /// Gives the title of the notification about a new notice.
+        /// </summary>
+        /// <param name="warning">The notice.</param>
+        /// <returns>The title of the notice, with "ALARM" in front when the source marked it as an alarm.</returns>
+        public static string GetAlertTitle(Warning warning)
+        {
+            return (warning.IsAlarm ? Loc.T("ALARM · ") : string.Empty) + GetTitle(warning);
+        }
+
+        /// <summary>
+        /// Gives the text of the notification about a new notice: the category and the voivodeships, and the summary or the text of the notice.
+        /// </summary>
+        /// <param name="warning">The notice.</param>
+        /// <returns>Lines separated by a new line; the second one is left out when the notice has neither a summary nor a text.</returns>
+        public static string GetAlertBody(Warning warning)
+        {
+            string detail = warning.Summary.Length > 0 ? warning.Summary : warning.Content;
+
+            return detail.Length > 0 ? GetSubtitle(warning) + "\n" + detail : GetSubtitle(warning);
+        }
+
+        /// <summary>
+        /// Gives the title of the single notification that stands for many new notices.
+        /// </summary>
+        /// <param name="count">Number of the new notices.</param>
+        /// <param name="alarms">Number of them marked as an alarm.</param>
+        /// <returns>For example "Nowe komunikaty RSO: 5 (alarmów: 2)".</returns>
+        public static string GetGroupTitle(int count, int alarms)
+        {
+            return alarms > 0 ? Loc.F("Nowe komunikaty RSO: {0} (alarmów: {1})", count, alarms) : Loc.F("Nowe komunikaty RSO: {0}", count);
+        }
+
+        /// <summary>
         /// Builds the lines of the description of a notice.
         /// </summary>
         /// <param name="warning">The notice.</param>
