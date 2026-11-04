@@ -208,12 +208,20 @@ namespace AdsbCarMap.Map
         private void NotifySelectionChanged()
         {
             SelectionSnapshot snapshot;
+            bool primaryChanged;
 
             lock (stateLock)
             {
                 Aircraft? primaryAircraft = primaryHex == null ? null : latestAircraft.FirstOrDefault(item => item.Hex == primaryHex);
 
                 snapshot = new SelectionSnapshot(selectedHexes, primaryHex, isolateSelected, militaryOnly, primaryAircraft, latestAircraftTimestampUtc, selectedAirport?.Icao);
+                primaryChanged = primaryHex != lastRecordedPrimaryHex;
+                lastRecordedPrimaryHex = primaryHex;
+            }
+
+            if (primaryChanged && snapshot.PrimaryHex != null)
+            {
+                AircraftHistoryStore.Record(snapshot.PrimaryHex, snapshot.PrimaryAircraft?.Callsign, snapshot.PrimaryAircraft?.Registration, snapshot.PrimaryAircraft?.TypeCode, false);
             }
 
             selectionState.Publish(this, snapshot);

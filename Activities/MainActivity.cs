@@ -80,6 +80,11 @@ namespace AdsbCarMap.Activities
         private const int MenuWarningsId = 8;
 
         /// <summary>
+        /// Identifier of the menu item that opens the history of the aircraft.
+        /// </summary>
+        private const int MenuAircraftHistoryId = 9;
+
+        /// <summary>
         /// Diameter of the badge with the number of filters in dp.
         /// </summary>
         private const int BadgeSizeDp = 20;
@@ -461,6 +466,7 @@ namespace AdsbCarMap.Activities
                 string name = info.Aircraft == null ? hex.ToUpperInvariant() : AircraftSearch.GetName(info.Aircraft);
 
                 AppServices.Alerts.Save(AlertBundle.CreateWatchRule(AlertRuleStore.CreateId(), Loc.T("Obserwuj: ") + name, hex));
+                AircraftHistoryStore.MarkWatched(hex);
                 Toast.MakeText(this, Loc.T("Alert obserwowania dodany (Alerty → edytuj, by zmienić obszar i zdarzenia)"), ToastLength.Long)?.Show();
             }
 
@@ -1124,6 +1130,7 @@ namespace AdsbCarMap.Activities
             popup.Menu?.Add(0, MenuFavoritesId, 1, Loc.T("Ulubione lotniska"));
             popup.Menu?.Add(0, MenuFiltersId, 2, Loc.T("Filtry samolotów"));
             popup.Menu?.Add(0, MenuAlertsId, 3, Loc.T("Alerty"));
+            popup.Menu?.Add(0, MenuAircraftHistoryId, 3, Loc.T("Historia samolotów"));
             popup.Menu?.Add(0, MenuWarningsId, 3, Loc.T("Ostrzeżenia"));
             popup.Menu?.Add(0, MenuSettingsId, 4, Loc.T("Ustawienia"));
             popup.Menu?.Add(0, MenuAboutId, 5, Loc.T("O aplikacji"));
@@ -1156,6 +1163,10 @@ namespace AdsbCarMap.Activities
                 else if (args.Item?.ItemId == MenuAlertsId)
                 {
                     StartActivity(new Intent(this, typeof(AlertsActivity)));
+                }
+                else if (args.Item?.ItemId == MenuAircraftHistoryId)
+                {
+                    StartActivity(new Intent(this, typeof(AircraftHistoryActivity)));
                 }
                 else if (args.Item?.ItemId == MenuWarningsId)
                 {

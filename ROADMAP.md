@@ -46,7 +46,7 @@ Zasada kolejności: najpierw rzeczy, które pomagają ocenić to, co już dodano
 ## P5 – pomysły
 
 
-- Historia obserwowanych samolotów.
+- Historia samolotów: **zrobione w kodzie (2026-11-04), niesprawdzone na telefonie** (`AircraftHistory`, `AircraftHistoryStore`, ekran `AircraftHistoryActivity`: zaznaczone i obserwowane samoloty, liczba zobaczeń, przypinanie, „Pokaż” i „Obserwuj” z listy). Zostaje ewentualnie pełna nazwa typu, trasa na liście i eksport.
 - **Pomysły do alertów (zapisane 2026-11-03, w kolejności polecanej):**
   - Squawk awaryjny: **zrobione w kodzie (2026-11-03), niesprawdzone na telefonie** jako wbudowany filtr „Squawk awaryjny” (`BuiltInFilters.Emergency`, nowe pole `FilterField.Squawk`), który wybiera się jako warunek alertu. Zostaje ewentualnie gotowa reguła alertu bez ręcznego wybierania obszaru i warunku.
   - Zdarzenie „wylot z obszaru”: **zrobione w kodzie (2026-11-03), niesprawdzone na telefonie** (`AlertTrigger.Exited`, pole `NotifyOnExit`, własny czas ciszy wylotu; samolot, który zniknął z danych, nie daje wylotu).

@@ -252,6 +252,11 @@ namespace AdsbCarMap.Map
         private string? primaryHex;
 
         /// <summary>
+        /// Primary selected aircraft at the last selection notice, so that the history of the aircraft is written only when the aircraft changes.
+        /// </summary>
+        private string? lastRecordedPrimaryHex;
+
+        /// <summary>
         /// Selected airport, or null. An airport and aircraft are never selected at the same time.
         /// </summary>
         private Airport? selectedAirport;
