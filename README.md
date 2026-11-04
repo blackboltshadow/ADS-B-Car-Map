@@ -194,6 +194,7 @@ Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązuj�
 | Krycie najnowszego śladu | 255 | 0–255 | suwak co 5 |
 | Obwódka śladu [dp] | 1 | 0–10 | ciemna obwódka pod śladem, suwak co 0,5 dp |
 | Krycie obwódki | 140 | 0–255 | |
+| Motyw mapy | Automatyczny | Automatyczny / Jasny / Ciemny | ciemny motyw odwraca jasność kafelków z zachowaniem barw (woda niebieska, zieleń zielona); „Automatyczny” włącza go, gdy system telefonu lub Android Auto (tryb nocny hosta) jest w trybie nocnym; działa na telefonie i w samochodzie, można go łączyć z przyciemnieniem |
 | Przyciemnienie mapy | 90 | 0–220 | krycie czarnej warstwy nad kafelkami (0 wyłącza), im więcej, tym ciemniejsza mapa |
 | Rozmiar ikon samolotów | ×1,0 | ×0,6–×2,0 | suwak co 0,1, mnoży rozmiar wszystkich ikon, kółek zaznaczenia i śledzenia oraz odsunięcie etykiety, na telefonie i w Android Auto. Grubość obwódki nie zmienia się z rozmiarem ikony. |
 | Obwódka samolotów [dp] | 1,2 | 0–6 | suwak co 0,1 dp (0 wyłącza obwódkę). Oba suwaki są w jednej ramce „Ikony samolotów” po skali kolorów wysokości, nad suwakami jest podgląd wszystkich ikon samolotów w bieżącym rozmiarze i grubości obwódki. |

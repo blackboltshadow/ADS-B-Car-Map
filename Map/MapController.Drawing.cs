@@ -117,6 +117,24 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Checks whether the car host or the system is in night mode.
+        /// </summary>
+        /// <returns>True in night mode.</returns>
+        private bool IsSystemDark()
+        {
+            Func<bool>? provider = SystemDarkProvider;
+
+            if (provider != null)
+            {
+                return provider();
+            }
+
+            Android.Content.Res.UiMode? uiMode = Android.App.Application.Context.Resources?.Configuration?.UiMode;
+
+            return uiMode != null && (uiMode.Value & Android.Content.Res.UiMode.NightMask) == Android.Content.Res.UiMode.NightYes;
+        }
+
+        /// <summary>
         /// Draws the background, tiles, trails, aircraft, attribution and the version number.
         /// </summary>
         /// <param name="canvas">Surface canvas.</param>
@@ -198,6 +216,7 @@ namespace AdsbCarMap.Map
 
             canvas.DrawColor(BackgroundColor);
 
+            tileLayer.SetDark(MapTheme.IsDark(AppSettings.MapThemeIndex, IsSystemDark()));
             tileLayer.Draw(canvas, latitude, longitude, zoomLevel, width, height);
 
             int mapDim = AppSettings.MapDim;

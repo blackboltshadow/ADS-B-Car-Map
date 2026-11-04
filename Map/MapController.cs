@@ -462,6 +462,11 @@ namespace AdsbCarMap.Map
         public bool LabelSelectedAircraft { get; set; }
 
         /// <summary>
+        /// Tells whether the system or the car host is in night mode, used by the automatic map theme. When null, the night mode of the application is used.
+        /// </summary>
+        public Func<bool>? SystemDarkProvider { get; set; }
+
+        /// <summary>
         /// Whether the map may draw the layer with the airborne threats, when the user switched it on in the settings. Only the phone map sets it; the car screen never shows the layer.
         /// </summary>
         public bool ThreatsAllowed { get; set; }

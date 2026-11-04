@@ -43,6 +43,7 @@ namespace AdsbCarMap.Auto
             controller = new MapController(AppServices.Adsb, AppServices.Tiles, AppServices.Routes, AppServices.Selection, AppServices.Enricher, AppServices.FlightKeeper, AppServices.FlightTracks);
             controller.SelectionChanged += RefreshTemplate;
             controller.LabelSelectedAircraft = true;
+            controller.SystemDarkProvider = () => carContext.IsDarkMode;
             controller.ShowSelectionPopup = true;
             surfaceCallback = new MapSurfaceCallback(controller);
 

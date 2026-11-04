@@ -153,6 +153,11 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition TrailOutlineAlphaSetting = SettingDefinition.CreateSlider("trail_outline_alpha", "Krycie obwódki (0-255)", 140.0, 0.0, 255.0, 5.0, "", "Przezroczystość ciemnej obwódki śladu: 0 to niewidoczna, 255 to w pełni kryjąca. Dotyczy tylko obwódki śladu. Obwódkę ikon samolotów ustawia się osobno w sekcji „Ikony samolotów”.");
 
         /// <summary>
+        /// Map theme: automatic (follows the system or the car night mode), light or dark.
+        /// </summary>
+        public static readonly SettingDefinition MapThemeSetting = SettingDefinition.CreateChoice("map_theme", "Motyw mapy", 0, "Automatyczny (domyślnie): mapa robi się ciemna, gdy system telefonu lub samochód (Android Auto) przełączy się na tryb nocny. Jasny: mapa zawsze w oryginalnych kolorach. Ciemny: mapa zawsze ciemna, z zachowaniem barw (woda niebieska, zieleń zielona). Ciemny motyw odwraca jasność kafelków, więc w nocy mapa nie razi w oczy; możesz go łączyć z przyciemnieniem mapy.", "Automatyczny", "Jasny", "Ciemny");
+
+        /// <summary>
         /// Opacity of the black layer that dims the map tiles.
         /// </summary>
         public static readonly SettingDefinition MapDimSetting = new SettingDefinition("map_dim_alpha", "Przyciemnienie mapy (0-220)", 90.0, 0.0, 220.0, true, Help: "Siła czarnej warstwy nakładanej na kafelki mapy: 0 to mapa bez przyciemnienia, 220 to bardzo ciemna. Przyciemniona mapa sprawia, że kolorowe ikony i ślady samolotów są lepiej widoczne, szczególnie w samochodzie lub w nocy.");
@@ -472,6 +477,7 @@ namespace AdsbCarMap.Settings
             DataSourceFallbackSetting,
             DataSourceDetailsSetting,
             RouteSourceSetting,
+            MapThemeSetting,
             MapDimSetting,
             ShowDevLogSetting,
             DevLogLevelSetting,
@@ -756,6 +762,11 @@ namespace AdsbCarMap.Settings
         /// Opacity of the black layer that dims the map tiles.
         /// </summary>
         public static int MapDim => (int)Get(MapDimSetting);
+
+        /// <summary>
+        /// Index of the chosen map theme (see <see cref="AdsbCarMap.Map.MapTheme"/>).
+        /// </summary>
+        public static int MapThemeIndex => (int)Get(MapThemeSetting);
 
         /// <summary>
         /// Whether the layer with the threats is shown on the phone map.

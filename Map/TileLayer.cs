@@ -142,6 +142,26 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Whether the tiles are currently drawn through the dark color filter.
+        /// </summary>
+        private bool darkTiles;
+
+        /// <summary>
+        /// Switches the dark color filter of the tiles on or off; does nothing when the state does not change.
+        /// </summary>
+        /// <param name="dark">True to draw the tiles dark.</param>
+        public void SetDark(bool dark)
+        {
+            if (dark == darkTiles)
+            {
+                return;
+            }
+
+            darkTiles = dark;
+            tilePaint.SetColorFilter(dark ? new ColorMatrixColorFilter(MapTheme.CreateDarkMatrix()) : null);
+        }
+
+        /// <summary>
         /// Gets a value indicating whether any tile is currently being downloaded or decoded.
         /// </summary>
         public bool IsLoading
