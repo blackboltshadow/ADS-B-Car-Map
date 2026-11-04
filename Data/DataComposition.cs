@@ -34,7 +34,7 @@ namespace AdsbCarMap.Data
         public static readonly TimeSpan FlightInfoSaveDelay = TimeSpan.FromSeconds(5);
 
         /// <summary>
-        /// Minimum time between two downloads of the full path of the same flight.
+        /// Minimum time between two downloads of the full path of the same flying aircraft.
         /// </summary>
         public static readonly TimeSpan FlightTrackRefreshInterval = TimeSpan.FromSeconds(60);
 
@@ -80,7 +80,7 @@ namespace AdsbCarMap.Data
 
             Enricher = new AircraftEnricher(AircraftSources, new List<IRateLimitedSource> { adsbdb, hexdb }, settings.DetailsEnabled, AircraftMemory);
             Keeper = new FlightCacheKeeper(RouteMemory, AircraftMemory);
-            Tracks = new FlightTrackStore(new RateLimitedTrackSource(new AdsbLolTrackClient(createHttpClient(AdsbLolTrackClient.DefaultBaseAddress))), FlightTrackRefreshInterval);
+            Tracks = new FlightTrackStore(new RateLimitedTrackSource(new AdsbLolTrackClient(createHttpClient(AdsbLolTrackClient.DefaultBaseAddress))), FlightTrackRefreshInterval, null, Path.Combine(flightCacheDirectory, "tracks.json"), (message, exception) => settings.Report?.Invoke(SourceEventKind.Failure, message, exception));
         }
 
         /// <summary>
@@ -160,6 +160,7 @@ namespace AdsbCarMap.Data
             AircraftMemory.Clear();
             RouteMemory.Flush();
             AircraftMemory.Flush();
+            Tracks.Clear();
         }
 
         /// <summary>

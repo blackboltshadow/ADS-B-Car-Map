@@ -110,7 +110,7 @@ namespace AdsbCarMap.Tests
             StubSource source = new StubSource { Track = CreateTrack(10) };
             FlightTrackStore store = new FlightTrackStore(source, TimeSpan.FromSeconds(60));
 
-            await store.RefreshAsync("abc123", CancellationToken.None);
+            await store.RefreshAsync("abc123", true, CancellationToken.None);
             TrailPoint[] result = store.Compose("abc123", new TrailPoint[] { Local(8), Local(9), Local(10), Local(11) });
 
             Assert.Equal(12, result.Length);
@@ -128,7 +128,7 @@ namespace AdsbCarMap.Tests
             StubSource source = new StubSource { Track = CreateTrack(2000) };
             FlightTrackStore store = new FlightTrackStore(source, TimeSpan.FromSeconds(60));
 
-            await store.RefreshAsync("abc123", CancellationToken.None);
+            await store.RefreshAsync("abc123", true, CancellationToken.None);
             TrailPoint[] result = store.Compose("abc123", Array.Empty<TrailPoint>());
 
             Assert.Equal(FlightTrackStore.MaxPoints, result.Length);
@@ -147,11 +147,11 @@ namespace AdsbCarMap.Tests
             StubSource source = new StubSource { Track = CreateTrack(3) };
             FlightTrackStore store = new FlightTrackStore(source, TimeSpan.FromSeconds(60), () => now);
 
-            await store.RefreshAsync("abc123", CancellationToken.None);
+            await store.RefreshAsync("abc123", true, CancellationToken.None);
             now = now.AddSeconds(30);
-            await store.RefreshAsync("abc123", CancellationToken.None);
+            await store.RefreshAsync("abc123", true, CancellationToken.None);
             now = now.AddSeconds(31);
-            await store.RefreshAsync("abc123", CancellationToken.None);
+            await store.RefreshAsync("abc123", true, CancellationToken.None);
 
             Assert.Equal(2, source.Requests);
         }
@@ -166,12 +166,12 @@ namespace AdsbCarMap.Tests
             StubSource source = new StubSource { Track = CreateTrack(3) };
             FlightTrackStore store = new FlightTrackStore(source, TimeSpan.FromSeconds(60), () => now);
 
-            await store.RefreshAsync("abc123", CancellationToken.None);
+            await store.RefreshAsync("abc123", true, CancellationToken.None);
             now = now.AddSeconds(61);
             source.Failure = new HttpRequestException("boom");
 
-            await Assert.ThrowsAsync<HttpRequestException>(() => store.RefreshAsync("abc123", CancellationToken.None));
-            await store.RefreshAsync("abc123", CancellationToken.None);
+            await Assert.ThrowsAsync<HttpRequestException>(() => store.RefreshAsync("abc123", true, CancellationToken.None));
+            await store.RefreshAsync("abc123", true, CancellationToken.None);
 
             Assert.Equal(2, source.Requests);
             Assert.Equal(3, store.Compose("abc123", Array.Empty<TrailPoint>()).Length);
@@ -187,8 +187,8 @@ namespace AdsbCarMap.Tests
             StubSource source = new StubSource { Track = CreateTrack(3), Gate = gate.Task };
             FlightTrackStore store = new FlightTrackStore(source, TimeSpan.Zero);
 
-            Task first = store.RefreshAsync("abc123", CancellationToken.None);
-            await store.RefreshAsync("abc123", CancellationToken.None);
+            Task first = store.RefreshAsync("abc123", true, CancellationToken.None);
+            await store.RefreshAsync("abc123", true, CancellationToken.None);
             gate.SetResult();
             await first;
 
@@ -205,7 +205,7 @@ namespace AdsbCarMap.Tests
             FlightTrackStore store = new FlightTrackStore(source, TimeSpan.FromSeconds(60));
             TrailPoint[] local = new TrailPoint[] { Local(1) };
 
-            await store.RefreshAsync("abc123", CancellationToken.None);
+            await store.RefreshAsync("abc123", true, CancellationToken.None);
 
             Assert.Same(local, store.Compose("abc123", local));
             Assert.Equal(1, source.Requests);
@@ -223,7 +223,7 @@ namespace AdsbCarMap.Tests
 
             for (int index = 0; index <= FlightTrackStore.MaxEntries; index++)
             {
-                await store.RefreshAsync("hex" + index, CancellationToken.None);
+                await store.RefreshAsync("hex" + index, true, CancellationToken.None);
                 now = now.AddSeconds(1);
             }
 
@@ -241,7 +241,7 @@ namespace AdsbCarMap.Tests
             StubSource source = new StubSource { Track = CreateTrack(3) };
             FlightTrackStore store = new FlightTrackStore(source, TimeSpan.FromSeconds(60));
 
-            await store.RefreshAsync("abc123", CancellationToken.None);
+            await store.RefreshAsync("abc123", true, CancellationToken.None);
             store.Clear();
 
             Assert.Empty(store.Compose("abc123", Array.Empty<TrailPoint>()));

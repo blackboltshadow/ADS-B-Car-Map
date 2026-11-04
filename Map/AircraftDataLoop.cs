@@ -242,7 +242,7 @@ namespace AdsbCarMap.Map
                     }
 
                     RequestSelectedAircraftDetails(fetched, cancellationToken);
-                    RequestSelectedTrack(cancellationToken);
+                    RequestSelectedTrack(fetched, cancellationToken);
                     Volatile.Write(ref failed, 0);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -277,8 +277,9 @@ namespace AdsbCarMap.Map
         /// <summary>
         /// Starts downloading the full recorded path of the primary selected aircraft, unless the trails are switched off in the settings.
         /// </summary>
+        /// <param name="fetched">Aircraft just downloaded from the main source.</param>
         /// <param name="cancellationToken">Token that stops the request.</param>
-        private void RequestSelectedTrack(CancellationToken cancellationToken)
+        private void RequestSelectedTrack(IReadOnlyList<Aircraft> fetched, CancellationToken cancellationToken)
         {
             string? hex = getPrimaryHex();
 
@@ -287,11 +288,14 @@ namespace AdsbCarMap.Map
                 return;
             }
 
+            Aircraft? live = fetched.FirstOrDefault(item => item.Hex == hex);
+            bool airborneNow = live != null && !live.OnGround;
+
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await tracks.RefreshAsync(hex, cancellationToken);
+                    await tracks.RefreshAsync(hex, airborneNow, cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
