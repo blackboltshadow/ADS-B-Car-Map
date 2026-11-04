@@ -131,6 +131,11 @@ namespace AdsbCarMap.Activities
         private LinearLayout? devLogCard;
 
         /// <summary>
+        /// Card "Dane developerskie", created with the screen so that the developer console switch can join it.
+        /// </summary>
+        private LinearLayout? developerDataCard;
+
+        /// <summary>
         /// Button that opens the developer log screen.
         /// </summary>
         private Button? devLogButton;
@@ -392,6 +397,7 @@ namespace AdsbCarMap.Activities
 
             GetDevLogCard(developer);
             GetTitledCard("privacyDev", Loc.T("Prywatność (zaawansowane)"), developer);
+            GetDeveloperDataCard(developer);
 
             foreach (SettingDefinition definition in AppSettings.All)
             {
@@ -821,6 +827,11 @@ namespace AdsbCarMap.Activities
                 return GetDevLogCard(container);
             }
 
+            if (definition == AppSettings.ShowDevConsoleSetting)
+            {
+                return GetDeveloperDataCard(container);
+            }
+
             if (AppSettings.TileCacheSettings.Contains(definition))
             {
                 return GetTileCacheCard(container);
@@ -859,11 +870,17 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Adds the last card of the screen, "Dane developerskie", with the button that opens the list of aircraft types missing from the type table. The button shows the current number of such types.
+        /// Returns the last card of the screen, "Dane developerskie", creating it at the first call. It starts with the title and the hint; the developer console switch and the button that opens the list of missing aircraft types join it later.
         /// </summary>
-        /// <param name="root">Container of the screen.</param>
-        private void AddDeveloperDataCard(LinearLayout root)
+        /// <param name="root">Container in which the card is created.</param>
+        /// <returns>The card.</returns>
+        private LinearLayout GetDeveloperDataCard(LinearLayout root)
         {
+            if (developerDataCard != null)
+            {
+                return developerDataCard;
+            }
+
             LinearLayout card = CreateCard(root);
 
             TextView title = new TextView(this);
@@ -876,6 +893,19 @@ namespace AdsbCarMap.Activities
             StyleSecondary(hint);
             hint.SetPadding(0, Dp(4), 0, 0);
             card.AddView(hint);
+
+            developerDataCard = card;
+
+            return card;
+        }
+
+        /// <summary>
+        /// Adds to the card "Dane developerskie" the button that opens the list of aircraft types missing from the type table. The button shows the current number of such types.
+        /// </summary>
+        /// <param name="root">Container of the screen.</param>
+        private void AddDeveloperDataCard(LinearLayout root)
+        {
+            LinearLayout card = GetDeveloperDataCard(root);
 
             developerDataButton = new Button(this);
             developerDataButton.Click += (sender, args) => StartActivity(new Android.Content.Intent(this, typeof(DeveloperDataActivity)));

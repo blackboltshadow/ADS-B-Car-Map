@@ -114,6 +114,16 @@ namespace AdsbCarMap.Activities
         private ImageButton? militaryButton;
 
         /// <summary>
+        /// Button in the top left corner that shows or hides the developer console. Visible only while the developer console setting is on.
+        /// </summary>
+        private ImageButton? devConsoleButton;
+
+        /// <summary>
+        /// Developer console drawn over the map. A long press copies its text.
+        /// </summary>
+        private TextView? devConsoleText;
+
+        /// <summary>
         /// Button that shows or hides the layer with the airborne threats.
         /// </summary>
         private ImageButton? threatsButton;
@@ -308,6 +318,7 @@ namespace AdsbCarMap.Activities
             ApplyAirspaceFeed();
             ApplyWarningFeed();
             UpdateModeButtons();
+            UpdateDevConsole();
             cardRefreshRunnable = new Java.Lang.Runnable(CardRefreshTick);
             handler.Post(cardRefreshRunnable);
         }
@@ -359,11 +370,68 @@ namespace AdsbCarMap.Activities
         private void CardRefreshTick()
         {
             UpdateCard();
+            UpdateDevConsole();
 
             if (cardRefreshRunnable != null)
             {
                 handler.PostDelayed(cardRefreshRunnable, CardRefreshIntervalMilliseconds);
             }
+        }
+
+        /// <summary>
+        /// Shows or hides the developer console button according to the setting and, while the console is open, refreshes its text. The setting off also closes the console.
+        /// </summary>
+        private void UpdateDevConsole()
+        {
+            if (devConsoleButton == null || devConsoleText == null)
+            {
+                return;
+            }
+
+            if (!AppSettings.ShowDevConsole)
+            {
+                devConsoleButton.Visibility = ViewStates.Gone;
+                devConsoleText.Visibility = ViewStates.Gone;
+
+                return;
+            }
+
+            devConsoleButton.Visibility = ViewStates.Visible;
+
+            if (devConsoleText.Visibility == ViewStates.Visible)
+            {
+                devConsoleText.Text = DevConsoleText.Format(controller.GetDevSnapshot(), DateTime.UtcNow);
+            }
+        }
+
+        /// <summary>
+        /// Opens or closes the developer console.
+        /// </summary>
+        private void OnDevConsoleClicked()
+        {
+            if (devConsoleText == null)
+            {
+                return;
+            }
+
+            devConsoleText.Visibility = devConsoleText.Visibility == ViewStates.Visible ? ViewStates.Gone : ViewStates.Visible;
+            UpdateDevConsole();
+        }
+
+        /// <summary>
+        /// Copies the text of the developer console to the clipboard.
+        /// </summary>
+        private void CopyDevConsole()
+        {
+            Android.Content.ClipboardManager? clipboard = GetSystemService(ClipboardService) as Android.Content.ClipboardManager;
+
+            if (clipboard == null || devConsoleText == null)
+            {
+                return;
+            }
+
+            clipboard.PrimaryClip = ClipData.NewPlainText(Loc.T("Konsola dev"), devConsoleText.Text);
+            Toast.MakeText(this, Loc.T("Skopiowano konsolę dev"), ToastLength.Short)?.Show();
         }
 
         /// <summary>
@@ -608,8 +676,26 @@ namespace AdsbCarMap.Activities
             airspaceInfo.Visibility = ViewStates.Gone;
             airspaceInfo.Click += (sender, args) => OpenAirspaceSource();
 
+            devConsoleButton = CreateRoundButton(Resource.Drawable.ic_bug, Loc.T("Konsola dev"));
+            devConsoleButton.Visibility = ViewStates.Gone;
+            devConsoleButton.Click += (sender, args) => OnDevConsoleClicked();
+
+            devConsoleText = new TextView(this);
+            devConsoleText.TextSize = 10f;
+            devConsoleText.SetTypeface(Typeface.Monospace, TypefaceStyle.Normal);
+            devConsoleText.SetTextColor(Color.White);
+            devConsoleText.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
+            devConsoleText.SetBackgroundColor(Color.Argb(190, 0, 0, 0));
+            devConsoleText.SetMaxWidth((int)((Resources?.DisplayMetrics?.WidthPixels ?? 0) * 0.8f));
+            devConsoleText.Visibility = ViewStates.Gone;
+            devConsoleText.LongClick += (sender, args) => CopyDevConsole();
+
             LinearLayout infoColumn = new LinearLayout(this);
             infoColumn.Orientation = Orientation.Vertical;
+            infoColumn.AddView(devConsoleButton, new LinearLayout.LayoutParams(Dp(48), Dp(48)));
+            LinearLayout.LayoutParams devConsoleTextParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent);
+            devConsoleTextParams.SetMargins(0, Dp(6), 0, Dp(6));
+            infoColumn.AddView(devConsoleText, devConsoleTextParams);
             infoColumn.AddView(threatsInfo, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent));
             LinearLayout.LayoutParams airspaceInfoParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent);
             airspaceInfoParams.SetMargins(0, Dp(6), 0, 0);

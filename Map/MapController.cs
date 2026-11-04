@@ -317,6 +317,16 @@ namespace AdsbCarMap.Map
         private bool hasUserLocation;
 
         /// <summary>
+        /// Moment of the last user position, in UTC. Meaningful only when the position is known.
+        /// </summary>
+        private DateTime userLocationAtUtc;
+
+        /// <summary>
+        /// Number of the aircraft that passed the filters in the last frame, read by the developer console.
+        /// </summary>
+        private int visibleAircraftCount;
+
+        /// <summary>
         /// Last known latitude of the user.
         /// </summary>
         private double userLatitude;

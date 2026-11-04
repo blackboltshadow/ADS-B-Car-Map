@@ -194,7 +194,8 @@ namespace AdsbCarMap.Services
                 () => AppSettings.DataSourceDetails,
                 () => AppSettings.FlightInfoMaxAge,
                 ReportSourceEvent,
-                () => AppSettings.PrivacyOptions);
+                () => AppSettings.PrivacyOptions,
+                DevConsoleState.RecordSent);
 
             return new DataComposition(System.IO.Path.Combine(Android.App.Application.Context.CacheDir!.AbsolutePath, "flights"), address => CreateHttpClient(address), Airports, settings);
         }

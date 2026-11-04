@@ -296,6 +296,11 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition ShowDevLogSetting = SettingDefinition.CreateSwitch("show_dev_log", "Pokaż Dev log w menu", false, "Dodaje do menu głównego pozycję „Dev log” pod „O aplikacji”. Zbieranie zdarzeń działa niezależnie od tego przełącznika, on tylko pokazuje lub ukrywa ekran z logiem. Log służy do przekazania twórcy informacji, co w aplikacji nie działa jak powinno.");
 
         /// <summary>
+        /// Switch that shows the developer console button and the console on the map.
+        /// </summary>
+        public static readonly SettingDefinition ShowDevConsoleSetting = SettingDefinition.CreateSwitch("show_dev_console", "Włącz konsolę dev", false, "Pokazuje na ekranie głównym w lewym górnym rogu przycisk z ikoną błędu, który otwiera na mapie konsolę z danymi roboczymi aplikacji: poziomem zoomu, środkiem mapy, pozycją GPS urządzenia, położeniem wysłanym do serwera po zaokrągleniu prywatności, liczbą samolotów i stanem limitów. Konsola służy twórcy do sprawdzania, co aplikacja robi. Długie dotknięcie konsoli kopiuje jej treść.");
+
+        /// <summary>
         /// Least severe kind of event that is written to the developer log.
         /// </summary>
         public static readonly SettingDefinition DevLogLevelSetting = SettingDefinition.CreateChoice("dev_log_level", "Poziom logowania", 1, "Które zdarzenia trafiają do Dev logu. „Tylko błędy” to nieobsłużone wyjątki i awarie. „Błędy i ostrzeżenia” dodają zdarzenia, po których aplikacja radzi sobie dalej, np. nieudane pobranie kafelka, limit zapytań (429) lub odmowę serwera. „Wszystko” dodaje także informacje, np. przełączenie na zapasowe źródło danych. Zmiana działa od następnego zdarzenia, zapisanych wpisów nie usuwa.", "Tylko błędy", "Błędy i ostrzeżenia", "Wszystko");
@@ -472,6 +477,7 @@ namespace AdsbCarMap.Settings
             DevLogLevelSetting,
             DevLogMaxEntriesSetting,
             DevLogDeduplicateSetting,
+            ShowDevConsoleSetting,
             ShowThreatsSetting,
             ThreatIconScaleSetting,
             ThreatOutlineWidthSetting,
@@ -790,6 +796,11 @@ namespace AdsbCarMap.Settings
         /// Whether the menu has the "Dev log" item.
         /// </summary>
         public static bool ShowDevLog => Get(ShowDevLogSetting) >= 0.5;
+
+        /// <summary>
+        /// Whether the main screen has the developer console button.
+        /// </summary>
+        public static bool ShowDevConsole => Get(ShowDevConsoleSetting) >= 0.5;
 
         /// <summary>
         /// Least severe kind of event that is written to the developer log.

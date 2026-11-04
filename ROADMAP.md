@@ -58,6 +58,7 @@ Zasada kolejności: najpierw rzeczy, które pomagają ocenić to, co już dodano
   - Test „czy ten alert zadziałałby wczoraj” (wymaga historii pozycji, więc raczej daleka przyszłość).
   - Ostrzeżenie o kosztach zapytań przy dużych obszarach w trybie w tle (planer zapytań już liczy koszt).
   - Przesuwanie wierzchołków wielokąta na mapie jest zrobione; zostaje ewentualne zaznaczanie kilku wierzchołków naraz.
+- Konsola dev na mapie (Ustawienia → Dev → Dane developerskie → „Włącz konsolę dev”, przycisk „bug” w lewym górnym rogu): **zrobione i sprawdzone na telefonie (2026-11-04)** (`DevConsoleSnapshot`, `DevConsoleText`, `MapController.GetDevSnapshot`, `DevConsoleState`; zoom, środek mapy, GPS, położenie wysłane do API po zaokrągleniu prywatności z przesunięciem, liczba samolotów, źródło, limit 429). Pomysły na rozszerzenie: FPS i czas klatki, pamięć i liczba wątków, statystyki kafelków (pamięć, dysk, zastępcze), stan feedów NEPTUN, PAŻP i RSO, ostatnie zapytania z „Logu zapytań”, ostatnie wpisy Dev logu, stan usługi w tle i Android Auto, przycisk „Udostępnij” zrzut tekstowy, zwijane sekcje, ukrycie konsoli w wydaniu dla innych użytkowników (dokładne współrzędne).
 - Przyloty i odloty lotniska: najpierw lista „na żywo” z pozycji i tras, potem opcjonalnie rozkład z AeroDataBox z kluczem użytkownika (porównanie źródeł i limity w DATA_SOURCES.md, sekcja „Przyloty i odloty lotniska”).
 
 ## Proponowana kolejność

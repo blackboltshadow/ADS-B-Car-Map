@@ -125,6 +125,22 @@ namespace AdsbCarMap.DataSources.Management.Tests
         }
 
         /// <summary>
+        /// The listener receives the same rounded area that reaches the wrapped source, also when the wrapped source then fails.
+        /// </summary>
+        [Fact]
+        public async Task GetAircraftAsync_ReportsTheSentAreaToTheListener()
+        {
+            CapturingSource inner = new CapturingSource { Failure = new InvalidOperationException("down") };
+            PrivacyOptions options = new PrivacyOptions(10.0);
+            List<QueryArea> sent = new List<QueryArea>();
+            PrivacyAircraftSource source = new PrivacyAircraftSource(inner, () => options, null, sent.Add);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => source.GetAircraftAsync(52.123456, 21.654321, 40.0, CancellationToken.None));
+
+            Assert.Equal(Assert.Single(inner.Queries), Assert.Single(sent));
+        }
+
+        /// <summary>
         /// A changed option applies to the next query without creating the source again.
         /// </summary>
         [Fact]

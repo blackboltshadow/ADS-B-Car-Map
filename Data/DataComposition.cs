@@ -62,7 +62,7 @@ namespace AdsbCarMap.Data
                 settings.FallbackEnabled,
                 settings.Report);
 
-            PositionSource = new PrivacyAircraftSource(AircraftSources, settings.Privacy ?? (() => PrivacyOptions.Exact), settings.Report);
+            PositionSource = new PrivacyAircraftSource(AircraftSources, settings.Privacy ?? (() => PrivacyOptions.Exact), settings.Report, settings.AreaSent);
 
             RateLimitedRouteSource adsbdb = new RateLimitedRouteSource(new AdsbdbClient(adsbdbHttp));
             RateLimitedRouteSource hexdb = new RateLimitedRouteSource(new AirportCompletingRouteSource(new HexdbClient(hexdbHttp), airports));

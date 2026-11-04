@@ -125,6 +125,14 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Name of the source of the aircraft positions.
+        /// </summary>
+        public string SourceName
+        {
+            get { return source.Name; }
+        }
+
+        /// <summary>
         /// Whether the last aircraft download failed.
         /// </summary>
         public bool HasFailed

@@ -874,6 +874,7 @@ namespace AdsbCarMap.Map
                 userLatitude = latitude;
                 LiveTraffic.SetUserLocation(latitude, longitude);
                 userLongitude = longitude;
+                userLocationAtUtc = DateTime.UtcNow;
                 hasUserLocation = true;
 
                 if (followLocation)

@@ -27,12 +27,18 @@ namespace AdsbCarMap.DataSources.Management.Privacy
         private readonly Action<SourceEventKind, string, Exception?>? report;
 
         /// <summary>
+        /// Receives the area that is about to be sent, or null when nobody listens.
+        /// </summary>
+        private readonly Action<QueryArea>? sent;
+
+        /// <summary>
         /// Creates a source that rounds the position of every query.
         /// </summary>
         /// <param name="inner">Source that receives the rounded queries.</param>
         /// <param name="options">Returns the current options.</param>
         /// <param name="report">Receives the description of a query when <see cref="PrivacyOptions.LogRequests"/> is on, or null.</param>
-        public PrivacyAircraftSource(IAircraftSource inner, Func<PrivacyOptions> options, Action<SourceEventKind, string, Exception?>? report = null)
+        /// <param name="sent">Receives the area sent to the wrapped source at every query, or null.</param>
+        public PrivacyAircraftSource(IAircraftSource inner, Func<PrivacyOptions> options, Action<SourceEventKind, string, Exception?>? report = null, Action<QueryArea>? sent = null)
         {
             ArgumentNullException.ThrowIfNull(inner);
             ArgumentNullException.ThrowIfNull(options);
@@ -40,6 +46,7 @@ namespace AdsbCarMap.DataSources.Management.Privacy
             this.inner = inner;
             this.options = options;
             this.report = report;
+            this.sent = sent;
         }
 
         /// <inheritdoc />
@@ -69,6 +76,8 @@ namespace AdsbCarMap.DataSources.Management.Privacy
         {
             PrivacyOptions current = options();
             QueryArea area = CoordinateRounder.Round(latitude, longitude, radiusNauticalMiles, current);
+
+            sent?.Invoke(area);
 
             if (current.LogRequests)
             {

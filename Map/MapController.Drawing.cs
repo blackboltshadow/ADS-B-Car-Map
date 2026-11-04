@@ -248,6 +248,8 @@ namespace AdsbCarMap.Map
                 projected.Add((item, screen.X, screen.Y));
             }
 
+            Volatile.Write(ref visibleAircraftCount, projected.Count);
+
             float iconScale = AppSettings.IconScale;
 
             foreach ((Aircraft Item, float X, float Y) entry in projected)
