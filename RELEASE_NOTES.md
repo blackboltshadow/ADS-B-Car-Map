@@ -2,6 +2,41 @@
 
 Opis tego, co zostało wydane w kolejnych wersjach, od najnowszej. Wersja ma postać `0.<druga>.<trzecia>` i jest w pliku `Build/Version.txt`: przy nowym wydaniu rośnie druga cyfra, a trzecia wraca do 0 (0.3.0), przy poprawce rośnie tylko trzecia (0.3.1); decyduje o tym osoba przygotowująca wydanie. Numer kompilacji (`versionCode`) nigdy nie jest zerowany. Do wersji 0.2.163 trzecia cyfra była numerem kompilacji. Od wersji 0.2.163 każdej wersji odpowiada tag w git (`v<wersja>`) i wiersz w `Build/release-history.csv` (commit, rozmiar i SHA-256 paczki). Podsumowanie commitów dla wersji można wygenerować skryptem `Scripts\Release-Notes.ps1`. Wcześniejsze wersje nie mają tagów.
 
+## 0.9.0 (2026-11-05)
+
+Zmiany od wersji 0.8.0.
+
+**Lotniska**
+- Pogoda lotnisk (METAR z aviationweather.gov) w zwijanym panelu na karcie lotniska i w popupie Android Auto; lotnisko bez własnego METAR bierze raport najbliższej stacji (zasięg w ustawieniach), a ostatni znany raport pokazuje z wiekiem.
+- Prognoza TAF w tabeli okresów (czas UTC albo lokalny), pogoda i prognoza także w oknie szczegółów ulubionych lotnisk.
+- Na znacznikach lotnisk obwódka kategorii lotu (VFR, MVFR, IFR, LIFR) i strzałka wiatru; pobieranie raportów widocznych lotnisk w tle (jedno zapytanie zbiorcze).
+- Pas według wiatru: podświetlenie na mapie od zoomu 11 i linia na karcie. Nowość: pas według ruchu samolotów, czyli koniec pasa, na który faktycznie schodzą i z którego startują widoczne samoloty (przyloty, odloty, samoloty na pasie), z osobnym przełącznikiem w ustawieniach lotnisk. Oba wskazania to przypuszczenia, nie decyzja kontrolera.
+- Częstotliwości radiowe lotniska (OurAirports) w panelu na karcie, w popupie i w oknie ulubionych.
+- Rozszerzalna karta lotniska: uchwyt do przeciągania i maksymalizacji, przewijana zawartość, okrągłe przyciski ikonowe; dotknięcie lotniska i „Wyśrodkuj” trzymają je pośrodku widocznej części mapy.
+- Ustawienie jednostki ciśnienia (hPa lub inHg).
+
+**Mapa**
+- Obrót mapy z kierunkiem jazdy i kompas (igła przywraca północ); w Android Auto trzystanowy przycisk centrowania. Zapamiętywany razem z widokiem mapy.
+- Strzałka na krawędzi ekranu z odległością wskazuje zaznaczony samolot poza widokiem; dotknięcie włącza śledzenie.
+- Szybsze rysowanie samolotów (ikony z pamięci podręcznej, sprzętowy Canvas na telefonie) i wyszukiwanie w tle.
+- Szybsze pobranie samolotów po przesunięciu mapy poza obszar zapytania.
+
+**Źródła danych**
+- Źródło, które zawiodło, odpoczywa 30 s (dłużej po kolejnych błędach), a inne źródło może odpowiadać; źródło odmawiające każdego zapytania nie zgłasza już wyjątku w każdym cyklu.
+- Stan źródła pogody i prognoz (z blokadą po 429) na karcie „Stan źródeł”.
+
+**Inne**
+- Ekran „O aplikacji”: sekcja kanałów ostrzeżeń i stref (NEPTUN, PAŻP, TVP) z zastrzeżeniem, nazwy licencji bibliotek i odnośnik do pliku z licencjami.
+- Uzupełnione typy samolotów (nazwy, producenci).
+
+Tekst „Co nowego” w Google Play dla tej wersji:
+
+```
+Lotniska: pogoda (METAR) i prognoza (TAF) na karcie, obwódka kategorii lotu i strzałka wiatru na mapie, pas w użyciu według wiatru i ruchu samolotów, częstotliwości radiowe.
+Mapa: obrót z kierunkiem jazdy i kompas, strzałka do samolotu poza ekranem, szybsze rysowanie.
+Lepsza odporność na błędy źródeł danych.
+```
+
 ## 0.8.0 (2026-11-04)
 
 Zmiany od wersji 0.7.0.
