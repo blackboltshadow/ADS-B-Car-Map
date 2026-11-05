@@ -333,5 +333,98 @@ namespace AdsbCarMap.DataSources.Management.Tests
 
             Assert.Equal("b", result[0].Hex);
         }
+
+        /// <summary>
+        /// A source that failed with an error rests while another source can answer, and is asked again after the rest.
+        /// </summary>
+        [Fact]
+        public async Task FailedSource_RestsThenIsAskedAgain()
+        {
+            DateTime now = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+            StubSource first = new StubSource("a") { Failure = new HttpRequestException("boom") };
+            StubSource second = new StubSource("b");
+            FallbackAircraftSource source = new FallbackAircraftSource(new List<IRateLimitedAircraftSource> { first, second }, () => new List<string> { "a" }, () => true, null, () => now);
+
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+
+            Assert.Equal(1, first.Calls);
+            Assert.Equal(2, second.Calls);
+
+            now = now.AddSeconds(31);
+            first.Failure = null;
+
+            IReadOnlyList<Aircraft> result = await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+
+            Assert.Equal(2, first.Calls);
+            Assert.Equal("a", result[0].Hex);
+        }
+
+        /// <summary>
+        /// The rest grows with each error in a row and is capped.
+        /// </summary>
+        [Fact]
+        public async Task RepeatedFailures_LengthenRest()
+        {
+            DateTime now = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+            StubSource first = new StubSource("a") { Failure = new HttpRequestException("boom") };
+            StubSource second = new StubSource("b");
+            FallbackAircraftSource source = new FallbackAircraftSource(new List<IRateLimitedAircraftSource> { first, second }, () => new List<string> { "a" }, () => true, null, () => now);
+
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+            now = now.AddSeconds(31);
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+            now = now.AddSeconds(31);
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+
+            Assert.Equal(2, first.Calls);
+
+            now = now.AddSeconds(31);
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+
+            Assert.Equal(3, first.Calls);
+
+            now = now.AddHours(1);
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+            now = now.AddMinutes(5).AddSeconds(1);
+            await source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None);
+
+            Assert.Equal(5, first.Calls);
+        }
+
+        /// <summary>
+        /// When every source has failed, all are asked again, so that a temporary loss of the network does not stop the downloads.
+        /// </summary>
+        [Fact]
+        public async Task AllFailed_AreAskedAgain()
+        {
+            DateTime now = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+            StubSource first = new StubSource("a") { Failure = new HttpRequestException("boom") };
+            StubSource second = new StubSource("b") { Failure = new HttpRequestException("boom") };
+            FallbackAircraftSource source = new FallbackAircraftSource(new List<IRateLimitedAircraftSource> { first, second }, () => new List<string> { "a" }, () => true, null, () => now);
+
+            await Assert.ThrowsAsync<HttpRequestException>(() => source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None));
+            await Assert.ThrowsAsync<HttpRequestException>(() => source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None));
+
+            Assert.Equal(2, first.Calls);
+            Assert.Equal(2, second.Calls);
+        }
+
+        /// <summary>
+        /// The only source is asked every time, because there is nothing to fall back to.
+        /// </summary>
+        [Fact]
+        public async Task FallbackDisabled_FailedSourceIsStillAsked()
+        {
+            StubSource first = new StubSource("a") { Failure = new HttpRequestException("boom") };
+            StubSource second = new StubSource("b");
+            FallbackAircraftSource source = Create(first, second, "a", false);
+
+            await Assert.ThrowsAsync<HttpRequestException>(() => source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None));
+            await Assert.ThrowsAsync<HttpRequestException>(() => source.GetAircraftAsync(1.0, 2.0, 10.0, CancellationToken.None));
+
+            Assert.Equal(2, first.Calls);
+            Assert.Equal(0, second.Calls);
+        }
     }
 }

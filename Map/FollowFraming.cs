@@ -35,6 +35,25 @@ namespace AdsbCarMap.Map
         public static double GetTargetY(double width, double height, IEnumerable<(double Left, double Top, double Right, double Bottom)> covered)
         {
             double middle = height / 2.0;
+            double highestTop = GetVisibleBottom(width, height, covered);
+
+            if (highestTop >= height)
+            {
+                return middle;
+            }
+
+            return Math.Min(middle, Math.Max(highestTop / 2.0, height * MinimumTopFraction));
+        }
+
+        /// <summary>
+        /// Finds the lower edge of the part of the map that is not covered by a bottom sheet.
+        /// </summary>
+        /// <param name="width">Width of the map in pixels.</param>
+        /// <param name="height">Height of the map in pixels.</param>
+        /// <param name="covered">Rectangles of the map covered by views, as left, top, right and bottom; only wide views that touch the bottom edge count.</param>
+        /// <returns>Position in pixels from the top edge: the top of the highest covering view, or the height when nothing covers the bottom.</returns>
+        public static double GetVisibleBottom(double width, double height, IEnumerable<(double Left, double Top, double Right, double Bottom)> covered)
+        {
             double highestTop = height;
 
             foreach ((double Left, double Top, double Right, double Bottom) rectangle in covered)
@@ -48,12 +67,7 @@ namespace AdsbCarMap.Map
                 }
             }
 
-            if (highestTop >= height)
-            {
-                return middle;
-            }
-
-            return Math.Min(middle, Math.Max(highestTop / 2.0, height * MinimumTopFraction));
+            return highestTop;
         }
 
         /// <summary>

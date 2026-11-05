@@ -87,6 +87,35 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Draws only the shadow of an icon shape.
+        /// </summary>
+        /// <param name="canvas">Canvas to draw on.</param>
+        /// <param name="path">Shape pointing north, in density-independent units around the origin.</param>
+        /// <param name="shapeScale">Scale of the shape relative to the base size.</param>
+        /// <param name="x">Horizontal position of the icon center in pixels.</param>
+        /// <param name="y">Vertical position of the icon center in pixels.</param>
+        /// <param name="rotation">Heading in degrees clockwise from the top.</param>
+        /// <param name="offset">Offset of the shadow in pixels, to the right and down on the screen.</param>
+        /// <param name="density">Screen density factor.</param>
+        /// <param name="iconScale">Icon size as a multiple of the default size.</param>
+        /// <param name="outlineWidth">Outline width in dp on each side, 0 for none.</param>
+        /// <param name="shadowStrength">Shadow strength from 0 (none) to 1.</param>
+        public void DrawShadow(Canvas canvas, AndroidPath path, float shapeScale, float x, float y, float rotation, float offset, float density, float iconScale, float outlineWidth, float shadowStrength)
+        {
+            float scale = density * shapeScale * iconScale;
+
+            shadowPaint.Color = Color.Argb((int)(ShadowMaxAlpha * shadowStrength), 0, 0, 0);
+            shadowPaint.StrokeWidth = 2.0f * outlineWidth / (shapeScale * iconScale);
+
+            canvas.Save();
+            canvas.Translate(x + offset, y + offset);
+            canvas.Rotate(rotation);
+            canvas.Scale(scale, scale);
+            canvas.DrawPath(path, shadowPaint);
+            canvas.Restore();
+        }
+
+        /// <summary>
         /// Draws any icon shape in the same style as the aircraft icons: a drop shadow, a dark outline, the fill and an accent.
         /// </summary>
         /// <param name="canvas">Canvas to draw on.</param>
@@ -111,15 +140,7 @@ namespace AdsbCarMap.Map
             {
                 float offset = ShadowOffsetDp * density * iconScale * shadowStrength;
 
-                shadowPaint.Color = Color.Argb((int)(ShadowMaxAlpha * shadowStrength), 0, 0, 0);
-                shadowPaint.StrokeWidth = strokeWidth;
-
-                canvas.Save();
-                canvas.Translate(x + offset, y + offset);
-                canvas.Rotate(rotation);
-                canvas.Scale(scale, scale);
-                canvas.DrawPath(path, shadowPaint);
-                canvas.Restore();
+                DrawShadow(canvas, path, shapeScale, x, y, rotation, offset, density, iconScale, outlineWidth, shadowStrength);
             }
 
             fillPaint.Color = color;

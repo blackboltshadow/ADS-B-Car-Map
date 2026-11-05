@@ -92,6 +92,21 @@ namespace AdsbCarMap.Map
         private const float TapRadius = 30.0f;
 
         /// <summary>
+        /// Shortest time between two downloads brought forward because the map moved away from the queried area.
+        /// </summary>
+        private static readonly TimeSpan CoverageWakeGap = TimeSpan.FromSeconds(1.5);
+
+        /// <summary>
+        /// Part of the visible radius that may reach beyond the queried area before a new download is brought forward.
+        /// </summary>
+        private const double CoverageSlack = 0.25;
+
+        /// <summary>
+        /// Number of kilometers in a nautical mile.
+        /// </summary>
+        private const double KilometersPerNauticalMile = 1.852;
+
+        /// <summary>
         /// Zoom level the map moves to at least when an airport is picked in the search window, so that the airport and its runways are visible.
         /// </summary>
         private const double AirportFocusZoom = 11.0;
@@ -227,6 +242,11 @@ namespace AdsbCarMap.Map
         private readonly AircraftIconPainter aircraftIconPainter;
 
         /// <summary>
+        /// Draws the aircraft icons of the map from cached bitmaps.
+        /// </summary>
+        private readonly AircraftSpriteCache aircraftSpriteCache;
+
+        /// <summary>
         /// Latitude of the map center.
         /// </summary>
         private double centerLatitude = 52.2297;
@@ -280,6 +300,16 @@ namespace AdsbCarMap.Map
         /// Vertical position at which the followed aircraft or the centered airport was kept in the last frame that was not frozen, in pixels from the top edge, or NaN before the first frame. Used only by the drawing thread.
         /// </summary>
         private double lastFramingTargetY = double.NaN;
+
+        /// <summary>
+        /// Center and radius in nautical miles of the area of the last aircraft request, or null before the first request. Guarded by the state lock.
+        /// </summary>
+        private (double Latitude, double Longitude, double RadiusNauticalMiles)? queriedArea;
+
+        /// <summary>
+        /// Moment the download was last brought forward because the map had moved away from the queried area, in UTC.
+        /// </summary>
+        private DateTime lastCoverageWakeUtc = DateTime.MinValue;
 
         /// <summary>
         /// Airport that the map keeps in the middle of the visible part above a card or a popup, or null. It is set when an airport is tapped or centered with the button of the card, and it only takes effect while that airport is the selected one. A move of the map by the user, a fling, following the user or following an aircraft cancels it.
@@ -482,6 +512,11 @@ namespace AdsbCarMap.Map
         public Func<bool>? SystemDarkProvider { get; set; }
 
         /// <summary>
+        /// Whether frames are drawn with the hardware accelerated canvas of the surface (Android 8.0 and newer), which draws the tiles and the icons on the graphics processor instead of the processor. It is used by the phone map; the car host surface keeps the software canvas.
+        /// </summary>
+        public bool UseHardwareCanvas { get; set; }
+
+        /// <summary>
         /// Whether the map may draw the layer with the airborne threats, when the user switched it on in the settings. Only the phone map sets it; the car screen never shows the layer.
         /// </summary>
         public bool ThreatsAllowed { get; set; }
@@ -521,6 +556,7 @@ namespace AdsbCarMap.Map
             locationTracker = new LocationTracker(SetUserLocation);
             aircraftShapes = new AircraftShapes();
             aircraftIconPainter = new AircraftIconPainter(aircraftShapes);
+            aircraftSpriteCache = new AircraftSpriteCache(aircraftIconPainter, aircraftShapes);
 
             followedPaint.SetStyle(Paint.Style.Stroke);
             followedPaint.Color = FollowedAircraftColor;

@@ -33,6 +33,7 @@ namespace AdsbCarMap.Map
         public PhoneMapView(Context context, MapController controller) : base(context)
         {
             this.controller = controller;
+            controller.UseHardwareCanvas = true;
             gestureDetector = new GestureDetector(context, new PanListener(controller));
             scaleDetector = new ScaleGestureDetector(context, new ScaleListener(controller));
             Holder?.AddCallback(this);

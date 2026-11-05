@@ -593,6 +593,15 @@ namespace AdsbCarMap.Map
                 return;
             }
 
+            string? pointed = FindTappedPointer(x, y);
+
+            if (pointed != null && pointed == primaryHex)
+            {
+                FollowPrimary();
+
+                return;
+            }
+
             IReadOnlyList<(string Hex, float X, float Y)> hits = Volatile.Read(ref screenHits);
             float maximumDistance = TapRadius * density;
             float bestDistance = maximumDistance * maximumDistance;

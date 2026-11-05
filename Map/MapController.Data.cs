@@ -18,7 +18,44 @@ namespace AdsbCarMap.Map
         {
             lock (stateLock)
             {
-                return (centerLatitude, centerLongitude, MapMath.CalculateRadiusNauticalMiles(centerLatitude, zoom, surfaceWidth, surfaceHeight));
+                (double, double, double) area = (centerLatitude, centerLongitude, MapMath.CalculateRadiusNauticalMiles(centerLatitude, zoom, surfaceWidth, surfaceHeight));
+
+                queriedArea = area;
+
+                return area;
+            }
+        }
+
+        /// <summary>
+        /// Brings the next aircraft download forward when the visible area has moved away from the area of the last request, so that the aircraft do not appear only after the regular interval when the map is moved or zoomed out. The downloads still keep a minimal gap and the limits of the sources.
+        /// </summary>
+        /// <param name="nowUtc">Current moment, in UTC.</param>
+        /// <param name="latitude">Latitude of the map center.</param>
+        /// <param name="longitude">Longitude of the map center.</param>
+        /// <param name="zoomLevel">Zoom level.</param>
+        /// <param name="width">Width of the map in pixels.</param>
+        /// <param name="height">Height of the map in pixels.</param>
+        private void WakeWhenUncovered(DateTime nowUtc, double latitude, double longitude, double zoomLevel, int width, int height)
+        {
+            (double Latitude, double Longitude, double RadiusNauticalMiles)? queried;
+
+            lock (stateLock)
+            {
+                queried = queriedArea;
+            }
+
+            if (queried == null || width <= 0 || height <= 0 || nowUtc - lastCoverageWakeUtc < CoverageWakeGap)
+            {
+                return;
+            }
+
+            double viewRadius = MapMath.CalculateRadiusNauticalMiles(latitude, zoomLevel, width, height);
+            double shift = GeoMath.DistanceKilometers(queried.Value.Latitude, queried.Value.Longitude, latitude, longitude) / KilometersPerNauticalMile;
+
+            if (shift + viewRadius * (1.0 - CoverageSlack) > queried.Value.RadiusNauticalMiles)
+            {
+                lastCoverageWakeUtc = nowUtc;
+                dataLoop.Wake();
             }
         }
 

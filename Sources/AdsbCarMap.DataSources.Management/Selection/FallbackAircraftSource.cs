@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.RateLimiting;
@@ -36,14 +37,43 @@ namespace AdsbCarMap.DataSources.Management.Selection
         private readonly Action<SourceEventKind, string, Exception?>? report;
 
         /// <summary>
+        /// Returns the current moment in UTC.
+        /// </summary>
+        private readonly Func<DateTime> utcNow;
+
+        /// <summary>
+        /// Sources that failed with an error other than a limit response, by name. Such a source is not asked again until its rest ends, as long as another source can answer, so that a source that refuses every request does not throw an exception in every cycle.
+        /// </summary>
+        private readonly ConcurrentDictionary<string, Rest> rests = new ConcurrentDictionary<string, Rest>();
+
+        /// <summary>
+        /// Rest of a source after errors.
+        /// </summary>
+        /// <param name="Failures">Number of errors in a row.</param>
+        /// <param name="UntilUtc">Moment the rest ends, in UTC.</param>
+        private sealed record Rest(int Failures, DateTime UntilUtc);
+
+        /// <summary>
+        /// Rest after the first error.
+        /// </summary>
+        private static readonly TimeSpan FirstRest = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// Longest rest after errors.
+        /// </summary>
+        private static readonly TimeSpan LongestRest = TimeSpan.FromMinutes(5);
+
+        /// <summary>
         /// Creates the source.
         /// </summary>
         /// <param name="sources">Sources in the order of registration, used for the sources that the order does not name.</param>
         /// <param name="order">Returns the names of the sources in the order of preference; unknown names are ignored and sources that are not named come last.</param>
         /// <param name="fallbackEnabled">Returns whether the other sources may be asked when the preferred one gives no data.</param>
         /// <param name="report">Receives the failures of the sources and the switches between them, or null.</param>
-        public FallbackAircraftSource(IEnumerable<IRateLimitedAircraftSource> sources, Func<IReadOnlyList<string>> order, Func<bool> fallbackEnabled, Action<SourceEventKind, string, Exception?>? report = null)
+        /// <param name="utcNow">Returns the current moment in UTC; the system clock when null.</param>
+        public FallbackAircraftSource(IEnumerable<IRateLimitedAircraftSource> sources, Func<IReadOnlyList<string>> order, Func<bool> fallbackEnabled, Action<SourceEventKind, string, Exception?>? report = null, Func<DateTime>? utcNow = null)
         {
+            this.utcNow = utcNow ?? (() => DateTime.UtcNow);
             registry = new DataSourceRegistry<IRateLimitedAircraftSource>(sources);
             this.order = order;
             this.fallbackEnabled = fallbackEnabled;
@@ -101,8 +131,19 @@ namespace AdsbCarMap.DataSources.Management.Selection
             Exception? hardFailure = null;
             TimeSpan? shortestWait = null;
 
-            foreach (IRateLimitedAircraftSource source in GetOrdered())
+            IReadOnlyList<IRateLimitedAircraftSource> candidates = GetOrdered();
+            bool skipResting = candidates.Any(candidate => GetRemainingRest(candidate.Name) == TimeSpan.Zero);
+
+            foreach (IRateLimitedAircraftSource source in candidates)
             {
+                TimeSpan rest = skipResting ? GetRemainingRest(source.Name) : TimeSpan.Zero;
+
+                if (rest > TimeSpan.Zero)
+                {
+                    shortestWait = Shorter(shortestWait, rest);
+                    continue;
+                }
+
                 RateLimitStatus status = source.GetRateLimitStatus();
 
                 if (!status.CanQuery)
@@ -116,6 +157,7 @@ namespace AdsbCarMap.DataSources.Management.Selection
                     IReadOnlyList<Aircraft> result = await source.GetAircraftAsync(latitude, longitude, radiusNauticalMiles, cancellationToken);
                     string? previous = lastUsedSourceName;
                     lastUsedSourceName = source.Name;
+                    rests.TryRemove(source.Name, out _);
 
                     if (previous != null && !string.Equals(previous, source.Name, StringComparison.Ordinal))
                     {
@@ -131,6 +173,7 @@ namespace AdsbCarMap.DataSources.Management.Selection
                 }
                 catch (Exception exception) when (SourceFailures.IsFailure(exception, cancellationToken))
                 {
+                    StartRest(source.Name);
                     hardFailure = exception;
                     report?.Invoke(SourceEventKind.Failure, "Aircraft source " + source.Name + " failed (" + exception.GetType().Name + ")", exception);
                 }
@@ -157,10 +200,21 @@ namespace AdsbCarMap.DataSources.Management.Selection
             TimeSpan? shortestWait = null;
             bool anySupports = false;
 
-            foreach (IRateLimitedAircraftSource source in GetOrdered())
+            IReadOnlyList<IRateLimitedAircraftSource> candidates = GetOrdered();
+            bool skipResting = candidates.Any(candidate => GetRemainingRest(candidate.Name) == TimeSpan.Zero);
+
+            foreach (IRateLimitedAircraftSource source in candidates)
             {
                 if (source is not IMilitaryAircraftSource military)
                 {
+                    continue;
+                }
+
+                TimeSpan rest = skipResting ? GetRemainingRest(source.Name) : TimeSpan.Zero;
+
+                if (rest > TimeSpan.Zero)
+                {
+                    shortestWait = Shorter(shortestWait, rest);
                     continue;
                 }
 
@@ -179,6 +233,8 @@ namespace AdsbCarMap.DataSources.Management.Selection
 
                     if (result != null)
                     {
+                        rests.TryRemove(source.Name, out _);
+
                         return result;
                     }
                 }
@@ -190,6 +246,7 @@ namespace AdsbCarMap.DataSources.Management.Selection
                 }
                 catch (Exception exception) when (SourceFailures.IsFailure(exception, cancellationToken))
                 {
+                    StartRest(source.Name);
                     anySupports = true;
                     hardFailure = exception;
                     report?.Invoke(SourceEventKind.Failure, "Aircraft source " + source.Name + " failed (" + exception.GetType().Name + ") on the request for military aircraft", exception);
@@ -223,10 +280,21 @@ namespace AdsbCarMap.DataSources.Management.Selection
             TimeSpan? shortestWait = null;
             bool anySupports = false;
 
-            foreach (IRateLimitedAircraftSource source in GetOrdered())
+            IReadOnlyList<IRateLimitedAircraftSource> candidates = GetOrdered();
+            bool skipResting = candidates.Any(candidate => GetRemainingRest(candidate.Name) == TimeSpan.Zero);
+
+            foreach (IRateLimitedAircraftSource source in candidates)
             {
                 if (source is not IAircraftByHexSource byHex)
                 {
+                    continue;
+                }
+
+                TimeSpan rest = skipResting ? GetRemainingRest(source.Name) : TimeSpan.Zero;
+
+                if (rest > TimeSpan.Zero)
+                {
+                    shortestWait = Shorter(shortestWait, rest);
                     continue;
                 }
 
@@ -245,6 +313,8 @@ namespace AdsbCarMap.DataSources.Management.Selection
 
                     if (result != null)
                     {
+                        rests.TryRemove(source.Name, out _);
+
                         return result;
                     }
                 }
@@ -256,6 +326,7 @@ namespace AdsbCarMap.DataSources.Management.Selection
                 }
                 catch (Exception exception) when (SourceFailures.IsFailure(exception, cancellationToken))
                 {
+                    StartRest(source.Name);
                     anySupports = true;
                     hardFailure = exception;
                     report?.Invoke(SourceEventKind.Failure, "Aircraft source " + source.Name + " failed (" + exception.GetType().Name + ") on the request by ICAO addresses", exception);
@@ -293,6 +364,40 @@ namespace AdsbCarMap.DataSources.Management.Selection
             IReadOnlyList<IRateLimitedAircraftSource> all = GetAllInOrder();
 
             return fallbackEnabled() ? all : all.Take(1).ToList();
+        }
+
+        /// <summary>
+        /// Returns how long a source still rests after errors.
+        /// </summary>
+        /// <param name="sourceName">Name of the source.</param>
+        /// <returns>The remaining rest, or zero when the source does not rest.</returns>
+        private TimeSpan GetRemainingRest(string sourceName)
+        {
+            if (!rests.TryGetValue(sourceName, out Rest? rest))
+            {
+                return TimeSpan.Zero;
+            }
+
+            TimeSpan remaining = rest.UntilUtc - utcNow();
+
+            return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+        }
+
+        /// <summary>
+        /// Starts or extends the rest of a source after an error: 30 seconds after the first one, twice as long after each next one in a row, at most 5 minutes.
+        /// </summary>
+        /// <param name="sourceName">Name of the source.</param>
+        private void StartRest(string sourceName)
+        {
+            rests.AddOrUpdate(
+                sourceName,
+                _ => new Rest(1, utcNow() + FirstRest),
+                (_, previous) =>
+                {
+                    TimeSpan length = TimeSpan.FromTicks(Math.Min(LongestRest.Ticks, FirstRest.Ticks << Math.Min(previous.Failures, 10)));
+
+                    return new Rest(previous.Failures + 1, utcNow() + length);
+                });
         }
 
         /// <summary>

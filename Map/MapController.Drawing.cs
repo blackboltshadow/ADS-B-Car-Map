@@ -64,7 +64,7 @@ namespace AdsbCarMap.Map
 
                 try
                 {
-                    Canvas? canvas = current.LockCanvas(null);
+                    Canvas? canvas = UseHardwareCanvas && OperatingSystem.IsAndroidVersionAtLeast(26) ? current.LockHardwareCanvas() : current.LockCanvas(null);
 
                     if (canvas == null)
                     {
@@ -91,6 +91,7 @@ namespace AdsbCarMap.Map
                     }
                 }
             }
+
         }
 
         /// <summary>
@@ -207,6 +208,8 @@ namespace AdsbCarMap.Map
                 centeredLocal = centeredAirport;
             }
 
+            WakeWhenUncovered(frameStartUtc, latitude, longitude, zoomLevel, width, height);
+
             IReadOnlyList<PopupLine>? popup = ShowSelectionPopup ? GetPopupLines(frameStartUtc) : null;
             RectF? popupArea = popup == null ? null : popupRenderer.Measure(popup, width, height, screenDensity);
 
@@ -260,7 +263,6 @@ namespace AdsbCarMap.Map
 
             tileLayer.SetDark(MapTheme.IsDark(AppSettings.MapThemeIndex, IsSystemDark()));
             tileLayer.Draw(canvas, latitude, longitude, zoomLevel, width, height);
-
             int mapDim = AppSettings.MapDim;
 
             if (mapDim > 0)
@@ -320,7 +322,6 @@ namespace AdsbCarMap.Map
             }
 
             Volatile.Write(ref visibleAircraftCount, projected.Count);
-
             float iconScale = AppSettings.IconScale;
 
             foreach ((Aircraft Item, float X, float Y) entry in projected)
@@ -371,6 +372,21 @@ namespace AdsbCarMap.Map
                 userPaint.Color = UserColor;
                 canvas.DrawCircle(userScreen.X, userScreen.Y, 8.0f * screenDensity, userPaint);
             }
+
+            (Aircraft Item, float X, float Y)? pointerTarget = null;
+
+            if (primary != null)
+            {
+                foreach ((Aircraft Item, float X, float Y) entry in projected)
+                {
+                    if (entry.Item.Hex == primary)
+                    {
+                        pointerTarget = entry;
+                    }
+                }
+            }
+
+            DrawOffscreenPointer(canvas, pointerTarget, latitude, longitude, width, height, screenDensity, GetCoveringRectangles(popupArea));
 
             if (popup != null && popupArea != null)
             {
@@ -498,7 +514,7 @@ namespace AdsbCarMap.Map
             float rotation = kind == AircraftKind.Ground || kind == AircraftKind.Balloon ? 0f : (float)(item.TrackDegrees ?? 0.0);
             float iconScale = AppSettings.IconScale;
 
-            aircraftIconPainter.Draw(canvas, kind, x, y, rotation, GetAltitudeColor(item.OnGround, item.AltitudeFeet), screenDensity, iconScale, AppSettings.AircraftOutlineWidth, AppSettings.AircraftShadowStrength, AppSettings.AircraftCockpitStrength);
+            aircraftSpriteCache.Draw(canvas, kind, x, y, rotation, GetAltitudeColor(item.OnGround, item.AltitudeFeet), screenDensity, iconScale, AppSettings.AircraftOutlineWidth, AppSettings.AircraftShadowStrength, AppSettings.AircraftCockpitStrength);
 
             if (kind == AircraftKind.Ground || !(AppSettings.ShowLabels || forceLabel))
             {

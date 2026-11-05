@@ -40,6 +40,11 @@ namespace AdsbCarMap.Activities
         private const int RefreshIntervalMilliseconds = 2000;
 
         /// <summary>
+        /// Delay in milliseconds after the last typed character before the search starts, so that fast typing does not search after every character.
+        /// </summary>
+        private const int TypingDelayMilliseconds = 150;
+
+        /// <summary>
         /// Age of the data in seconds after which the window downloads the aircraft itself, when no map refreshes them.
         /// </summary>
         private const double StaleDataSeconds = 10.0;
@@ -78,6 +83,16 @@ namespace AdsbCarMap.Activities
         /// Whether the window is downloading aircraft at the moment.
         /// </summary>
         private bool isFetching;
+
+        /// <summary>
+        /// Search that waits for the end of typing, null when none is waiting.
+        /// </summary>
+        private Java.Lang.Runnable? pendingSearch;
+
+        /// <summary>
+        /// Number of the last started search; a result of an older search is dropped.
+        /// </summary>
+        private int searchVersion;
 
         /// <summary>
         /// Builds the search screen and enables the back arrow.
@@ -131,6 +146,8 @@ namespace AdsbCarMap.Activities
                 refreshRunnable = null;
             }
 
+            CancelPendingSearch();
+
             base.OnPause();
         }
 
@@ -152,7 +169,7 @@ namespace AdsbCarMap.Activities
             searchInput = new EditText(this);
             searchInput.Hint = Loc.T("Szukaj: lot, rejestracja, typ, lotnisko");
             searchInput.SetSingleLine(true);
-            searchInput.TextChanged += (sender, args) => RenderResults();
+            searchInput.TextChanged += (sender, args) => ScheduleSearch();
             header.AddView(searchInput);
 
             statusText = new TextView(this);
@@ -183,7 +200,7 @@ namespace AdsbCarMap.Activities
                 _ = FetchAircraftAsync();
             }
 
-            RenderResults();
+            _ = RenderResultsAsync();
 
             if (refreshRunnable != null)
             {
@@ -214,13 +231,41 @@ namespace AdsbCarMap.Activities
                 isFetching = false;
             }
 
-            RenderResults();
+            _ = RenderResultsAsync();
         }
 
         /// <summary>
-        /// Shows the airports and aircraft matching the text of the search field.
+        /// Starts the search after the typing delay; a character typed in the meantime postpones it.
         /// </summary>
-        private void RenderResults()
+        private void ScheduleSearch()
+        {
+            CancelPendingSearch();
+
+            pendingSearch = new Java.Lang.Runnable(() =>
+            {
+                pendingSearch = null;
+                _ = RenderResultsAsync();
+            });
+            handler.PostDelayed(pendingSearch, TypingDelayMilliseconds);
+        }
+
+        /// <summary>
+        /// Cancels the search that waits for the end of typing.
+        /// </summary>
+        private void CancelPendingSearch()
+        {
+            if (pendingSearch != null)
+            {
+                handler.RemoveCallbacks(pendingSearch);
+                pendingSearch = null;
+            }
+        }
+
+        /// <summary>
+        /// Searches the airports and aircraft matching the text of the search field on a background thread and shows them, unless a newer search was started in the meantime.
+        /// </summary>
+        /// <returns>Task representing the search.</returns>
+        private async Task RenderResultsAsync()
         {
             if (resultsLayout == null || statusText == null || searchInput == null)
             {
@@ -230,7 +275,25 @@ namespace AdsbCarMap.Activities
             (IReadOnlyList<Aircraft> Aircraft, DateTime TimestampUtc) snapshot = LiveTraffic.GetSnapshot();
             (double Latitude, double Longitude) center = LiveTraffic.GetCenter();
             string query = searchInput.Text ?? string.Empty;
-            List<SearchResult> results = AircraftSearch.SearchAll(snapshot.Aircraft, AppServices.Airports, AppServices.Routes, query, MaxResults, ReservedForAircraft, center.Latitude, center.Longitude);
+            int version = ++searchVersion;
+            List<SearchResult> results;
+
+            try
+            {
+                results = await Task.Run(() => AircraftSearch.SearchAll(snapshot.Aircraft, AppServices.Airports, AppServices.Routes, query, MaxResults, ReservedForAircraft, center.Latitude, center.Longitude));
+            }
+            catch (Exception exception)
+            {
+                DevLogger.Warn(LogTag, "Wyszukiwanie w oknie wyszukiwania nie powiodło się", exception);
+
+                return;
+            }
+
+            if (version != searchVersion || IsDestroyed || IsFinishing)
+            {
+                return;
+            }
+
             int aircraftCount = results.Count(item => item.Aircraft != null);
 
             statusText.Text = snapshot.Aircraft.Count == 0
