@@ -3,6 +3,7 @@ using AdsbCarMap.Data;
 using AdsbCarMap.DataSources.Management.Weather;
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.Map;
+using AdsbCarMap.Services;
 using AdsbCarMap.Settings;
 using Android.Content;
 using Android.Graphics;
@@ -416,7 +417,15 @@ namespace AdsbCarMap.Activities
             nameText.Text = AirportCardText.BuildTitle(airport);
             favoriteButton.Text = isFavorite ? "★" : "☆";
             descriptorText.Text = AirportCardText.BuildDescriptor(airport);
-            detailsText.Text = string.Join("\n", AirportCardText.BuildLines(airport, runways, hasUserLocation, userLatitude, userLongitude));
+            List<string> details = AirportCardText.BuildLines(airport, runways, hasUserLocation, userLatitude, userLongitude);
+            string trafficLine = AirportRunwayTraffic.BuildLine(airport, runways);
+
+            if (trafficLine.Length > 0)
+            {
+                details.Add(trafficLine);
+            }
+
+            detailsText.Text = string.Join("\n", details);
 
             if (!string.Equals(boundIcao, airport.Icao, StringComparison.Ordinal))
             {

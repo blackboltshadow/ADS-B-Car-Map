@@ -131,6 +131,8 @@
     <Compile Include="..\..\Map\AirportCardText.cs" Link="Linked\AirportCardText.cs" />
     <Compile Include="..\..\Map\AirportWeatherText.cs" Link="Linked\AirportWeatherText.cs" />
     <Compile Include="..\..\Data\RunwayWind.cs" Link="Linked\RunwayWind.cs" />
+    <Compile Include="..\..\Data\RunwayInUseDetector.cs" Link="Linked\RunwayInUseDetector.cs" />
+    <Compile Include="..\..\Map\RunwayTrafficText.cs" Link="Linked\RunwayTrafficText.cs" />
     <Compile Include="..\..\Map\AirportForecastText.cs" Link="Linked\AirportForecastText.cs" />
     <Compile Include="..\..\Map\SelectionState.cs" Link="Linked\SelectionState.cs" />
     <Compile Include="..\..\Settings\SettingDefinition.cs" Link="Linked\SettingDefinition.cs" />

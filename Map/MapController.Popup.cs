@@ -111,6 +111,13 @@ namespace AdsbCarMap.Map
                 lines.Add(new PopupLine(text, PopupLineStyle.Normal, 0.0f));
             }
 
+            string trafficLine = AirportRunwayTraffic.BuildLine(airport, AppServices.Airports.GetRunways(airport));
+
+            if (trafficLine.Length > 0)
+            {
+                lines.Add(new PopupLine(trafficLine, PopupLineStyle.Normal, 0.0f));
+            }
+
             AirportWeatherLoader.Snapshot snapshot = AirportWeatherLoader.Request(airport);
             DisplayUnits units = AppSettings.Units;
 

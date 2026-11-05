@@ -253,6 +253,11 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition ShowRunwayInUseSetting = SettingDefinition.CreateSwitch("airport_runway_in_use", "Pas wg wiatru na mapie", true, "Podświetla na mapie (od zoomu 11) pas, który najbardziej sprzyja aktualnemu wiatrowi z raportu METAR, i opisuje jego koniec, np. 27: samoloty startują i lądują pod wiatr, więc wybierany jest koniec pasa z największym wiatrem czołowym. To tylko orientacyjne przypuszczenie z jednego raportu: pas wyznacza kontroler ruchu i bierze pod uwagę też procedury, hałas i prace na lotnisku. Przy słabym (poniżej 3 węzłów) lub zmiennym wietrze pas nie jest wskazywany. Ten sam pas opisuje linia na karcie lotniska. Działa tylko przy włączonej pogodzie na znacznikach.");
 
         /// <summary>
+        /// Switch for the line with the runway that the traffic uses, on the airport card and in the popup.
+        /// </summary>
+        public static readonly SettingDefinition ShowRunwayFromTrafficSetting = SettingDefinition.CreateSwitch("airport_runway_traffic", "Pas wg ruchu samolotów", true, "Dodaje do karty lotniska i popupu w Android Auto linię z pasem, na którym samoloty faktycznie lądują i startują: aplikacja szuka w ruchu widocznym na mapie samolotów, które schodzą na podejściu albo wznoszą się po starcie wzdłuż osi pasa, oraz szybko jadących po pasie, i pokazuje koniec pasa z co najmniej dwoma takimi samolotami wraz z liczbą przylotów, odlotów i samolotów na pasie. To drugie, niezależne od wiatru przypuszczenie: działa dla lotnisk, które mają pasy w bazie, i wymaga widocznych na mapie samolotów z kursem i prędkością pionową, więc przy małym ruchu lub poza zasięgiem odbiorników linii nie ma. Nie zależy od pogody lotniska.");
+
+        /// <summary>
         /// Switch for the list of radio frequencies on the airport card.
         /// </summary>
         public static readonly SettingDefinition ShowAirportFrequenciesSetting = SettingDefinition.CreateSwitch("airport_frequencies", "Częstotliwości na karcie lotniska", true, "Pokazuje na karcie lotniska zwijany panel z częstotliwościami radiowymi (ATIS, wieża, kontrola ruchu naziemnego, zbliżanie i inne) z bazy OurAirports. Po wyłączeniu panel się nie pokazuje.");
@@ -527,6 +532,7 @@ namespace AdsbCarMap.Settings
             AirportMapWeatherFromZoomSetting,
             ShowAirportMapWindSetting,
             ShowRunwayInUseSetting,
+            ShowRunwayFromTrafficSetting,
             ShowAirportFrequenciesSetting,
             AirportPanelsExpandedSetting,
             IconScaleSetting,
@@ -709,6 +715,7 @@ namespace AdsbCarMap.Settings
             ShowAirportForecastSetting,
             AirportForecastCacheMinutesSetting,
             ForecastTimeSetting,
+            ShowRunwayFromTrafficSetting,
             ShowAirportFrequenciesSetting,
             AirportPanelsExpandedSetting,
         };
@@ -736,6 +743,7 @@ namespace AdsbCarMap.Settings
             AirportMapWeatherFromZoomSetting,
             ShowAirportMapWindSetting,
             ShowRunwayInUseSetting,
+            ShowRunwayFromTrafficSetting,
             ShowAirportFrequenciesSetting,
             AirportPanelsExpandedSetting,
         };
@@ -1041,6 +1049,11 @@ namespace AdsbCarMap.Settings
         /// Whether the runway that the wind favors is highlighted on the map.
         /// </summary>
         public static bool ShowRunwayInUse => Get(ShowRunwayInUseSetting) >= 0.5;
+
+        /// <summary>
+        /// Whether the line with the runway that the traffic uses is shown on the airport card and in the popup.
+        /// </summary>
+        public static bool ShowRunwayFromTraffic => Get(ShowRunwayFromTrafficSetting) >= 0.5;
 
         /// <summary>
         /// Whether the radio frequencies are shown on the airport card.
