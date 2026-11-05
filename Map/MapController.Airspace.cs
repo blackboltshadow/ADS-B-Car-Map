@@ -99,8 +99,7 @@ namespace AdsbCarMap.Map
 
             lock (stateLock)
             {
-                (double X, double Y) center = WebMercator.LatLonToWorldPixel(centerLatitude, centerLongitude, zoom);
-                (double Latitude, double Longitude) point = WebMercator.WorldPixelToLatLon(center.X + x - surfaceWidth / 2.0, center.Y + y - surfaceHeight / 2.0, zoom);
+                (double Latitude, double Longitude) point = WebMercator.ScreenToLatLon(x, y, centerLatitude, centerLongitude, zoom, surfaceWidth, surfaceHeight, GetRotation(mapBearing));
                 tapLatitude = point.Latitude;
                 tapLongitude = point.Longitude;
             }

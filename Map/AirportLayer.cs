@@ -108,6 +108,11 @@ namespace AdsbCarMap.Map
         private readonly Paint weatherRingPaint = new Paint(PaintFlags.AntiAlias);
 
         /// <summary>
+        /// Clockwise rotation of the map in the frame being drawn, in degrees.
+        /// </summary>
+        private double frameRotation;
+
+        /// <summary>
         /// Paint of the wind arrow.
         /// </summary>
         private readonly Paint windPaint = new Paint(PaintFlags.AntiAlias);
@@ -206,9 +211,11 @@ namespace AdsbCarMap.Map
         /// <param name="width">Screen width in pixels.</param>
         /// <param name="height">Screen height in pixels.</param>
         /// <param name="density">Screen density factor.</param>
+        /// <param name="rotationDegrees">Clockwise rotation of the map in degrees.</param>
         /// <returns>Airports drawn in the frame with the positions of their markers on the screen.</returns>
-        public List<(Airport Airport, float X, float Y)> Draw(Canvas canvas, AirportDatabase database, Airport? selected, double centerLatitude, double centerLongitude, double zoom, int width, int height, float density)
+        public List<(Airport Airport, float X, float Y)> Draw(Canvas canvas, AirportDatabase database, Airport? selected, double centerLatitude, double centerLongitude, double zoom, int width, int height, float density, double rotationDegrees)
         {
+            frameRotation = rotationDegrees;
             List<(Airport Airport, float X, float Y)> hits = new List<(Airport Airport, float X, float Y)>();
 
             visible.Clear();
@@ -229,6 +236,13 @@ namespace AdsbCarMap.Map
                 (double X, double Y) center = WebMercator.LatLonToWorldPixel(centerLatitude, centerLongitude, zoom);
                 double halfWidth = width / 2.0 * (1.0 + ViewMargin);
                 double halfHeight = height / 2.0 * (1.0 + ViewMargin);
+
+                if (frameRotation != 0.0)
+                {
+                    halfWidth = MapRotation.GetCoveringSize(width, height) / 2.0 * (1.0 + ViewMargin);
+                    halfHeight = halfWidth;
+                }
+
                 (double Latitude, double Longitude) topLeft = WebMercator.WorldPixelToLatLon(center.X - halfWidth, center.Y - halfHeight, zoom);
                 (double Latitude, double Longitude) bottomRight = WebMercator.WorldPixelToLatLon(center.X + halfWidth, center.Y + halfHeight, zoom);
 
@@ -324,7 +338,7 @@ namespace AdsbCarMap.Map
 
             foreach (Airport airport in visible)
             {
-                (float X, float Y) screen = WebMercator.ProjectToScreen(airport.Latitude, airport.Longitude, centerLatitude, centerLongitude, zoom, width, height);
+                (float X, float Y) screen = WebMercator.ProjectToScreen(airport.Latitude, airport.Longitude, centerLatitude, centerLongitude, zoom, width, height, frameRotation);
 
                 if (screen.X < -40f || screen.Y < -40f || screen.X > width + 40f || screen.Y > height + 40f)
                 {
@@ -530,8 +544,8 @@ namespace AdsbCarMap.Map
 
                 foreach (Runway runway in airportRunways)
                 {
-                    (float X, float Y) low = WebMercator.ProjectToScreen(runway.LowEndLatitude, runway.LowEndLongitude, centerLatitude, centerLongitude, zoom, width, height);
-                    (float X, float Y) high = WebMercator.ProjectToScreen(runway.HighEndLatitude, runway.HighEndLongitude, centerLatitude, centerLongitude, zoom, width, height);
+                    (float X, float Y) low = WebMercator.ProjectToScreen(runway.LowEndLatitude, runway.LowEndLongitude, centerLatitude, centerLongitude, zoom, width, height, frameRotation);
+                    (float X, float Y) high = WebMercator.ProjectToScreen(runway.HighEndLatitude, runway.HighEndLongitude, centerLatitude, centerLongitude, zoom, width, height, frameRotation);
 
                     if ((low.X < -50f && high.X < -50f) || (low.Y < -50f && high.Y < -50f) || (low.X > width + 50f && high.X > width + 50f) || (low.Y > height + 50f && high.Y > height + 50f))
                     {
@@ -703,7 +717,7 @@ namespace AdsbCarMap.Map
                 return;
             }
 
-            double toward = (report.WindDirectionDegrees.Value + 180.0) * Math.PI / 180.0;
+            double toward = (report.WindDirectionDegrees.Value + 180.0 + frameRotation) * Math.PI / 180.0;
             float directionX = (float)Math.Sin(toward);
             float directionY = -(float)Math.Cos(toward);
             float length = (10f + Math.Min(report.WindSpeedKnots.Value, 30) * 0.5f) * density;

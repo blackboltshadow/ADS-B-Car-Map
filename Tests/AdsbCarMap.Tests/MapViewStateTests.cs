@@ -26,6 +26,41 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// The orientation of the map is stored and restored.
+        /// </summary>
+        [Fact]
+        public void FormatAndTryParse_KeepsHeadingOrientation()
+        {
+            MapViewState state = new MapViewState(52.0, 21.0, 9.0, true, MapOrientation.Heading);
+
+            MapViewState? parsed = MapViewState.TryParse(state.Format(), 4.0, 13.0);
+
+            Assert.NotNull(parsed);
+            Assert.Equal(MapOrientation.Heading, parsed.Orientation);
+        }
+
+        /// <summary>
+        /// Text written by an older version, without the orientation, means that north was at the top.
+        /// </summary>
+        [Fact]
+        public void TryParse_OldTextWithoutOrientation_IsNorth()
+        {
+            MapViewState? parsed = MapViewState.TryParse("50;20;8;1", 4.0, 13.0);
+
+            Assert.NotNull(parsed);
+            Assert.Equal(MapOrientation.North, parsed.Orientation);
+        }
+
+        /// <summary>
+        /// An orientation value other than 0 or 1 makes the text invalid.
+        /// </summary>
+        [Fact]
+        public void TryParse_InvalidOrientation_ReturnsNull()
+        {
+            Assert.Null(MapViewState.TryParse("50;20;8;1;2", 4.0, 13.0));
+        }
+
+        /// <summary>
         /// The follow flag is stored and restored.
         /// </summary>
         [Fact]

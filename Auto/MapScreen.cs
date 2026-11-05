@@ -64,12 +64,13 @@ namespace AdsbCarMap.Auto
         }
 
         /// <summary>
-        /// Builds the navigation template with the military filter, isolation, labels and search buttons at the top, and panning, zoom in, zoom out and recenter in the map action strip on the right side. Active modes use a green icon with a ring.
+        /// Builds the navigation template with the military filter, isolation, labels and search buttons at the top, and panning, zoom in, zoom out and recenter in the map action strip on the right side. The recenter button also switches the orientation of the map, because both action strips are full. Active modes use a green icon with a ring.
         /// </summary>
         /// <returns>Template shown on the car screen.</returns>
         public override ITemplate OnGetTemplate()
         {
-            CarAction recenterAction = CreateAction(Resource.Drawable.ic_my_location, Resource.Drawable.ic_my_location_on, controller.IsFollowing, controller.FollowUser);
+            bool headingFollow = controller.IsFollowingUser && controller.IsHeadingUp;
+            CarAction recenterAction = CreateAction(Resource.Drawable.ic_my_location, headingFollow ? Resource.Drawable.ic_compass_on : Resource.Drawable.ic_my_location_on, controller.IsFollowing, CycleRecenter);
 
             CarAction searchAction = new CarAction.Builder()
                 .SetIcon(CreateIcon(Resource.Drawable.ic_search))
@@ -112,6 +113,21 @@ namespace AdsbCarMap.Auto
                 .Build();
 
             return template;
+        }
+
+        /// <summary>
+        /// Handles the center button: starts following the user, and while the user is followed switches between north at the top and the direction of travel at the top, which is reported in a car toast.
+        /// </summary>
+        private void CycleRecenter()
+        {
+            bool wasFollowingUser = controller.IsFollowingUser;
+
+            controller.CycleFollowOrientation();
+
+            if (wasFollowingUser)
+            {
+                CarToast.MakeText(CarContext, controller.IsHeadingUp ? Loc.T("Mapa: kierunek jazdy u góry") : Loc.T("Mapa: północ u góry"), CarToast.LengthShort)?.Show();
+            }
         }
 
         /// <summary>

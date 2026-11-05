@@ -114,6 +114,11 @@ namespace AdsbCarMap.Activities
         private ImageButton? militaryButton;
 
         /// <summary>
+        /// Button that turns the map with the direction of travel or brings north back to the top.
+        /// </summary>
+        private ImageButton? compassButton;
+
+        /// <summary>
         /// Button in the top left corner that shows or hides the developer console. Visible only while the developer console setting is on.
         /// </summary>
         private ImageButton? devConsoleButton;
@@ -789,13 +794,17 @@ namespace AdsbCarMap.Activities
             ImageButton zoomOutButton = CreateRoundButton(Resource.Drawable.ic_zoom_out, Loc.T("Oddal"));
             zoomOutButton.Click += (sender, args) => controller.ZoomOut();
 
+            compassButton = CreateRoundButton(Resource.Drawable.ic_compass, Loc.T("Obracaj mapę zgodnie z kierunkiem jazdy"));
+            compassButton.Click += (sender, args) => controller.ToggleOrientation();
+            UpdateCompassButton();
+
             ImageButton centerButton = CreateRoundButton(Resource.Drawable.ic_my_location, Loc.T("Centruj na mojej pozycji"));
             centerButton.Click += (sender, args) => controller.FollowUser();
 
             LinearLayout buttonColumn = new LinearLayout(this);
             buttonColumn.Orientation = Orientation.Vertical;
 
-            foreach (ImageButton button in new ImageButton[] { zoomInButton, zoomOutButton, centerButton })
+            foreach (ImageButton button in new ImageButton[] { zoomInButton, zoomOutButton, compassButton, centerButton })
             {
                 LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(Dp(48), Dp(48));
                 buttonParams.SetMargins(0, Dp(6), 0, Dp(6));
@@ -1192,9 +1201,18 @@ namespace AdsbCarMap.Activities
             isolateButton?.SetBackgroundResource(controller.IsIsolated ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
             multiSelectButton?.SetBackgroundResource(controller.IsMultiSelect ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
             labelsButton?.SetBackgroundResource(AppSettings.ShowLabels ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
+            UpdateCompassButton();
 
             UpdateSelectionCounter();
             UpdateFiltersButton();
+        }
+
+        /// <summary>
+        /// Highlights the compass button while the map is turned with the direction of travel.
+        /// </summary>
+        private void UpdateCompassButton()
+        {
+            compassButton?.SetBackgroundResource(controller.IsHeadingUp ? Resource.Drawable.bg_map_button_active : Resource.Drawable.bg_map_button);
         }
 
         /// <summary>

@@ -553,7 +553,7 @@ namespace AdsbCarMap.Map
             tileLayer = new TileLayer(tileProvider);
             this.routeCache = routeCache;
             this.selectionState = selectionState;
-            locationTracker = new LocationTracker(SetUserLocation);
+            locationTracker = new LocationTracker(SetUserLocation, SetUserMotion);
             aircraftShapes = new AircraftShapes();
             aircraftIconPainter = new AircraftIconPainter(aircraftShapes);
             aircraftSpriteCache = new AircraftSpriteCache(aircraftIconPainter, aircraftShapes);
@@ -688,6 +688,7 @@ namespace AdsbCarMap.Map
                 centerLongitude = remembered.Longitude;
                 zoom = remembered.Zoom;
                 zoomTarget = remembered.Zoom;
+                headingUp = remembered.Orientation == MapOrientation.Heading;
                 followLocation = true;
             }
         }
@@ -701,7 +702,7 @@ namespace AdsbCarMap.Map
 
             lock (stateLock)
             {
-                state = new MapViewState(centerLatitude, centerLongitude, zoomTarget, followLocation);
+                state = new MapViewState(centerLatitude, centerLongitude, zoomTarget, followLocation, headingUp ? MapOrientation.Heading : MapOrientation.North);
             }
 
             MapViewStore.Save(state);

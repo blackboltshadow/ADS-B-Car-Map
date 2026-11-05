@@ -26,6 +26,11 @@ namespace AdsbCarMap.Map
         private const float CullMargin = 20f;
 
         /// <summary>
+        /// Clockwise rotation of the map in the frame being drawn, in degrees.
+        /// </summary>
+        private double frameRotation;
+
+        /// <summary>
         /// Paint of the fill.
         /// </summary>
         private readonly Paint fillPaint = new Paint(PaintFlags.AntiAlias);
@@ -83,8 +88,10 @@ namespace AdsbCarMap.Map
         /// <param name="width">Screen width in pixels.</param>
         /// <param name="height">Screen height in pixels.</param>
         /// <param name="density">Screen density factor.</param>
-        public void Draw(Canvas canvas, IReadOnlyList<AirspaceZoneView> views, double centerLatitude, double centerLongitude, double zoom, int width, int height, float density)
+        /// <param name="rotationDegrees">Clockwise rotation of the map in degrees.</param>
+        public void Draw(Canvas canvas, IReadOnlyList<AirspaceZoneView> views, double centerLatitude, double centerLongitude, double zoom, int width, int height, float density, double rotationDegrees)
         {
+            frameRotation = rotationDegrees;
             if (views.Count == 0)
             {
                 return;
@@ -101,7 +108,7 @@ namespace AdsbCarMap.Map
 
             foreach (AirspaceZoneView view in views)
             {
-                if (IsOffScreen(view.Zone.Bounds, centerLatitude, centerLongitude, zoom, width, height))
+                if (IsOffScreen(view.Zone.Bounds, centerLatitude, centerLongitude, zoom, width, height, frameRotation))
                 {
                     continue;
                 }
@@ -162,7 +169,7 @@ namespace AdsbCarMap.Map
 
                 foreach (AirspaceVertex vertex in outline)
                 {
-                    (float X, float Y) point = WebMercator.ProjectToScreen(vertex.Latitude, vertex.Longitude, centerLatitude, centerLongitude, zoom, width, height);
+                    (float X, float Y) point = WebMercator.ProjectToScreen(vertex.Latitude, vertex.Longitude, centerLatitude, centerLongitude, zoom, width, height, frameRotation);
 
                     if (kept > 0 && Math.Abs(point.X - lastX) < MinimumVertexSpacing && Math.Abs(point.Y - lastY) < MinimumVertexSpacing)
                     {
@@ -210,7 +217,7 @@ namespace AdsbCarMap.Map
             foreach (AirspaceZoneView view in views)
             {
                 (double Latitude, double Longitude) labelPoint = AirspaceGeometry.GetLabelPoint(view.Zone);
-                (float X, float Y) screen = WebMercator.ProjectToScreen(labelPoint.Latitude, labelPoint.Longitude, centerLatitude, centerLongitude, zoom, width, height);
+                (float X, float Y) screen = WebMercator.ProjectToScreen(labelPoint.Latitude, labelPoint.Longitude, centerLatitude, centerLongitude, zoom, width, height, frameRotation);
 
                 if (screen.X < 0f || screen.Y < 0f || screen.X > width || screen.Y > height)
                 {
@@ -240,11 +247,17 @@ namespace AdsbCarMap.Map
         /// <param name="zoom">Zoom level.</param>
         /// <param name="width">Screen width in pixels.</param>
         /// <param name="height">Screen height in pixels.</param>
+        /// <param name="rotationDegrees">Clockwise rotation of the map in degrees. A turned map is never culled, because the rectangle turned with it is no longer aligned with the screen.</param>
         /// <returns>True when no part of the rectangle can be seen.</returns>
-        private static bool IsOffScreen(AirspaceBounds bounds, double centerLatitude, double centerLongitude, double zoom, int width, int height)
+        private static bool IsOffScreen(AirspaceBounds bounds, double centerLatitude, double centerLongitude, double zoom, int width, int height, double rotationDegrees)
         {
-            (float X, float Y) northWest = WebMercator.ProjectToScreen(bounds.MaxLatitude, bounds.MinLongitude, centerLatitude, centerLongitude, zoom, width, height);
-            (float X, float Y) southEast = WebMercator.ProjectToScreen(bounds.MinLatitude, bounds.MaxLongitude, centerLatitude, centerLongitude, zoom, width, height);
+            if (rotationDegrees != 0.0)
+            {
+                return false;
+            }
+
+            (float X, float Y) northWest = WebMercator.ProjectToScreen(bounds.MaxLatitude, bounds.MinLongitude, centerLatitude, centerLongitude, zoom, width, height, rotationDegrees);
+            (float X, float Y) southEast = WebMercator.ProjectToScreen(bounds.MinLatitude, bounds.MaxLongitude, centerLatitude, centerLongitude, zoom, width, height, rotationDegrees);
 
             return southEast.X < -CullMargin || northWest.X > width + CullMargin || southEast.Y < -CullMargin || northWest.Y > height + CullMargin;
         }

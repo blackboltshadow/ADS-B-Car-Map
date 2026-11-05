@@ -83,6 +83,7 @@
     <Compile Include="..\..\Map\WebMercator.cs" Link="Linked\WebMercator.cs" />
     <Compile Include="..\..\Map\MapMath.cs" Link="Linked\MapMath.cs" />
     <Compile Include="..\..\Map\MapViewState.cs" Link="Linked\MapViewState.cs" />
+    <Compile Include="..\..\Map\MapRotation.cs" Link="Linked\MapRotation.cs" />
     <Compile Include="..\..\Map\MapTheme.cs" Link="Linked\MapTheme.cs" />
     <Compile Include="..\..\Data\TrailPoint.cs" Link="Linked\TrailPoint.cs" />
     <Compile Include="..\..\Data\TrailTracker.cs" Link="Linked\TrailTracker.cs" />

@@ -13,9 +13,9 @@ namespace AdsbCarMap.Map
         private const char Separator = ';';
 
         /// <summary>
-        /// Number of values in the stored text.
+        /// Number of values in the current stored text. Text from older versions has one value less and means that the map was not turned.
         /// </summary>
-        private const int ValueCount = 4;
+        private const int ValueCount = 5;
 
         /// <summary>
         /// Creates a view state.
@@ -24,12 +24,14 @@ namespace AdsbCarMap.Map
         /// <param name="longitude">Longitude of the map center.</param>
         /// <param name="zoom">Zoom level.</param>
         /// <param name="followLocation">Whether the map center followed the user position.</param>
-        public MapViewState(double latitude, double longitude, double zoom, bool followLocation)
+        /// <param name="orientation">How the map was turned.</param>
+        public MapViewState(double latitude, double longitude, double zoom, bool followLocation, MapOrientation orientation = MapOrientation.North)
         {
             Latitude = latitude;
             Longitude = longitude;
             Zoom = zoom;
             FollowLocation = followLocation;
+            Orientation = orientation;
         }
 
         /// <summary>
@@ -53,12 +55,17 @@ namespace AdsbCarMap.Map
         public bool FollowLocation { get; }
 
         /// <summary>
+        /// How the map was turned.
+        /// </summary>
+        public MapOrientation Orientation { get; }
+
+        /// <summary>
         /// Converts the state to the stored text.
         /// </summary>
         /// <returns>Text with the values in the invariant culture.</returns>
         public string Format()
         {
-            return string.Join(Separator, Latitude.ToString("R", CultureInfo.InvariantCulture), Longitude.ToString("R", CultureInfo.InvariantCulture), Zoom.ToString("R", CultureInfo.InvariantCulture), FollowLocation ? "1" : "0");
+            return string.Join(Separator, Latitude.ToString("R", CultureInfo.InvariantCulture), Longitude.ToString("R", CultureInfo.InvariantCulture), Zoom.ToString("R", CultureInfo.InvariantCulture), FollowLocation ? "1" : "0", Orientation == MapOrientation.Heading ? "1" : "0");
         }
 
         /// <summary>
@@ -77,7 +84,7 @@ namespace AdsbCarMap.Map
 
             string[] parts = text.Split(Separator);
 
-            if (parts.Length != ValueCount)
+            if (parts.Length != ValueCount && parts.Length != ValueCount - 1)
             {
                 return null;
             }
@@ -100,10 +107,16 @@ namespace AdsbCarMap.Map
                 return null;
             }
 
+            if (parts.Length == ValueCount && parts[4] != "0" && parts[4] != "1")
+            {
+                return null;
+            }
+
+            MapOrientation orientation = parts.Length == ValueCount && parts[4] == "1" ? MapOrientation.Heading : MapOrientation.North;
             double low = Math.Min(minimumZoom, maximumZoom);
             double high = Math.Max(minimumZoom, maximumZoom);
 
-            return new MapViewState(latitude, longitude, Math.Clamp(zoom, low, high), parts[3] == "1");
+            return new MapViewState(latitude, longitude, Math.Clamp(zoom, low, high), parts[3] == "1", orientation);
         }
     }
 }

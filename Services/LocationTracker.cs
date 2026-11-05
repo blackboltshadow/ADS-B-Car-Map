@@ -4,6 +4,7 @@ using Android.Locations;
 using Android.OS;
 using Android.Runtime;
 using Android.Util;
+using AdsbCarMap.Map;
 
 namespace AdsbCarMap.Services
 {
@@ -33,6 +34,11 @@ namespace AdsbCarMap.Services
         private readonly System.Action<double, double> onLocationChanged;
 
         /// <summary>
+        /// Delegate called when a position arrives that has a reliable bearing, with the speed in meters per second and the bearing in degrees, or null when the bearing is not used.
+        /// </summary>
+        private readonly System.Action<double, float>? onMotion;
+
+        /// <summary>
         /// System location manager. Null until tracking is started.
         /// </summary>
         private LocationManager? locationManager;
@@ -46,9 +52,11 @@ namespace AdsbCarMap.Services
         /// Creates a tracker that passes positions to the given delegate.
         /// </summary>
         /// <param name="onLocationChanged">Delegate called when a position arrives.</param>
-        public LocationTracker(System.Action<double, double> onLocationChanged)
+        /// <param name="onMotion">Delegate called with the speed in meters per second and the bearing in degrees when a position arrives that moves fast enough for its bearing to be reliable, or null when the bearing is not used.</param>
+        public LocationTracker(System.Action<double, double> onLocationChanged, System.Action<double, float>? onMotion = null)
         {
             this.onLocationChanged = onLocationChanged;
+            this.onMotion = onMotion;
         }
 
         /// <summary>
@@ -161,6 +169,11 @@ namespace AdsbCarMap.Services
         public void OnLocationChanged(Location location)
         {
             onLocationChanged(location.Latitude, location.Longitude);
+
+            if (onMotion != null && MapRotation.IsBearingReliable(location.HasBearing, location.HasSpeed ? location.Speed : 0.0))
+            {
+                onMotion(location.Speed, location.Bearing);
+            }
         }
 
         /// <summary>

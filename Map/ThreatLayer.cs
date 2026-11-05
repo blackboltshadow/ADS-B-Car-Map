@@ -36,6 +36,11 @@ namespace AdsbCarMap.Map
         private const double MetersPerPixelAtZoomZero = 156543.03392;
 
         /// <summary>
+        /// Clockwise rotation of the map in the frame being drawn, in degrees.
+        /// </summary>
+        private double frameRotation;
+
+        /// <summary>
         /// Paint of the marker fill.
         /// </summary>
         private readonly Paint fillPaint = new Paint(PaintFlags.AntiAlias);
@@ -117,9 +122,11 @@ namespace AdsbCarMap.Map
         /// <param name="width">Screen width in pixels.</param>
         /// <param name="height">Screen height in pixels.</param>
         /// <param name="density">Screen density factor.</param>
+        /// <param name="rotationDegrees">Clockwise rotation of the map in degrees.</param>
         /// <returns>The drawn threats with the screen position of their markers.</returns>
-        public List<(Threat Threat, float X, float Y)> Draw(Canvas canvas, IReadOnlyList<Threat> threats, double centerLatitude, double centerLongitude, double zoom, int width, int height, float density)
+        public List<(Threat Threat, float X, float Y)> Draw(Canvas canvas, IReadOnlyList<Threat> threats, double centerLatitude, double centerLongitude, double zoom, int width, int height, float density, double rotationDegrees)
         {
+            frameRotation = rotationDegrees;
             List<(Threat Threat, float X, float Y)> hits = new List<(Threat Threat, float X, float Y)>();
 
             if (threats.Count == 0)
@@ -146,7 +153,7 @@ namespace AdsbCarMap.Map
                     continue;
                 }
 
-                (float X, float Y) screen = WebMercator.ProjectToScreen(threat.Latitude, threat.Longitude, centerLatitude, centerLongitude, zoom, width, height);
+                (float X, float Y) screen = WebMercator.ProjectToScreen(threat.Latitude, threat.Longitude, centerLatitude, centerLongitude, zoom, width, height, frameRotation);
                 float reach = (float)Math.Min(threat.UncertaintyKm * 1000.0 / metersPerPixel, 4000.0) + 40f * density;
 
                 if (screen.X < -reach || screen.Y < -reach || screen.X > width + reach || screen.Y > height + reach)
@@ -236,7 +243,7 @@ namespace AdsbCarMap.Map
 
             for (int index = 0; index < threat.Trail.Count; index++)
             {
-                (float X, float Y) point = WebMercator.ProjectToScreen(threat.Trail[index].Latitude, threat.Trail[index].Longitude, centerLatitude, centerLongitude, zoom, width, height);
+                (float X, float Y) point = WebMercator.ProjectToScreen(threat.Trail[index].Latitude, threat.Trail[index].Longitude, centerLatitude, centerLongitude, zoom, width, height, frameRotation);
 
                 if (index == 0)
                 {
@@ -269,7 +276,7 @@ namespace AdsbCarMap.Map
             (AndroidPath Path, float Scale) shape = shapes.Get(threat.Kind, threat.HeadingDegrees != null);
             bool faint = threat.Status == ThreatStatus.Stale;
             int alpha = faint ? StaleAlpha : threat.IsPresumptiveCourse ? PresumptiveAlpha : 255;
-            float rotation = (float)(threat.HeadingDegrees ?? 0.0);
+            float rotation = (float)((threat.HeadingDegrees ?? 0.0) + (threat.HeadingDegrees != null ? frameRotation : 0.0));
 
             iconPainter.DrawShape(canvas, shape.Path, shape.Scale, shapes.GetAccent(threat.Kind), x, y, rotation, WithAlpha(ThreatText.ColorFor(threat), alpha), density, AppSettings.ThreatIconScale, AppSettings.ThreatOutlineWidth, faint ? 0.0f : AppSettings.AircraftShadowStrength, AppSettings.AircraftCockpitStrength);
         }

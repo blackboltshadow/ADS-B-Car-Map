@@ -137,14 +137,15 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Moves the map center by the given number of pixels and turns off following. Call under the state lock.
+        /// Moves the map center by the given number of pixels on the screen and turns off following. Call under the state lock.
         /// </summary>
         /// <param name="distanceX">Horizontal movement in pixels.</param>
         /// <param name="distanceY">Vertical movement in pixels.</param>
         private void MoveCenter(double distanceX, double distanceY)
         {
             (double X, double Y) center = WebMercator.LatLonToWorldPixel(centerLatitude, centerLongitude, zoom);
-            (double Latitude, double Longitude) moved = WebMercator.WorldPixelToLatLon(center.X + distanceX, center.Y + distanceY, zoom);
+            (double X, double Y) shift = ScreenShiftToWorld(distanceX, distanceY, GetRotation(mapBearing));
+            (double Latitude, double Longitude) moved = WebMercator.WorldPixelToLatLon(center.X + shift.X, center.Y + shift.Y, zoom);
 
             centerLatitude = Math.Clamp(moved.Latitude, -WebMercator.MaxLatitude, WebMercator.MaxLatitude);
             centerLongitude = ((moved.Longitude + 180.0) % 360.0 + 360.0) % 360.0 - 180.0;
@@ -170,6 +171,7 @@ namespace AdsbCarMap.Map
                 ? zoomTarget
                 : zoom + difference * (1.0 - Math.Exp(-deltaSeconds / ZoomEasingSeconds));
             zoom = Math.Clamp(zoom, minimumZoom, maximumZoom);
+            AdvanceBearing(deltaSeconds);
 
             if (flingVelocityX == 0.0 && flingVelocityY == 0.0)
             {

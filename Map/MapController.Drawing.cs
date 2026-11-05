@@ -179,6 +179,9 @@ namespace AdsbCarMap.Map
             bool onlyMilitary;
             Airport? drawnAirport;
             Airport? centeredLocal;
+            bool followingUser;
+            bool turned;
+            double rotation;
 
             DateTime frameStartUtc = DateTime.UtcNow;
             double deltaSeconds = Math.Min(MaxFrameSeconds, (frameStartUtc - lastFrameUtc).TotalSeconds);
@@ -206,6 +209,9 @@ namespace AdsbCarMap.Map
                 onlyMilitary = militaryOnly;
                 drawnAirport = selectedAirport;
                 centeredLocal = centeredAirport;
+                followingUser = followLocation;
+                turned = headingUp;
+                rotation = GetRotation(mapBearing);
             }
 
             WakeWhenUncovered(frameStartUtc, latitude, longitude, zoomLevel, width, height);
@@ -224,7 +230,8 @@ namespace AdsbCarMap.Map
                 followOffsetPixels = FollowFraming.Ease(followOffsetPixels, (height / 2.0) - targetY, deltaSeconds);
 
                 (double worldX, double worldY) = WebMercator.LatLonToWorldPixel(followedPosition.Latitude, followedPosition.Longitude, zoomLevel);
-                (latitude, longitude) = WebMercator.WorldPixelToLatLon(worldX, worldY + followOffsetPixels, zoomLevel);
+                (double X, double Y) shift = ScreenShiftToWorld(0.0, followOffsetPixels, rotation);
+                (latitude, longitude) = WebMercator.WorldPixelToLatLon(worldX + shift.X, worldY + shift.Y, zoomLevel);
 
                 lock (stateLock)
                 {
@@ -241,10 +248,11 @@ namespace AdsbCarMap.Map
                 double targetY = GetFramingTargetY(width, height, popupArea);
                 (double airportX, double airportY) = WebMercator.LatLonToWorldPixel(centeredLocal.Latitude, centeredLocal.Longitude, zoomLevel);
                 (double centerX, double centerY) = WebMercator.LatLonToWorldPixel(latitude, longitude, zoomLevel);
+                (double X, double Y) airportShift = ScreenShiftToWorld(0.0, (height / 2.0) - targetY, rotation);
 
                 (latitude, longitude) = WebMercator.WorldPixelToLatLon(
-                    FollowFraming.Ease(centerX, airportX, deltaSeconds),
-                    FollowFraming.Ease(centerY, airportY + (height / 2.0) - targetY, deltaSeconds),
+                    FollowFraming.Ease(centerX, airportX + airportShift.X, deltaSeconds),
+                    FollowFraming.Ease(centerY, airportY + airportShift.Y, deltaSeconds),
                     zoomLevel);
 
                 lock (stateLock)
@@ -257,12 +265,45 @@ namespace AdsbCarMap.Map
                 }
             }
 
+            if (followedAircraft == null && followed == null && followingUser && userKnown)
+            {
+                userFollowOffsetPixels = FollowFraming.Ease(userFollowOffsetPixels, turned ? height * HeadingUserOffsetFraction : 0.0, deltaSeconds);
+
+                (double userX, double userY) = WebMercator.LatLonToWorldPixel(currentUserLatitude, currentUserLongitude, zoomLevel);
+                (double X, double Y) userShift = ScreenShiftToWorld(0.0, userFollowOffsetPixels, rotation);
+                (latitude, longitude) = WebMercator.WorldPixelToLatLon(userX - userShift.X, userY - userShift.Y, zoomLevel);
+
+                lock (stateLock)
+                {
+                    if (followLocation)
+                    {
+                        centerLatitude = latitude;
+                        centerLongitude = longitude;
+                    }
+                }
+            }
+
             frameAltitudeStops = AppSettings.AltitudeStopsMeters;
 
             canvas.DrawColor(BackgroundColor);
 
             tileLayer.SetDark(MapTheme.IsDark(AppSettings.MapThemeIndex, IsSystemDark()));
-            tileLayer.Draw(canvas, latitude, longitude, zoomLevel, width, height);
+
+            if (rotation == 0.0)
+            {
+                tileLayer.Draw(canvas, latitude, longitude, zoomLevel, width, height);
+            }
+            else
+            {
+                int coveringSize = MapRotation.GetCoveringSize(width, height);
+
+                canvas.Save();
+                canvas.Rotate((float)rotation, width / 2f, height / 2f);
+                canvas.Translate(-(coveringSize - width) / 2f, -(coveringSize - height) / 2f);
+                tileLayer.Draw(canvas, latitude, longitude, zoomLevel, coveringSize, coveringSize);
+                canvas.Restore();
+            }
+
             int mapDim = AppSettings.MapDim;
 
             if (mapDim > 0)
@@ -272,14 +313,14 @@ namespace AdsbCarMap.Map
 
             if (AirspacesAllowed && AppSettings.ShowAirspace)
             {
-                airspaceLayer.Draw(canvas, GetAirspaceViews(), latitude, longitude, zoomLevel, width, height, screenDensity);
+                airspaceLayer.Draw(canvas, GetAirspaceViews(), latitude, longitude, zoomLevel, width, height, screenDensity, rotation);
             }
             else
             {
                 ClearAirspaceViews();
             }
 
-            Volatile.Write(ref airportHits, airportLayer.Draw(canvas, AppServices.Airports, drawnAirport, latitude, longitude, zoomLevel, width, height, screenDensity));
+            Volatile.Write(ref airportHits, airportLayer.Draw(canvas, AppServices.Airports, drawnAirport, latitude, longitude, zoomLevel, width, height, screenDensity, rotation));
 
             labelPaint.TextSize = AppSettings.LabelTextSize * screenDensity;
             followedPaint.StrokeWidth = 2.0f * screenDensity;
@@ -304,7 +345,7 @@ namespace AdsbCarMap.Map
                 }
 
                 (double Latitude, double Longitude) position = MapMath.Extrapolate(item, elapsedSeconds);
-                (float X, float Y) screen = WebMercator.ProjectToScreen(position.Latitude, position.Longitude, latitude, longitude, zoomLevel, width, height);
+                (float X, float Y) screen = WebMercator.ProjectToScreen(position.Latitude, position.Longitude, latitude, longitude, zoomLevel, width, height, rotation);
 
                 if (selection.Contains(item.Hex))
                 {
@@ -315,7 +356,7 @@ namespace AdsbCarMap.Map
                         trail = flightTracks.Compose(item.Hex, trail);
                     }
 
-                    DrawTrail(canvas, trail, item, screen.X, screen.Y, latitude, longitude, zoomLevel, width, height);
+                    DrawTrail(canvas, trail, item, screen.X, screen.Y, latitude, longitude, zoomLevel, width, height, rotation);
                 }
 
                 projected.Add((item, screen.X, screen.Y));
@@ -333,7 +374,7 @@ namespace AdsbCarMap.Map
 
                 bool forceLabel = LabelSelectedAircraft && selection.Contains(entry.Item.Hex);
 
-                DrawAircraft(canvas, entry.Item, entry.X, entry.Y, screenDensity, forceLabel);
+                DrawAircraft(canvas, entry.Item, entry.X, entry.Y, screenDensity, forceLabel, rotation);
 
                 if (!IsCovered(popupArea, entry.X, entry.Y))
                 {
@@ -356,7 +397,7 @@ namespace AdsbCarMap.Map
 
             if (ThreatsAllowed && AppSettings.ShowThreats)
             {
-                Volatile.Write(ref threatHits, threatLayer.Draw(canvas, AppServices.Threats.Threats, latitude, longitude, zoomLevel, width, height, screenDensity));
+                Volatile.Write(ref threatHits, threatLayer.Draw(canvas, AppServices.Threats.Threats, latitude, longitude, zoomLevel, width, height, screenDensity, rotation));
             }
             else if (threatHits.Count > 0)
             {
@@ -365,7 +406,7 @@ namespace AdsbCarMap.Map
 
             if (userKnown)
             {
-                (float X, float Y) userScreen = WebMercator.ProjectToScreen(currentUserLatitude, currentUserLongitude, latitude, longitude, zoomLevel, width, height);
+                (float X, float Y) userScreen = WebMercator.ProjectToScreen(currentUserLatitude, currentUserLongitude, latitude, longitude, zoomLevel, width, height, rotation);
 
                 userPaint.Color = UserOutlineColor;
                 canvas.DrawCircle(userScreen.X, userScreen.Y, 11.0f * screenDensity, userPaint);
@@ -392,6 +433,8 @@ namespace AdsbCarMap.Map
             {
                 popupRenderer.Draw(canvas, popup, popupArea, screenDensity);
             }
+
+            DrawCompass(canvas, rotation, screenDensity);
 
             if (AppSettings.ShowAltitudeLegend)
             {
@@ -508,10 +551,11 @@ namespace AdsbCarMap.Map
         /// <param name="y">Vertical position of the aircraft on the screen.</param>
         /// <param name="screenDensity">Screen density factor.</param>
         /// <param name="forceLabel">Whether the label is drawn even when the labels are hidden in the settings.</param>
-        private void DrawAircraft(Canvas canvas, Aircraft item, float x, float y, float screenDensity, bool forceLabel)
+        /// <param name="mapRotation">Clockwise rotation of the map in degrees, added to the track so that the icon still points where the aircraft flies.</param>
+        private void DrawAircraft(Canvas canvas, Aircraft item, float x, float y, float screenDensity, bool forceLabel, double mapRotation)
         {
             AircraftKind kind = item.GetKind();
-            float rotation = kind == AircraftKind.Ground || kind == AircraftKind.Balloon ? 0f : (float)(item.TrackDegrees ?? 0.0);
+            float rotation = kind == AircraftKind.Ground || kind == AircraftKind.Balloon ? 0f : (float)((item.TrackDegrees ?? 0.0) + (item.TrackDegrees.HasValue ? mapRotation : 0.0));
             float iconScale = AppSettings.IconScale;
 
             aircraftSpriteCache.Draw(canvas, kind, x, y, rotation, GetAltitudeColor(item.OnGround, item.AltitudeFeet), screenDensity, iconScale, AppSettings.AircraftOutlineWidth, AppSettings.AircraftShadowStrength, AppSettings.AircraftCockpitStrength);
@@ -563,7 +607,8 @@ namespace AdsbCarMap.Map
         /// <param name="zoomLevel">Zoom level.</param>
         /// <param name="width">Screen width in pixels.</param>
         /// <param name="height">Screen height in pixels.</param>
-        private void DrawTrail(Canvas canvas, TrailPoint[] trail, Aircraft item, float aircraftX, float aircraftY, double centerLatitude, double centerLongitude, double zoomLevel, int width, int height)
+        /// <param name="rotation">Clockwise rotation of the map in degrees.</param>
+        private void DrawTrail(Canvas canvas, TrailPoint[] trail, Aircraft item, float aircraftX, float aircraftY, double centerLatitude, double centerLongitude, double zoomLevel, int width, int height, double rotation)
         {
             if (trail.Length == 0)
             {
@@ -577,7 +622,7 @@ namespace AdsbCarMap.Map
 
             for (int index = 0; index < segmentCount; index++)
             {
-                (float X, float Y) point = WebMercator.ProjectToScreen(trail[index].Latitude, trail[index].Longitude, centerLatitude, centerLongitude, zoomLevel, width, height);
+                (float X, float Y) point = WebMercator.ProjectToScreen(trail[index].Latitude, trail[index].Longitude, centerLatitude, centerLongitude, zoomLevel, width, height, rotation);
                 xs[index] = point.X;
                 ys[index] = point.Y;
                 colors[index] = GetAltitudeColor(trail[index].OnGround, trail[index].AltitudeFeet);

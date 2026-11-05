@@ -72,8 +72,9 @@ namespace AdsbCarMap.Map
         /// <param name="zoom">Zoom level.</param>
         /// <param name="width">Screen width in pixels.</param>
         /// <param name="height">Screen height in pixels.</param>
+        /// <param name="rotationDegrees">Clockwise rotation of the map around the screen center in degrees; zero keeps north at the top.</param>
         /// <returns>Position of the point on the screen in pixels.</returns>
-        public static (float X, float Y) ProjectToScreen(double latitude, double longitude, double centerLatitude, double centerLongitude, double zoom, int width, int height)
+        public static (float X, float Y) ProjectToScreen(double latitude, double longitude, double centerLatitude, double centerLongitude, double zoom, int width, int height, double rotationDegrees = 0.0)
         {
             double size = WorldSize(zoom);
             (double X, double Y) point = LatLonToWorldPixel(latitude, longitude, zoom);
@@ -92,7 +93,29 @@ namespace AdsbCarMap.Map
 
             double dy = point.Y - center.Y;
 
-            return ((float)(width / 2.0 + dx), (float)(height / 2.0 + dy));
+            (double X, double Y) turned = MapRotation.RotateVector(dx, dy, rotationDegrees);
+
+            return ((float)(width / 2.0 + turned.X), (float)(height / 2.0 + turned.Y));
+        }
+
+        /// <summary>
+        /// Converts a point of the screen to geographic coordinates; the opposite of <see cref="ProjectToScreen"/>. The longitude is not normalized.
+        /// </summary>
+        /// <param name="x">Horizontal position on the screen in pixels.</param>
+        /// <param name="y">Vertical position on the screen in pixels.</param>
+        /// <param name="centerLatitude">Latitude of the screen center.</param>
+        /// <param name="centerLongitude">Longitude of the screen center.</param>
+        /// <param name="zoom">Zoom level.</param>
+        /// <param name="width">Screen width in pixels.</param>
+        /// <param name="height">Screen height in pixels.</param>
+        /// <param name="rotationDegrees">Clockwise rotation of the map around the screen center in degrees.</param>
+        /// <returns>Latitude and longitude of the point.</returns>
+        public static (double Latitude, double Longitude) ScreenToLatLon(double x, double y, double centerLatitude, double centerLongitude, double zoom, int width, int height, double rotationDegrees = 0.0)
+        {
+            (double X, double Y) center = LatLonToWorldPixel(centerLatitude, centerLongitude, zoom);
+            (double X, double Y) offset = MapRotation.RotateVector(x - (width / 2.0), y - (height / 2.0), -rotationDegrees);
+
+            return WorldPixelToLatLon(center.X + offset.X, center.Y + offset.Y, zoom);
         }
 
         /// <summary>

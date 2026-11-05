@@ -192,8 +192,15 @@ namespace AdsbCarMap.Map
             {
                 (double westX, double northY) = WebMercator.LatLonToWorldPixel(maximumLatitude, minimumLongitude, candidate);
                 (double eastX, double southY) = WebMercator.LatLonToWorldPixel(minimumLatitude, maximumLongitude, candidate);
+                double rotation = GetRotation(mapBearing);
+                double halfBoxWidth = Math.Abs(eastX - westX) / 2.0;
+                double halfBoxHeight = Math.Abs(southY - northY) / 2.0;
+                (double X, double Y) cornerA = MapRotation.RotateVector(halfBoxWidth, halfBoxHeight, rotation);
+                (double X, double Y) cornerB = MapRotation.RotateVector(halfBoxWidth, -halfBoxHeight, rotation);
+                double turnedWidth = 2.0 * Math.Max(Math.Abs(cornerA.X), Math.Abs(cornerB.X));
+                double turnedHeight = 2.0 * Math.Max(Math.Abs(cornerA.Y), Math.Abs(cornerB.Y));
 
-                if (Math.Abs(eastX - westX) <= availableWidth && Math.Abs(southY - northY) <= availableHeight)
+                if (turnedWidth <= availableWidth && turnedHeight <= availableHeight)
                 {
                     return candidate;
                 }
@@ -589,6 +596,13 @@ namespace AdsbCarMap.Map
             if (IsCovered(Volatile.Read(ref popupBounds), x, y))
             {
                 Log.Info(LogTag, string.Format(CultureInfo.InvariantCulture, "Dotknięcie {0:0},{1:0} pominięte: obszar zasłonięty", x, y));
+
+                return;
+            }
+
+            if (IsCompassTapped(x, y))
+            {
+                SetOrientation(MapOrientation.North);
 
                 return;
             }
