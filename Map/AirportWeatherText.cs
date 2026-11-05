@@ -142,7 +142,7 @@ namespace AdsbCarMap.Map
 
             if (metar.PressureHectopascals.HasValue)
             {
-                temperature.Add("QNH " + metar.PressureHectopascals.Value.ToString("0", DisplayCulture) + " hPa");
+                temperature.Add("QNH " + UnitFormatter.FormatPressure(metar.PressureHectopascals.Value, units.Pressure));
             }
 
             if (temperature.Count > 0)

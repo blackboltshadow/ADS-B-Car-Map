@@ -374,5 +374,16 @@ namespace AdsbCarMap.Tests
         {
             return text.Replace(' ', ' ').Replace(' ', ' ');
         }
+
+        /// <summary>
+        /// Checks that the pressure follows the chosen unit.
+        /// </summary>
+        [Fact]
+        public void BuildLines_PressureInInchesOfMercury()
+        {
+            DisplayUnits inches = new DisplayUnits(AltitudeUnit.Feet, DistanceUnit.Kilometers, SpeedUnit.Knots, VerticalSpeedUnit.FeetPerMinute, PressureUnit.InchesOfMercury);
+
+            Assert.Equal("QNH 30,06 inHg", AirportWeatherText.BuildLines(Create(temperature: null, dewPoint: null), inches)[3]);
+        }
     }
 }

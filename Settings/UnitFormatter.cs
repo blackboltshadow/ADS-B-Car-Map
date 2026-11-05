@@ -61,6 +61,22 @@ namespace AdsbCarMap.Settings
     }
 
     /// <summary>
+    /// Unit in which the atmospheric pressure (QNH) is presented.
+    /// </summary>
+    public enum PressureUnit
+    {
+        /// <summary>
+        /// Hectopascals.
+        /// </summary>
+        Hectopascals = 0,
+
+        /// <summary>
+        /// Inches of mercury.
+        /// </summary>
+        InchesOfMercury = 1,
+    }
+
+    /// <summary>
     /// Formats distances, speeds and vertical rates according to the units chosen in the settings. Together with <see cref="AltitudeFormatter"/> it is the only place that converts units, so the phone and Android Auto always agree. Data is stored in kilometers, knots and feet per minute.
     /// </summary>
     public static partial class UnitFormatter
@@ -84,6 +100,11 @@ namespace AdsbCarMap.Settings
         /// Meters per second in one foot per minute.
         /// </summary>
         private const double MetersPerSecondPerFootPerMinute = 0.3048 / 60.0;
+
+        /// <summary>
+        /// Hectopascals in one inch of mercury.
+        /// </summary>
+        private const double HectopascalsPerInchOfMercury = 33.8639;
 
         /// <summary>
         /// Distance in the displayed unit below which one decimal place is shown by <see cref="FormatDistanceCompact"/>.
@@ -266,6 +287,32 @@ namespace AdsbCarMap.Settings
             }
 
             return magnitude.ToString("N0", DisplayCulture) + " ft/min";
+        }
+
+        /// <summary>
+        /// Returns the symbol of a pressure unit.
+        /// </summary>
+        /// <param name="unit">Unit.</param>
+        /// <returns>"hPa" or "inHg".</returns>
+        public static string PressureSymbol(PressureUnit unit)
+        {
+            return unit == PressureUnit.InchesOfMercury ? "inHg" : "hPa";
+        }
+
+        /// <summary>
+        /// Formats a pressure given in hectopascals. Hectopascals are shown as whole numbers, inches of mercury with two decimal places, as in altimeter settings.
+        /// </summary>
+        /// <param name="hectopascals">Pressure in hectopascals.</param>
+        /// <param name="unit">Unit of the result.</param>
+        /// <returns>Text such as "1013 hPa" or "29,92 inHg".</returns>
+        public static string FormatPressure(double hectopascals, PressureUnit unit)
+        {
+            if (unit == PressureUnit.InchesOfMercury)
+            {
+                return (hectopascals / HectopascalsPerInchOfMercury).ToString("0.00", DisplayCulture) + " inHg";
+            }
+
+            return hectopascals.ToString("0", DisplayCulture) + " hPa";
         }
     }
 }

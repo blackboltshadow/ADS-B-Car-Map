@@ -108,5 +108,27 @@ namespace AdsbCarMap.Tests
             Assert.Equal(SpeedUnit.KilometersPerHour, DisplayUnits.Default.Speed);
             Assert.Equal(VerticalSpeedUnit.FeetPerMinute, DisplayUnits.Default.VerticalSpeed);
         }
+
+        /// <summary>
+        /// Checks that pressure is written as whole hectopascals or as inches of mercury with two decimals.
+        /// </summary>
+        [Theory]
+        [InlineData(PressureUnit.Hectopascals, 1013.4, "1013 hPa")]
+        [InlineData(PressureUnit.InchesOfMercury, 1013.25, "29,92 inHg")]
+        [InlineData(PressureUnit.InchesOfMercury, 1031.0, "30,45 inHg")]
+        public void FormatPressure_ConvertsToUnit(PressureUnit unit, double hectopascals, string expected)
+        {
+            Assert.Equal(expected, Plain(UnitFormatter.FormatPressure(hectopascals, unit)));
+        }
+
+        /// <summary>
+        /// Checks the symbols of the pressure units.
+        /// </summary>
+        [Fact]
+        public void PressureSymbol_ReturnsSymbol()
+        {
+            Assert.Equal("hPa", UnitFormatter.PressureSymbol(PressureUnit.Hectopascals));
+            Assert.Equal("inHg", UnitFormatter.PressureSymbol(PressureUnit.InchesOfMercury));
+        }
     }
 }

@@ -2540,6 +2540,17 @@ namespace AdsbCarMap.Activities
                     Array.IndexOf(units, AppSettings.VerticalSpeedUnit));
             }
 
+            if (definition == AppSettings.PressureUnitSetting)
+            {
+                PressureUnit[] units = new PressureUnit[] { PressureUnit.Hectopascals, PressureUnit.InchesOfMercury };
+
+                return BuildUnitExample(
+                    Loc.T("Ciśnienie QNH 1013 hPa:"),
+                    new string[] { Loc.T("Hektopaskale"), Loc.T("Cale słupa rtęci") },
+                    units.Select(unit => UnitFormatter.FormatPressure(1013.0, unit)).ToArray(),
+                    Array.IndexOf(units, AppSettings.PressureUnit));
+            }
+
             return null;
         }
 

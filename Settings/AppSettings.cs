@@ -356,6 +356,11 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition VerticalSpeedUnitSetting = SettingDefinition.CreateChoice("vertical_speed_unit", "Jednostka prędkości pionowej", 0, "Jednostka tempa wznoszenia i opadania w całej aplikacji, na telefonie i w Android Auto. Pokazuje się w jednym miejscu: w linii Wznoszenie lub Opadanie na karcie i w popupie zaznaczonego samolotu. Stopy na minutę (ft/min) to jednostka używana w lotnictwie, metry na sekundę (m/s) to jednostka układu SI, np. 1 500 ft/min to 7,6 m/s. Lot z tempem poniżej 100 ft/min jest pokazywany jako poziomy.", "Stopy na minutę (ft/min)", "Metry na sekundę (m/s)");
 
         /// <summary>
+        /// Unit in which the atmospheric pressure (QNH) is shown.
+        /// </summary>
+        public static readonly SettingDefinition PressureUnitSetting = SettingDefinition.CreateChoice("pressure_unit", "Jednostka ciśnienia", 0, "Jednostka ciśnienia atmosferycznego (QNH) w całej aplikacji, na telefonie i w Android Auto. Pokazuje się w jednym miejscu: w linii temperatury i ciśnienia w panelu pogody lotniska (karta, popup, okno ulubionych). Hektopaskale (hPa) są używane w większości świata, cale słupa rtęci (inHg) m.in. w USA i Kanadzie, np. 1013 hPa to 29,91 inHg.", "Hektopaskale (hPa)", "Cale słupa rtęci (inHg)");
+
+        /// <summary>
         /// Switch that shows the "Dev log" item in the menu.
         /// </summary>
         public static readonly SettingDefinition ShowDevLogSetting = SettingDefinition.CreateSwitch("show_dev_log", "Pokaż Dev log w menu", false, "Dodaje do menu głównego pozycję „Dev log” pod „O aplikacji”. Zbieranie zdarzeń działa niezależnie od tego przełącznika, on tylko pokazuje lub ukrywa ekran z logiem. Log służy do przekazania twórcy informacji, co w aplikacji nie działa jak powinno.");
@@ -495,6 +500,7 @@ namespace AdsbCarMap.Settings
             DistanceUnitSetting,
             SpeedUnitSetting,
             VerticalSpeedUnitSetting,
+            PressureUnitSetting,
             ShowLabelsSetting,
             ShowAltitudeLegendSetting,
             LabelTextSizeSetting,
@@ -586,6 +592,7 @@ namespace AdsbCarMap.Settings
             DistanceUnitSetting,
             SpeedUnitSetting,
             VerticalSpeedUnitSetting,
+            PressureUnitSetting,
         };
 
         /// <summary>
@@ -1236,9 +1243,14 @@ namespace AdsbCarMap.Settings
         public static VerticalSpeedUnit VerticalSpeedUnit => (VerticalSpeedUnit)(int)Get(VerticalSpeedUnitSetting);
 
         /// <summary>
+        /// Unit in which the atmospheric pressure is shown.
+        /// </summary>
+        public static PressureUnit PressureUnit => (PressureUnit)(int)Get(PressureUnitSetting);
+
+        /// <summary>
         /// All the units chosen by the user.
         /// </summary>
-        public static DisplayUnits Units => new DisplayUnits(AltitudeUnit, DistanceUnit, SpeedUnit, VerticalSpeedUnit);
+        public static DisplayUnits Units => new DisplayUnits(AltitudeUnit, DistanceUnit, SpeedUnit, VerticalSpeedUnit, PressureUnit);
 
         /// <summary>
         /// Size of the aircraft label text in dp.

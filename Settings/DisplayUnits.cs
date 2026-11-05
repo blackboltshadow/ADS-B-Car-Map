@@ -8,7 +8,7 @@ namespace AdsbCarMap.Settings
         /// <summary>
         /// Metric units with feet per minute for the vertical rate, the defaults of the settings.
         /// </summary>
-        public static readonly DisplayUnits Default = new DisplayUnits(AltitudeUnit.Metric, DistanceUnit.Kilometers, SpeedUnit.KilometersPerHour, VerticalSpeedUnit.FeetPerMinute);
+        public static readonly DisplayUnits Default = new DisplayUnits(AltitudeUnit.Metric, DistanceUnit.Kilometers, SpeedUnit.KilometersPerHour, VerticalSpeedUnit.FeetPerMinute, PressureUnit.Hectopascals);
 
         /// <summary>
         /// Creates a set of units.
@@ -17,8 +17,10 @@ namespace AdsbCarMap.Settings
         /// <param name="distance">Unit of distances.</param>
         /// <param name="speed">Unit of ground speeds.</param>
         /// <param name="verticalSpeed">Unit of vertical rates.</param>
-        public DisplayUnits(AltitudeUnit altitude, DistanceUnit distance, SpeedUnit speed, VerticalSpeedUnit verticalSpeed)
+        /// <param name="pressure">Unit of the atmospheric pressure.</param>
+        public DisplayUnits(AltitudeUnit altitude, DistanceUnit distance, SpeedUnit speed, VerticalSpeedUnit verticalSpeed, PressureUnit pressure = PressureUnit.Hectopascals)
         {
+            Pressure = pressure;
             Altitude = altitude;
             Distance = distance;
             Speed = speed;
@@ -44,5 +46,10 @@ namespace AdsbCarMap.Settings
         /// Unit of vertical rates.
         /// </summary>
         public VerticalSpeedUnit VerticalSpeed { get; }
+
+        /// <summary>
+        /// Unit of the atmospheric pressure.
+        /// </summary>
+        public PressureUnit Pressure { get; }
     }
 }
