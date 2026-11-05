@@ -1,4 +1,6 @@
 using AdsbCarMap.Data;
+using AdsbCarMap.DataSources.Management.Weather;
+using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.Services;
 using AdsbCarMap.Settings;
 using Android.Graphics;
@@ -56,6 +58,21 @@ namespace AdsbCarMap.Map
         internal static readonly Color HeliportColor = Color.Rgb(110, 180, 255);
 
         /// <summary>
+        /// Color of the runway that the wind favors.
+        /// </summary>
+        private static readonly Color RunwayInUseColor = Color.Rgb(90, 225, 130);
+
+        /// <summary>
+        /// Number of zoom levels above the one from which the weather is shown at which the wind arrow appears.
+        /// </summary>
+        private const double WindArrowZoomOffset = 2.0;
+
+        /// <summary>
+        /// Number of airports above which the memory of the favored runways is emptied.
+        /// </summary>
+        private const int MaxRunwayMemory = 600;
+
+        /// <summary>
         /// Color of the ring around the selected airport.
         /// </summary>
         private static readonly Color SelectedColor = Color.Rgb(255, 215, 0);
@@ -84,6 +101,36 @@ namespace AdsbCarMap.Map
         /// Rectangles of the labels already placed in the frame, reused between frames.
         /// </summary>
         private readonly List<RectF> placedLabels = new List<RectF>();
+
+        /// <summary>
+        /// Paint of the ring in the color of the flight category.
+        /// </summary>
+        private readonly Paint weatherRingPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Paint of the wind arrow.
+        /// </summary>
+        private readonly Paint windPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Paint of the dark outline of the wind arrow.
+        /// </summary>
+        private readonly Paint windOutlinePaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Paint of the runway that the wind favors.
+        /// </summary>
+        private readonly Paint runwayInUsePaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Paint of the designator at the end of the runway that the wind favors.
+        /// </summary>
+        private readonly Paint runwayEndPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
+        /// Runway that the wind favors by the ICAO code of the airport, kept with the report it was computed from, so that it is computed again only when the report changes.
+        /// </summary>
+        private readonly Dictionary<string, (Metar Report, RunwayWindResult? Result)> runwayInUse = new Dictionary<string, (Metar Report, RunwayWindResult? Result)>();
 
         /// <summary>
         /// Paint of the airport marker fill.
@@ -132,6 +179,19 @@ namespace AdsbCarMap.Map
             labelPaint.SetShadowLayer(3f, 0f, 0f, Color.Black);
             selectedPaint.SetStyle(Paint.Style.Stroke);
             selectedPaint.Color = SelectedColor;
+            weatherRingPaint.SetStyle(Paint.Style.Stroke);
+            windPaint.SetStyle(Paint.Style.Stroke);
+            windPaint.StrokeCap = Paint.Cap.Round;
+            windPaint.Color = Color.White;
+            windOutlinePaint.SetStyle(Paint.Style.Stroke);
+            windOutlinePaint.StrokeCap = Paint.Cap.Round;
+            windOutlinePaint.Color = Color.Argb(220, 0, 0, 0);
+            runwayInUsePaint.SetStyle(Paint.Style.Stroke);
+            runwayInUsePaint.Color = RunwayInUseColor;
+            runwayEndPaint.Color = RunwayInUseColor;
+            runwayEndPaint.TextAlign = Paint.Align.Center;
+            runwayEndPaint.SetTypeface(Typeface.DefaultBold);
+            runwayEndPaint.SetShadowLayer(3f, 0f, 0f, Color.Black);
         }
 
         /// <summary>
@@ -245,9 +305,16 @@ namespace AdsbCarMap.Map
                 }
             }
 
+            bool mapWeather = AppSettings.ShowAirportWeather && AppSettings.ShowAirportMapWeather && zoom >= AppSettings.AirportMapWeatherFromZoom;
+
+            if (mapWeather)
+            {
+                AirportMapWeather.Request(visible, zoom);
+            }
+
             if (zoom >= RunwaysFromZoom)
             {
-                DrawRunways(canvas, database, centerLatitude, centerLongitude, zoom, width, height, density);
+                DrawRunways(canvas, database, centerLatitude, centerLongitude, zoom, width, height, density, mapWeather && AppSettings.ShowRunwayInUse);
             }
 
             float iconScale = AppSettings.IconScale;
@@ -270,6 +337,11 @@ namespace AdsbCarMap.Map
                 fillPaint.Color = GetMarkerColor(airport);
                 canvas.DrawCircle(screen.X, screen.Y, radius, fillPaint);
                 canvas.DrawCircle(screen.X, screen.Y, radius, outlinePaint);
+
+                if (mapWeather)
+                {
+                    DrawWeather(canvas, airport, screen.X, screen.Y, radius, density, zoom);
+                }
 
                 bool isFavorite = favorites.Contains(airport);
 
@@ -447,13 +519,16 @@ namespace AdsbCarMap.Map
         /// <param name="width">Screen width in pixels.</param>
         /// <param name="height">Screen height in pixels.</param>
         /// <param name="density">Screen density factor.</param>
-        private void DrawRunways(Canvas canvas, AirportDatabase database, double centerLatitude, double centerLongitude, double zoom, int width, int height, float density)
+        private void DrawRunways(Canvas canvas, AirportDatabase database, double centerLatitude, double centerLongitude, double zoom, int width, int height, float density, bool highlightRunwayInUse)
         {
             double metersPerPixel = 156543.03392 * Math.Cos(centerLatitude * Math.PI / 180.0) / Math.Pow(2.0, zoom);
 
             foreach (Airport airport in visible)
             {
-                foreach (Runway runway in database.GetRunways(airport))
+                IReadOnlyList<Runway> airportRunways = database.GetRunways(airport);
+                RunwayWindResult? favored = highlightRunwayInUse ? GetRunwayInUse(airport, airportRunways) : null;
+
+                foreach (Runway runway in airportRunways)
                 {
                     (float X, float Y) low = WebMercator.ProjectToScreen(runway.LowEndLatitude, runway.LowEndLongitude, centerLatitude, centerLongitude, zoom, width, height);
                     (float X, float Y) high = WebMercator.ProjectToScreen(runway.HighEndLatitude, runway.HighEndLongitude, centerLatitude, centerLongitude, zoom, width, height);
@@ -469,9 +544,179 @@ namespace AdsbCarMap.Map
                     runwayOutlinePaint.StrokeWidth = stroke + 2f * density;
                     runwayPaint.StrokeWidth = stroke;
                     canvas.DrawLine(low.X, low.Y, high.X, high.Y, runwayOutlinePaint);
-                    canvas.DrawLine(low.X, low.Y, high.X, high.Y, runwayPaint);
+
+                    if (favored != null && ReferenceEquals(favored.Runway, runway))
+                    {
+                        runwayInUsePaint.StrokeWidth = stroke;
+                        canvas.DrawLine(low.X, low.Y, high.X, high.Y, runwayInUsePaint);
+                        DrawRunwayEnd(canvas, favored.IsHighEnd ? high : low, favored.IsHighEnd ? low : high, favored.EndName, density);
+                    }
+                    else
+                    {
+                        canvas.DrawLine(low.X, low.Y, high.X, high.Y, runwayPaint);
+                    }
                 }
             }
+        }
+
+        /// <summary>
+        /// Writes the designator of the favored runway end just beyond that end of the runway.
+        /// </summary>
+        /// <param name="canvas">Surface canvas.</param>
+        /// <param name="end">Screen position of the favored end.</param>
+        /// <param name="other">Screen position of the other end.</param>
+        /// <param name="name">Designator of the favored end.</param>
+        /// <param name="density">Screen density factor.</param>
+        private void DrawRunwayEnd(Canvas canvas, (float X, float Y) end, (float X, float Y) other, string name, float density)
+        {
+            float dx = end.X - other.X;
+            float dy = end.Y - other.Y;
+            float length = (float)Math.Sqrt(dx * dx + dy * dy);
+
+            if (length < 1f)
+            {
+                return;
+            }
+
+            runwayEndPaint.TextSize = 11f * density;
+            canvas.DrawText(name, end.X + dx / length * 12f * density, end.Y + dy / length * 12f * density + 4f * density, runwayEndPaint);
+        }
+
+        /// <summary>
+        /// Returns the runway end that the wind of the report of an airport favors, computed again only when the report changes.
+        /// </summary>
+        /// <param name="airport">The airport.</param>
+        /// <param name="runways">Runways of the airport.</param>
+        /// <returns>The favored end, or null when the airport has no report of its own that is current, or the wind favors no runway.</returns>
+        private RunwayWindResult? GetRunwayInUse(Airport airport, IReadOnlyList<Runway> runways)
+        {
+            Metar? report = GetCurrentReport(airport);
+
+            if (report == null || runways.Count == 0)
+            {
+                return null;
+            }
+
+            if (runwayInUse.TryGetValue(airport.Icao, out (Metar Report, RunwayWindResult? Result) known) && ReferenceEquals(known.Report, report))
+            {
+                return known.Result;
+            }
+
+            if (runwayInUse.Count > MaxRunwayMemory)
+            {
+                runwayInUse.Clear();
+            }
+
+            RunwayWindResult? result = RunwayWind.Choose(runways, report.WindDirectionDegrees, report.IsWindVariable, report.WindSpeedKnots);
+            runwayInUse[airport.Icao] = (report, result);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the report of the airport itself, when it is not older than the time after which the panel marks it as out of date.
+        /// </summary>
+        /// <param name="airport">The airport.</param>
+        /// <returns>The report, or null when there is none, it comes from another station or it is out of date.</returns>
+        private static Metar? GetCurrentReport(Airport airport)
+        {
+            WeatherEntry? entry = AppServices.Weather.Get(airport.Icao);
+            Metar? report = entry?.Report;
+
+            if (entry == null || report == null || entry.DistanceKilometers.HasValue || DateTime.UtcNow - report.ObservedAt.UtcDateTime > AirportWeatherText.StaleAfter)
+            {
+                return null;
+            }
+
+            return report;
+        }
+
+        /// <summary>
+        /// Draws the ring in the color of the flight category and, at a higher zoom, the wind arrow of an airport that has a current report.
+        /// </summary>
+        /// <param name="canvas">Surface canvas.</param>
+        /// <param name="airport">The airport.</param>
+        /// <param name="x">Screen position of the marker.</param>
+        /// <param name="y">Screen position of the marker.</param>
+        /// <param name="radius">Radius of the marker in pixels.</param>
+        /// <param name="density">Screen density factor.</param>
+        /// <param name="zoom">Zoom level.</param>
+        private void DrawWeather(Canvas canvas, Airport airport, float x, float y, float radius, float density, double zoom)
+        {
+            Metar? report = GetCurrentReport(airport);
+
+            if (report == null)
+            {
+                return;
+            }
+
+            int? color = AirportWeatherText.GetCategoryColor(report.FlightCategory);
+
+            if (color.HasValue)
+            {
+                weatherRingPaint.Color = new Color(color.Value);
+                weatherRingPaint.StrokeWidth = 2.5f * density;
+                canvas.DrawCircle(x, y, radius + 5.5f * density, weatherRingPaint);
+            }
+
+            if (AppSettings.ShowAirportMapWind && zoom >= AppSettings.AirportMapWeatherFromZoom + WindArrowZoomOffset)
+            {
+                DrawWindArrow(canvas, report, x + radius + 14f * density, y - radius - 10f * density, density);
+            }
+        }
+
+        /// <summary>
+        /// Draws the shaft and the two barbs of an arrow with one paint.
+        /// </summary>
+        /// <param name="canvas">Surface canvas.</param>
+        /// <param name="paint">Paint of the lines.</param>
+        /// <param name="tailX">Screen position of the tail.</param>
+        /// <param name="tailY">Screen position of the tail.</param>
+        /// <param name="headX">Screen position of the head.</param>
+        /// <param name="headY">Screen position of the head.</param>
+        /// <param name="directionX">Horizontal part of the unit vector from the tail to the head.</param>
+        /// <param name="directionY">Vertical part of the unit vector from the tail to the head.</param>
+        /// <param name="barb">Length of a barb in pixels.</param>
+        private static void DrawArrowLines(Canvas canvas, Paint paint, float tailX, float tailY, float headX, float headY, float directionX, float directionY, float barb)
+        {
+            const float Angle = 0.5f;
+            float sine = (float)Math.Sin(Angle);
+            float cosine = (float)Math.Cos(Angle);
+
+            canvas.DrawLine(tailX, tailY, headX, headY, paint);
+            canvas.DrawLine(headX, headY, headX + (-directionX * cosine + directionY * sine) * barb, headY + (-directionX * sine - directionY * cosine) * barb, paint);
+            canvas.DrawLine(headX, headY, headX + (-directionX * cosine - directionY * sine) * barb, headY + (directionX * sine - directionY * cosine) * barb, paint);
+        }
+
+        /// <summary>
+        /// Draws an arrow that points where the wind blows; its length grows with the speed of the wind. Nothing is drawn for a variable wind, a calm or a report without a wind.
+        /// </summary>
+        /// <param name="canvas">Surface canvas.</param>
+        /// <param name="report">The report.</param>
+        /// <param name="centerX">Screen position of the middle of the arrow.</param>
+        /// <param name="centerY">Screen position of the middle of the arrow.</param>
+        /// <param name="density">Screen density factor.</param>
+        private void DrawWindArrow(Canvas canvas, Metar report, float centerX, float centerY, float density)
+        {
+            if (report.IsWindVariable || !report.WindDirectionDegrees.HasValue || !report.WindSpeedKnots.HasValue || report.WindSpeedKnots.Value < 1)
+            {
+                return;
+            }
+
+            double toward = (report.WindDirectionDegrees.Value + 180.0) * Math.PI / 180.0;
+            float directionX = (float)Math.Sin(toward);
+            float directionY = -(float)Math.Cos(toward);
+            float length = (10f + Math.Min(report.WindSpeedKnots.Value, 30) * 0.5f) * density;
+            float tailX = centerX - directionX * length / 2f;
+            float tailY = centerY - directionY * length / 2f;
+            float headX = centerX + directionX * length / 2f;
+            float headY = centerY + directionY * length / 2f;
+            float barb = 4.5f * density;
+
+            windOutlinePaint.StrokeWidth = 4.5f * density;
+            windPaint.StrokeWidth = 2f * density;
+            DrawArrowLines(canvas, windOutlinePaint, tailX, tailY, headX, headY, directionX, directionY, barb);
+            DrawArrowLines(canvas, windPaint, tailX, tailY, headX, headY, directionX, directionY, barb);
         }
     }
 }

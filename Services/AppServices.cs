@@ -2,6 +2,7 @@ using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.Enrichment;
 using AdsbCarMap.DataSources.Management.Caching;
 using AdsbCarMap.DataSources.Management.Selection;
+using AdsbCarMap.DataSources.Management.Weather;
 using AdsbCarMap.DataSources.Neptun;
 using AdsbCarMap.DataSources.Models;
 using AdsbCarMap.DataSources.Pansa;
@@ -115,6 +116,16 @@ namespace AdsbCarMap.Services
         public static FlightTrackStore FlightTracks => Composition.Value.Tracks;
 
         /// <summary>
+        /// Weather reports of airports, downloaded again after the time chosen in the settings.
+        /// </summary>
+        public static WeatherStore Weather => Composition.Value.Weather;
+
+        /// <summary>
+        /// Forecasts (TAF) of airports, downloaded again after the time chosen in the settings.
+        /// </summary>
+        public static ForecastStore Forecast => Composition.Value.Forecast;
+
+        /// <summary>
         /// Cache of the flight routes downloaded from the route sources.
         /// </summary>
         public static RouteCache Routes => RouteCacheInstance.Value;
@@ -200,7 +211,9 @@ namespace AdsbCarMap.Services
                 () => AppSettings.FlightInfoMaxAge,
                 ReportSourceEvent,
                 () => AppSettings.PrivacyOptions,
-                DevConsoleState.RecordSent);
+                DevConsoleState.RecordSent,
+                () => AppSettings.AirportWeatherMaxAge,
+                () => AppSettings.AirportForecastMaxAge);
 
             return new DataComposition(System.IO.Path.Combine(Android.App.Application.Context.CacheDir!.AbsolutePath, "flights"), address => CreateHttpClient(address), Airports, settings);
         }

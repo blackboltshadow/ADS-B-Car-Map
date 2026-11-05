@@ -203,6 +203,66 @@ namespace AdsbCarMap.Settings
         public static readonly SettingDefinition AirportToZoomSetting = new SettingDefinition("airport_to_zoom", "Lotniska do zoomu", 18.0, 1.0, 18.0, true, SettingKind.ZoomRange);
 
         /// <summary>
+        /// Switch for the weather report (METAR) of the airport on the airport card.
+        /// </summary>
+        public static readonly SettingDefinition ShowAirportWeatherSetting = SettingDefinition.CreateSwitch("airport_weather", "Pogoda lotniska (METAR)", true, "Pokazuje na karcie lotniska zwijany panel z aktualną pogodą z raportu METAR: kategorię lotu (VFR, MVFR, IFR, LIFR), wiatr, widzialność, chmury, temperaturę i ciśnienie QNH, razem z oryginalnym tekstem raportu i czasem, który minął od obserwacji. Dane pochodzą z serwisu aviationweather.gov (NOAA Aviation Weather Center) i dotyczą tylko lotnisk, które mają stację pogodową. Po wyłączeniu aplikacja nie wysyła żadnych zapytań o pogodę.");
+
+        /// <summary>
+        /// How often the weather reports are downloaded again, and how long a downloaded report is considered current.
+        /// </summary>
+        public static readonly SettingDefinition AirportWeatherCacheMinutesSetting = SettingDefinition.CreateSlider("airport_weather_minutes", "Odświeżanie pogody lotnisk", 10.0, 1.0, 60.0, 1.0, " min", "Jak często aplikacja pobiera pogodę lotniska na nowo i jak długo uznaje pobrany raport za aktualny. Raporty METAR są wydawane zwykle co 30 lub 60 minut (częściej tylko przy gwałtownej zmianie pogody), więc krótszy czas zwiększa ruch w sieci, ale rzadko daje nowsze dane. Pogoda jest pobierana tylko wtedy, gdy otwarta jest karta lotniska, i nigdy w tle. Gdy pobranie się nie powiedzie, aplikacja pokazuje ostatni znany raport razem z jego wiekiem, najdłużej przez 90 minut. Lotniska bez stacji pogodowej są sprawdzane najwyżej raz na 30 minut.");
+
+        /// <summary>
+        /// Largest distance in kilometers to the nearest weather station whose report is shown for an airport that has none of its own; zero switches it off.
+        /// </summary>
+        public static readonly SettingDefinition AirportWeatherNearestKmSetting = SettingDefinition.CreateSlider("airport_weather_nearest_km", "Zasięg najbliższej stacji pogodowej", 60.0, 0.0, 150.0, 5.0, " km", "Gdy lotnisko nie ma własnego raportu METAR (dotyczy większości małych lotnisk), aplikacja pokazuje na jego karcie raport najbliższej stacji pogodowej, o ile leży w tym zasięgu. Panel pogody podaje wtedy kod stacji i jej odległość od lotniska, a kolor kategorii lotu nie jest używany, bo pogoda w innym miejscu może się różnić (zwłaszcza mgła i niskie chmury). 0 wyłącza to zachowanie. Zasięg jest zawsze w kilometrach, niezależnie od jednostki odległości. Do szukania stacji aplikacja wysyła do aviationweather.gov współrzędne tego lotniska (nie Twoją pozycję).");
+
+        /// <summary>
+        /// Switch for the forecast (TAF) of the airport on the airport card.
+        /// </summary>
+        public static readonly SettingDefinition ShowAirportForecastSetting = SettingDefinition.CreateSwitch("airport_forecast", "Prognoza lotniska (TAF)", true, "Pokazuje na karcie lotniska zwijany panel z prognozą pogody TAF: okresy z kierunkiem i prędkością wiatru, widzialnością, chmurami i zjawiskami, z oznaczeniem rodzaju zmiany (bazowa, od, stopniowo, czasowo, z prawdopodobieństwem) i oryginalnym tekstem prognozy. TAF wydaje się tylko dla większych lotnisk, zwykle na 9 do 30 godzin, więc małe lotniska go nie mają (prognoza nie jest brana z innej stacji). Dane pochodzą z serwisu aviationweather.gov (NOAA Aviation Weather Center). Po wyłączeniu aplikacja nie wysyła żadnych zapytań o prognozę.");
+
+        /// <summary>
+        /// How often the forecasts are downloaded again.
+        /// </summary>
+        public static readonly SettingDefinition AirportForecastCacheMinutesSetting = SettingDefinition.CreateSlider("airport_forecast_minutes", "Odświeżanie prognozy lotnisk", 60.0, 10.0, 180.0, 5.0, " min", "Jak często aplikacja pobiera prognozę lotniska na nowo. TAF wydaje się co 3, 6 lub 12 godzin (z poprawkami w razie potrzeby), więc rzadsze odświeżanie wystarcza. Prognoza jest pobierana tylko wtedy, gdy otwarta jest karta lotniska, i nigdy w tle. Prognoza, której ważność minęła, jest sprawdzana najwyżej co 15 minut, a lotniska bez prognozy najwyżej co 3 godziny. Gdy pobranie się nie powiedzie, aplikacja pokazuje ostatnią znaną prognozę przez najdłużej 6 godzin.");
+
+        /// <summary>
+        /// Time zone of the times in the forecast panel: UTC or the local time of the phone.
+        /// </summary>
+        public static readonly SettingDefinition ForecastTimeSetting = SettingDefinition.CreateChoice("airport_forecast_time", "Czas w prognozie", 0, "Strefa czasu, w której panel prognozy podaje godziny okresów. W lotnictwie prognozy zapisuje się w UTC, więc UTC (domyślnie) pozwala porównać tabelę z oryginalnym tekstem TAF. Czas lokalny telefonu pokazuje te same godziny według strefy czasowej ustawionej w telefonie (ze zmianą czasu).", "UTC", "Czas lokalny telefonu");
+
+        /// <summary>
+        /// Switch for the flight category ring on the airport markers.
+        /// </summary>
+        public static readonly SettingDefinition ShowAirportMapWeatherSetting = SettingDefinition.CreateSwitch("airport_map_weather", "Pogoda na znacznikach lotnisk", true, "Rysuje wokół znacznika lotniska kolorową obwódkę kategorii lotu z jego aktualnego raportu METAR: zieloną dla VFR, niebieską dla MVFR, czerwoną dla IFR i fioletową dla LIFR. Lotniska bez własnego METAR (większość małych) nie mają obwódki, a raport starszy niż 90 minut jest pomijany. Aplikacja pobiera w tle raporty lotnisk widocznych na mapie (większych i z regularnymi lotami), po kilkadziesiąt kodów ICAO w jednym zapytaniu do aviationweather.gov, więc serwis dowiaduje się, jakie lotniska są w widocznym obszarze mapy (nie dostaje współrzędnych). Działa tylko przy włączonej pogodzie lotnisk.");
+
+        /// <summary>
+        /// Zoom level from which the airport markers show the weather.
+        /// </summary>
+        public static readonly SettingDefinition AirportMapWeatherFromZoomSetting = SettingDefinition.CreateSlider("airport_map_weather_zoom", "Pogoda na znacznikach od zoomu", 7.0, 4.0, 14.0, 1.0, string.Empty, "Poziom przybliżenia mapy, od którego lotniska pokazują pogodę (obwódkę kategorii lotu, a dwa poziomy wyżej także strzałkę wiatru) i od którego aplikacja pobiera raporty lotnisk widocznych na mapie. Niższa wartość oznacza więcej lotnisk naraz, więc więcej zapytań; wyższa oszczędza ruch.");
+
+        /// <summary>
+        /// Switch for the wind arrow next to the airport markers.
+        /// </summary>
+        public static readonly SettingDefinition ShowAirportMapWindSetting = SettingDefinition.CreateSwitch("airport_map_wind", "Strzałka wiatru przy lotnisku", true, "Rysuje obok znacznika lotniska małą strzałkę, która wskazuje, dokąd wieje wiatr, a jej długość rośnie z prędkością wiatru (do 30 węzłów). Strzałki nie ma przy wietrze zmiennym i bezwietrznej pogodzie. Pojawia się dwa poziomy przybliżenia wyżej niż obwódka kategorii lotu. Działa tylko przy włączonej pogodzie na znacznikach.");
+
+        /// <summary>
+        /// Switch for the highlight of the runway that the wind favors.
+        /// </summary>
+        public static readonly SettingDefinition ShowRunwayInUseSetting = SettingDefinition.CreateSwitch("airport_runway_in_use", "Pas wg wiatru na mapie", true, "Podświetla na mapie (od zoomu 11) pas, który najbardziej sprzyja aktualnemu wiatrowi z raportu METAR, i opisuje jego koniec, np. 27: samoloty startują i lądują pod wiatr, więc wybierany jest koniec pasa z największym wiatrem czołowym. To tylko orientacyjne przypuszczenie z jednego raportu: pas wyznacza kontroler ruchu i bierze pod uwagę też procedury, hałas i prace na lotnisku. Przy słabym (poniżej 3 węzłów) lub zmiennym wietrze pas nie jest wskazywany. Ten sam pas opisuje linia na karcie lotniska. Działa tylko przy włączonej pogodzie na znacznikach.");
+
+        /// <summary>
+        /// Switch for the list of radio frequencies on the airport card.
+        /// </summary>
+        public static readonly SettingDefinition ShowAirportFrequenciesSetting = SettingDefinition.CreateSwitch("airport_frequencies", "Częstotliwości na karcie lotniska", true, "Pokazuje na karcie lotniska zwijany panel z częstotliwościami radiowymi (ATIS, wieża, kontrola ruchu naziemnego, zbliżanie i inne) z bazy OurAirports. Po wyłączeniu panel się nie pokazuje.");
+
+        /// <summary>
+        /// Switch that makes the panels of the airport card open expanded.
+        /// </summary>
+        public static readonly SettingDefinition AirportPanelsExpandedSetting = SettingDefinition.CreateSwitch("airport_panels_expanded", "Panele karty lotniska domyślnie rozwinięte", false, "Określa, czy panele pogody i częstotliwości na karcie lotniska otwierają się rozwinięte, czy zwinięte do jednej linii. Dotknięcie nagłówka panelu zmienia jego stan tylko na czas, gdy karta jest otwarta; przy następnej karcie panel wraca do stanu wybranego tutaj.");
+
+        /// <summary>
         /// Size of the aircraft icons as a multiple of the default size, on the phone and in Android Auto.
         /// </summary>
         public static readonly SettingDefinition IconScaleSetting = SettingDefinition.CreateSlider("icon_scale", "Rozmiar ikon samolotów", 1.0, 0.6, 2.0, 0.1);
@@ -451,6 +511,18 @@ namespace AdsbCarMap.Settings
             SmallAirportsPavedSetting,
             AirportFromZoomSetting,
             AirportToZoomSetting,
+            ShowAirportWeatherSetting,
+            AirportWeatherCacheMinutesSetting,
+            AirportWeatherNearestKmSetting,
+            ShowAirportForecastSetting,
+            AirportForecastCacheMinutesSetting,
+            ForecastTimeSetting,
+            ShowAirportMapWeatherSetting,
+            AirportMapWeatherFromZoomSetting,
+            ShowAirportMapWindSetting,
+            ShowRunwayInUseSetting,
+            ShowAirportFrequenciesSetting,
+            AirportPanelsExpandedSetting,
             IconScaleSetting,
             AircraftOutlineWidthSetting,
             AircraftShadowSetting,
@@ -620,6 +692,21 @@ namespace AdsbCarMap.Settings
         };
 
         /// <summary>
+        /// Settings of the airport card: the weather and the radio frequencies. They belong to <see cref="AirportSettings"/> but have no effect on the airports drawn on the map.
+        /// </summary>
+        public static readonly IReadOnlyList<SettingDefinition> AirportCardSettings = new List<SettingDefinition>
+        {
+            ShowAirportWeatherSetting,
+            AirportWeatherCacheMinutesSetting,
+            AirportWeatherNearestKmSetting,
+            ShowAirportForecastSetting,
+            AirportForecastCacheMinutesSetting,
+            ForecastTimeSetting,
+            ShowAirportFrequenciesSetting,
+            AirportPanelsExpandedSetting,
+        };
+
+        /// <summary>
         /// Settings that describe the airports. They share one section on the settings screen.
         /// </summary>
         public static readonly IReadOnlyList<SettingDefinition> AirportSettings = new List<SettingDefinition>
@@ -632,6 +719,18 @@ namespace AdsbCarMap.Settings
             SmallAirportsPavedSetting,
             AirportFromZoomSetting,
             AirportToZoomSetting,
+            ShowAirportWeatherSetting,
+            AirportWeatherCacheMinutesSetting,
+            AirportWeatherNearestKmSetting,
+            ShowAirportForecastSetting,
+            AirportForecastCacheMinutesSetting,
+            ForecastTimeSetting,
+            ShowAirportMapWeatherSetting,
+            AirportMapWeatherFromZoomSetting,
+            ShowAirportMapWindSetting,
+            ShowRunwayInUseSetting,
+            ShowAirportFrequenciesSetting,
+            AirportPanelsExpandedSetting,
         };
 
         /// <summary>
@@ -885,6 +984,66 @@ namespace AdsbCarMap.Settings
         /// Whether only the favorite airports are drawn.
         /// </summary>
         public static bool ShowOnlyFavoriteAirports => Get(ShowOnlyFavoriteAirportsSetting) >= 0.5;
+
+        /// <summary>
+        /// Whether the weather report is shown on the airport card and downloaded.
+        /// </summary>
+        public static bool ShowAirportWeather => Get(ShowAirportWeatherSetting) >= 0.5;
+
+        /// <summary>
+        /// Time after which the weather report of an airport is downloaded again.
+        /// </summary>
+        public static TimeSpan AirportWeatherMaxAge => TimeSpan.FromMinutes(Get(AirportWeatherCacheMinutesSetting));
+
+        /// <summary>
+        /// Largest distance in kilometers to the nearest weather station for an airport without a report of its own; zero when switched off.
+        /// </summary>
+        public static double AirportWeatherNearestKm => Get(AirportWeatherNearestKmSetting);
+
+        /// <summary>
+        /// Whether the forecast is shown on the airport card and downloaded.
+        /// </summary>
+        public static bool ShowAirportForecast => Get(ShowAirportForecastSetting) >= 0.5;
+
+        /// <summary>
+        /// Time after which the forecast of an airport is downloaded again.
+        /// </summary>
+        public static TimeSpan AirportForecastMaxAge => TimeSpan.FromMinutes(Get(AirportForecastCacheMinutesSetting));
+
+        /// <summary>
+        /// Whether the times of the forecast are shown in the local time of the phone instead of UTC.
+        /// </summary>
+        public static bool ForecastUsesLocalTime => (int)Get(ForecastTimeSetting) == 1;
+
+        /// <summary>
+        /// Whether the airport markers show the flight category of the weather report.
+        /// </summary>
+        public static bool ShowAirportMapWeather => Get(ShowAirportMapWeatherSetting) >= 0.5;
+
+        /// <summary>
+        /// Zoom level from which the airport markers show the weather.
+        /// </summary>
+        public static double AirportMapWeatherFromZoom => Get(AirportMapWeatherFromZoomSetting);
+
+        /// <summary>
+        /// Whether the wind arrow is drawn next to the airport markers.
+        /// </summary>
+        public static bool ShowAirportMapWind => Get(ShowAirportMapWindSetting) >= 0.5;
+
+        /// <summary>
+        /// Whether the runway that the wind favors is highlighted on the map.
+        /// </summary>
+        public static bool ShowRunwayInUse => Get(ShowRunwayInUseSetting) >= 0.5;
+
+        /// <summary>
+        /// Whether the radio frequencies are shown on the airport card.
+        /// </summary>
+        public static bool ShowAirportFrequencies => Get(ShowAirportFrequenciesSetting) >= 0.5;
+
+        /// <summary>
+        /// Whether the panels of the airport card open expanded.
+        /// </summary>
+        public static bool AirportPanelsExpanded => Get(AirportPanelsExpandedSetting) >= 0.5;
 
         /// <summary>
         /// Whether the small airports are limited to those with a paved runway of at least 800 m.

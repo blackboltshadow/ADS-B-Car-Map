@@ -115,6 +115,7 @@ namespace AdsbCarMap.Map
                 flingVelocityY = velocityY;
                 followLocation = false;
                 followedHex = null;
+                centeredAirport = null;
             }
 
             if (wasFollowing)
@@ -149,6 +150,7 @@ namespace AdsbCarMap.Map
             centerLongitude = ((moved.Longitude + 180.0) % 360.0 + 360.0) % 360.0 - 180.0;
             followLocation = false;
             followedHex = null;
+            centeredAirport = null;
         }
 
         /// <summary>

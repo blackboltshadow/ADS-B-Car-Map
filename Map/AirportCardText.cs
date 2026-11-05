@@ -6,6 +6,14 @@ using AdsbCarMap.Settings;
 namespace AdsbCarMap.Map
 {
     /// <summary>
+    /// One row of the frequency table of the airport card.
+    /// </summary>
+    /// <param name="Type">Service type as OurAirports gives it, for example "TWR".</param>
+    /// <param name="Megahertz">Frequency in megahertz with three decimal places, for example "118.300".</param>
+    /// <param name="Description">Short explanation of the service type followed by the description from OurAirports; empty when there is neither.</param>
+    public sealed record FrequencyRow(string Type, string Megahertz, string Description);
+
+    /// <summary>
     /// Builds the texts describing the selected airport. Shared by the phone card and the Android Auto popup.
     /// </summary>
     public static partial class AirportCardText
@@ -19,6 +27,11 @@ namespace AdsbCarMap.Map
         /// Maximum number of runways listed.
         /// </summary>
         private const int MaxRunways = 4;
+
+        /// <summary>
+        /// Number of frequencies named in the header of the closed frequency panel.
+        /// </summary>
+        private const int MaxFrequenciesInHeader = 2;
 
         /// <summary>
         /// Service types listed first, in this order; other types follow alphabetically.
@@ -56,9 +69,8 @@ namespace AdsbCarMap.Map
         /// <param name="userLatitude">Latitude of the user.</param>
         /// <param name="userLongitude">Longitude of the user.</param>
         /// <param name="units">Units chosen by the user.</param>
-        /// <param name="frequencies">Radio frequencies of the airport, or null when they are not known.</param>
         /// <returns>Text lines.</returns>
-        public static List<string> BuildLines(Airport airport, IReadOnlyList<Runway> runways, bool hasUserLocation, double userLatitude, double userLongitude, DisplayUnits units, IReadOnlyList<AirportFrequency>? frequencies = null)
+        public static List<string> BuildLines(Airport airport, IReadOnlyList<Runway> runways, bool hasUserLocation, double userLatitude, double userLongitude, DisplayUnits units)
         {
             List<string> lines = new List<string>();
             List<string> codes = new List<string>();
@@ -98,36 +110,66 @@ namespace AdsbCarMap.Map
                 lines.Add(runwayText);
             }
 
-            lines.AddRange(BuildFrequencies(frequencies));
-
             return lines;
+        }
+
+        /// <summary>
+        /// Returns the header of the frequency panel.
+        /// </summary>
+        /// <param name="frequencies">Radio frequencies of the airport, or null.</param>
+        /// <param name="expanded">Whether the panel is open; the closed header also names the first frequencies.</param>
+        /// <returns>Text such as "Częstotliwości · TWR 118.300, ATIS 120.455 (+4)" when closed or "Częstotliwości (MHz) · 6" when open; empty when there are no frequencies.</returns>
+        public static string BuildFrequencyHeader(IReadOnlyList<AirportFrequency>? frequencies, bool expanded)
+        {
+            List<AirportFrequency> sorted = SortFrequencies(frequencies);
+
+            if (sorted.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            if (expanded)
+            {
+                return Loc.T("Częstotliwości (MHz)") + " · " + sorted.Count.ToString(CultureInfo.InvariantCulture);
+            }
+
+            string first = string.Join(", ", sorted.Take(MaxFrequenciesInHeader).Select(FormatFrequencyShort));
+            string rest = sorted.Count > MaxFrequenciesInHeader ? " (+" + (sorted.Count - MaxFrequenciesInHeader).ToString(CultureInfo.InvariantCulture) + ")" : string.Empty;
+
+            return Loc.T("Częstotliwości") + " · " + first + rest;
         }
 
         /// <summary>
         /// Lists all frequencies, one per line: the main service types first in the order of <see cref="FrequencyTypeOrder"/>, then the other types alphabetically, each type by frequency. Repeated type and frequency pairs are listed once.
         /// </summary>
         /// <param name="frequencies">Radio frequencies of the airport, or null.</param>
-        /// <returns>A heading line followed by lines such as "TWR 118.305 · wieża · Okęcie TOWER", or an empty list when there are none.</returns>
-        private static List<string> BuildFrequencies(IReadOnlyList<AirportFrequency>? frequencies)
+        /// <returns>Lines such as "TWR 118.305 · wieża · Okęcie TOWER", or an empty list when there are none.</returns>
+        public static List<string> BuildFrequencyLines(IReadOnlyList<AirportFrequency>? frequencies)
         {
             List<string> lines = new List<string>();
 
-            if (frequencies == null || frequencies.Count == 0)
+            foreach (FrequencyRow row in BuildFrequencyRows(frequencies))
             {
-                return lines;
+                string line = row.Type + " " + row.Megahertz;
+
+                lines.Add(row.Description.Length > 0 ? line + " · " + row.Description : line);
             }
 
-            lines.Add(Loc.T("Częstotliwości (MHz):"));
+            return lines;
+        }
 
-            IEnumerable<AirportFrequency> sorted = frequencies
-                .DistinctBy(item => (item.Type, item.Megahertz))
-                .OrderBy(item => GetFrequencyRank(item.Type))
-                .ThenBy(item => item.Type, StringComparer.Ordinal)
-                .ThenBy(item => item.Megahertz);
+        /// <summary>
+        /// Returns the frequencies as rows of a table, in the same order as <see cref="BuildFrequencyLines"/>.
+        /// </summary>
+        /// <param name="frequencies">Radio frequencies of the airport, or null.</param>
+        /// <returns>The rows; empty when there are no frequencies.</returns>
+        public static List<FrequencyRow> BuildFrequencyRows(IReadOnlyList<AirportFrequency>? frequencies)
+        {
+            List<FrequencyRow> rows = new List<FrequencyRow>();
 
-            foreach (AirportFrequency frequency in sorted)
+            foreach (AirportFrequency frequency in SortFrequencies(frequencies))
             {
-                List<string> parts = new List<string> { frequency.Type + " " + frequency.Megahertz.ToString("0.000", CultureInfo.InvariantCulture) };
+                List<string> parts = new List<string>();
                 string meaning = GetFrequencyMeaning(frequency.Type.ToUpperInvariant());
 
                 if (meaning.Length > 0)
@@ -140,10 +182,49 @@ namespace AdsbCarMap.Map
                     parts.Add(frequency.Description);
                 }
 
-                lines.Add(string.Join(" · ", parts));
+                rows.Add(new FrequencyRow(frequency.Type, frequency.Megahertz.ToString("0.000", CultureInfo.InvariantCulture), string.Join(" · ", parts)));
             }
 
-            return lines;
+            return rows;
+        }
+
+        /// <summary>
+        /// Returns the headings of the columns of the frequency table.
+        /// </summary>
+        /// <returns>The type, the frequency in megahertz and the description.</returns>
+        public static List<string> BuildFrequencyColumns()
+        {
+            return new List<string> { Loc.T("TYP"), "MHz", Loc.T("OPIS") };
+        }
+
+        /// <summary>
+        /// Sorts the frequencies for listing: the main service types first in the order of <see cref="FrequencyTypeOrder"/>, then the other types alphabetically, each type by frequency. Repeated type and frequency pairs are left once.
+        /// </summary>
+        /// <param name="frequencies">Radio frequencies of the airport, or null.</param>
+        /// <returns>The sorted list; empty when there are no frequencies.</returns>
+        private static List<AirportFrequency> SortFrequencies(IReadOnlyList<AirportFrequency>? frequencies)
+        {
+            if (frequencies == null)
+            {
+                return new List<AirportFrequency>();
+            }
+
+            return frequencies
+                .DistinctBy(item => (item.Type, item.Megahertz))
+                .OrderBy(item => GetFrequencyRank(item.Type))
+                .ThenBy(item => item.Type, StringComparer.Ordinal)
+                .ThenBy(item => item.Megahertz)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Formats a frequency without its description.
+        /// </summary>
+        /// <param name="frequency">The frequency.</param>
+        /// <returns>Text such as "TWR 118.300".</returns>
+        private static string FormatFrequencyShort(AirportFrequency frequency)
+        {
+            return frequency.Type + " " + frequency.Megahertz.ToString("0.000", CultureInfo.InvariantCulture);
         }
 
         /// <summary>

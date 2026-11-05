@@ -106,9 +106,45 @@ namespace AdsbCarMap.Map
             lines.Add(new PopupLine(AirportCardText.BuildTitle(airport), PopupLineStyle.Bold, 0.0f));
             lines.Add(new PopupLine(AirportCardText.BuildDescriptor(airport) + (AppServices.Favorites.Contains(airport.Icao) ? Loc.T(" · ★ ulubione") : string.Empty), PopupLineStyle.Accent, 0.0f));
 
-            foreach (string text in AirportCardText.BuildLines(airport, AppServices.Airports.GetRunways(airport), known, latitude, longitude, AppServices.Airports.GetFrequencies(airport)))
+            foreach (string text in AirportCardText.BuildLines(airport, AppServices.Airports.GetRunways(airport), known, latitude, longitude))
             {
                 lines.Add(new PopupLine(text, PopupLineStyle.Normal, 0.0f));
+            }
+
+            AirportWeatherLoader.Snapshot snapshot = AirportWeatherLoader.Request(airport);
+            DisplayUnits units = AppSettings.Units;
+
+            if (AppSettings.ShowAirportWeather)
+            {
+                List<string> weather = AirportWeatherText.BuildPopupLines(snapshot.Weather, snapshot.WeatherLoading, units, DateTime.UtcNow, AppServices.Airports.GetRunways(airport));
+
+                for (int index = 0; index < weather.Count; index++)
+                {
+                    lines.Add(new PopupLine(weather[index], index == 0 ? PopupLineStyle.Accent : PopupLineStyle.Normal, 0.0f));
+                }
+            }
+
+            if (AppSettings.ShowAirportForecast)
+            {
+                foreach (string text in AirportForecastText.BuildPopupLines(snapshot.Forecast, snapshot.ForecastLoading, units, AirportForecastText.GetZone(AppSettings.ForecastUsesLocalTime), DateTime.UtcNow))
+                {
+                    lines.Add(new PopupLine(text, PopupLineStyle.Accent, 0.0f));
+                }
+            }
+
+            if (AppSettings.ShowAirportFrequencies)
+            {
+                List<string> frequencies = AirportCardText.BuildFrequencyLines(AppServices.Airports.GetFrequencies(airport));
+
+                if (frequencies.Count > 0)
+                {
+                    lines.Add(new PopupLine(Loc.T("Częstotliwości (MHz):"), PopupLineStyle.Normal, 0.0f));
+
+                    foreach (string text in frequencies)
+                    {
+                        lines.Add(new PopupLine(text, PopupLineStyle.Normal, 0.0f));
+                    }
+                }
             }
 
             return lines;

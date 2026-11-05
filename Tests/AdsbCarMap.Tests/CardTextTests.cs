@@ -492,21 +492,104 @@ namespace AdsbCarMap.Tests
                 new AirportFrequency("XYZ", "Unknown kind", 130.0),
             };
 
-            List<string> lines = AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 0.0, 0.0, DisplayUnits.Default, frequencies);
-            int start = lines.IndexOf("Częstotliwości (MHz):");
+            List<string> lines = AirportCardText.BuildFrequencyLines(frequencies);
 
-            Assert.True(start >= 0);
-            Assert.Equal(new string[] { "ATIS 120.455 · Automatyczna informacja o lotnisku", "TWR 118.300 · wieża · Tower", "TWR 119.000 · wieża · Tower 2", "GND 121.905 · kontrola ruchu naziemnego · Ground", "VOLMET 127.600 · pogoda dla załóg w locie (VOLMET) · Volmet", "XYZ 130.000 · Unknown kind" }, lines.Skip(start + 1).ToArray());
+            Assert.Equal(new string[] { "ATIS 120.455 · Automatyczna informacja o lotnisku", "TWR 118.300 · wieża · Tower", "TWR 119.000 · wieża · Tower 2", "GND 121.905 · kontrola ruchu naziemnego · Ground", "VOLMET 127.600 · pogoda dla załóg w locie (VOLMET) · Volmet", "XYZ 130.000 · Unknown kind" }, lines.ToArray());
         }
 
         /// <summary>
-        /// No frequency lines are added without frequencies.
+        /// The table rows hold the type, the frequency with three decimals and the explanation joined with the description, in the order of the lines.
         /// </summary>
         [Fact]
-        public void AirportLines_NoFrequencyLinesWithoutFrequencies()
+        public void FrequencyRows_HoldTypeFrequencyAndDescription()
         {
-            Assert.DoesNotContain(AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 0.0, 0.0, DisplayUnits.Default, null), item => item.StartsWith("Częstotliwości", StringComparison.Ordinal));
-            Assert.DoesNotContain(AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 0.0, 0.0, DisplayUnits.Default, Array.Empty<AirportFrequency>()), item => item.StartsWith("Częstotliwości", StringComparison.Ordinal));
+            List<AirportFrequency> frequencies = new List<AirportFrequency>
+            {
+                new AirportFrequency("TWR", "Tower", 118.3),
+                new AirportFrequency("ATIS", string.Empty, 120.455),
+                new AirportFrequency("XYZ", "Unknown kind", 130.0),
+                new AirportFrequency("XYZ", string.Empty, 131.5),
+                new AirportFrequency("TWR", "Tower again", 118.3),
+            };
+
+            List<FrequencyRow> rows = AirportCardText.BuildFrequencyRows(frequencies);
+
+            Assert.Equal(new FrequencyRow[]
+            {
+                new FrequencyRow("ATIS", "120.455", "Automatyczna informacja o lotnisku"),
+                new FrequencyRow("TWR", "118.300", "wieża · Tower"),
+                new FrequencyRow("XYZ", "130.000", "Unknown kind"),
+                new FrequencyRow("XYZ", "131.500", string.Empty),
+            }, rows.ToArray());
+            Assert.Equal(AirportCardText.BuildFrequencyLines(frequencies).Count, rows.Count);
+            Assert.Equal("XYZ 131.500", AirportCardText.BuildFrequencyLines(frequencies).Last());
+            Assert.Empty(AirportCardText.BuildFrequencyRows(null));
+            Assert.Empty(AirportCardText.BuildFrequencyRows(Array.Empty<AirportFrequency>()));
+        }
+
+        /// <summary>
+        /// The columns are the type, the megahertz and the description.
+        /// </summary>
+        [Fact]
+        public void FrequencyColumns_AreTypeMegahertzDescription()
+        {
+            Assert.Equal(new string[] { "TYP", "MHz", "OPIS" }, AirportCardText.BuildFrequencyColumns().ToArray());
+        }
+
+        /// <summary>
+        /// The frequencies are no longer part of the detail lines, they have a panel of their own.
+        /// </summary>
+        [Fact]
+        public void AirportLines_DoNotContainFrequencies()
+        {
+            Assert.DoesNotContain(AirportCardText.BuildLines(CreateAirport(), Array.Empty<Runway>(), false, 0.0, 0.0, DisplayUnits.Default), item => item.StartsWith("Częstotliwości", StringComparison.Ordinal));
+        }
+
+        /// <summary>
+        /// The closed header names the first two frequencies and counts the rest, the open header gives the number of frequencies.
+        /// </summary>
+        [Fact]
+        public void FrequencyHeader_ClosedNamesFirstTwo_OpenCounts()
+        {
+            List<AirportFrequency> frequencies = new List<AirportFrequency>
+            {
+                new AirportFrequency("GND", "Ground", 121.905),
+                new AirportFrequency("TWR", "Tower", 118.3),
+                new AirportFrequency("ATIS", string.Empty, 120.455),
+                new AirportFrequency("APP", "Approach", 119.5),
+            };
+
+            Assert.Equal("Częstotliwości · ATIS 120.455, TWR 118.300 (+2)", AirportCardText.BuildFrequencyHeader(frequencies, false));
+            Assert.Equal("Częstotliwości (MHz) · 4", AirportCardText.BuildFrequencyHeader(frequencies, true));
+        }
+
+        /// <summary>
+        /// A closed header of two frequencies has no remainder, and a repeated frequency counts once.
+        /// </summary>
+        [Fact]
+        public void FrequencyHeader_TwoFrequencies_HasNoRemainder_RepeatsCountOnce()
+        {
+            List<AirportFrequency> frequencies = new List<AirportFrequency>
+            {
+                new AirportFrequency("TWR", "Tower", 118.3),
+                new AirportFrequency("TWR", "Tower again", 118.3),
+                new AirportFrequency("GND", "Ground", 121.905),
+            };
+
+            Assert.Equal("Częstotliwości · TWR 118.300, GND 121.905", AirportCardText.BuildFrequencyHeader(frequencies, false));
+            Assert.Equal("Częstotliwości (MHz) · 2", AirportCardText.BuildFrequencyHeader(frequencies, true));
+        }
+
+        /// <summary>
+        /// Without frequencies the header and the lines are empty.
+        /// </summary>
+        [Fact]
+        public void Frequencies_None_GiveEmptyHeaderAndLines()
+        {
+            Assert.Equal(string.Empty, AirportCardText.BuildFrequencyHeader(null, false));
+            Assert.Equal(string.Empty, AirportCardText.BuildFrequencyHeader(Array.Empty<AirportFrequency>(), true));
+            Assert.Empty(AirportCardText.BuildFrequencyLines(null));
+            Assert.Empty(AirportCardText.BuildFrequencyLines(Array.Empty<AirportFrequency>()));
         }
 
         /// <summary>

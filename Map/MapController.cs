@@ -272,6 +272,21 @@ namespace AdsbCarMap.Map
         private Airport? selectedAirport;
 
         /// <summary>
+        /// Non-zero while the map must not move because of a view that covers it: the card that fills the whole screen would otherwise count as a covering view and push the followed or centered object up. While it is set, the position found before is kept.
+        /// </summary>
+        private int framingFrozen;
+
+        /// <summary>
+        /// Vertical position at which the followed aircraft or the centered airport was kept in the last frame that was not frozen, in pixels from the top edge, or NaN before the first frame. Used only by the drawing thread.
+        /// </summary>
+        private double lastFramingTargetY = double.NaN;
+
+        /// <summary>
+        /// Airport that the map keeps in the middle of the visible part above a card or a popup, or null. It is set when an airport is tapped or centered with the button of the card, and it only takes effect while that airport is the selected one. A move of the map by the user, a fling, following the user or following an aircraft cancels it.
+        /// </summary>
+        private Airport? centeredAirport;
+
+        /// <summary>
         /// Draws the airports and their runways.
         /// </summary>
         private readonly AirportLayer airportLayer = new AirportLayer();

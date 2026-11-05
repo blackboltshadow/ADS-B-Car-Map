@@ -63,8 +63,11 @@ namespace AdsbCarMap.Data
                     return;
                 }
 
-                LoadFrom(ReadLines(assets, AirportsAsset), ReadLines(assets, RunwaysAsset), ReadLines(assets, FrequenciesAsset));
+                LoadAirports(ReadLines(assets, AirportsAsset), ReadLines(assets, RunwaysAsset));
                 Log.Info(LogTag, string.Format(CultureInfo.InvariantCulture, "Wczytano {0} lotnisk i {1} pasów w {2} ms", Count, RunwayCount, Environment.TickCount64 - started));
+
+                LoadFrequencies(ReadLines(assets, FrequenciesAsset));
+                Log.Info(LogTag, string.Format(CultureInfo.InvariantCulture, "Wczytano częstotliwości lotnisk w {0} ms od początku", Environment.TickCount64 - started));
             }
             catch (Exception exception)
             {

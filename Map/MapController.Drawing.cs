@@ -94,6 +94,25 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Finds the vertical position at which the followed aircraft or the centered airport is kept. While the framing is frozen the position found last is returned, so that a view that fills the screen does not move the map.
+        /// </summary>
+        /// <param name="width">Width of the map in pixels.</param>
+        /// <param name="height">Height of the map in pixels.</param>
+        /// <param name="popupArea">Area of the popup, or null.</param>
+        /// <returns>Position in pixels from the top edge.</returns>
+        private double GetFramingTargetY(int width, int height, RectF? popupArea)
+        {
+            if (Volatile.Read(ref framingFrozen) != 0 && !double.IsNaN(lastFramingTargetY))
+            {
+                return lastFramingTargetY;
+            }
+
+            lastFramingTargetY = FollowFraming.GetTargetY(width, height, GetCoveringRectangles(popupArea));
+
+            return lastFramingTargetY;
+        }
+
+        /// <summary>
         /// Lists the areas of the map that are covered by the popup drawn on the map or by a view of the phone placed over it.
         /// </summary>
         /// <param name="popupArea">Area of the popup, or null.</param>
@@ -158,6 +177,7 @@ namespace AdsbCarMap.Map
             bool isolated;
             bool onlyMilitary;
             Airport? drawnAirport;
+            Airport? centeredLocal;
 
             DateTime frameStartUtc = DateTime.UtcNow;
             double deltaSeconds = Math.Min(MaxFrameSeconds, (frameStartUtc - lastFrameUtc).TotalSeconds);
@@ -184,6 +204,7 @@ namespace AdsbCarMap.Map
                 isolated = isolateSelected;
                 onlyMilitary = militaryOnly;
                 drawnAirport = selectedAirport;
+                centeredLocal = centeredAirport;
             }
 
             IReadOnlyList<PopupLine>? popup = ShowSelectionPopup ? GetPopupLines(frameStartUtc) : null;
@@ -195,7 +216,7 @@ namespace AdsbCarMap.Map
             if (followedAircraft != null)
             {
                 (double Latitude, double Longitude) followedPosition = MapMath.Extrapolate(followedAircraft, elapsedSeconds);
-                double targetY = FollowFraming.GetTargetY(width, height, GetCoveringRectangles(popupArea));
+                double targetY = GetFramingTargetY(width, height, popupArea);
 
                 followOffsetPixels = FollowFraming.Ease(followOffsetPixels, (height / 2.0) - targetY, deltaSeconds);
 
@@ -205,6 +226,27 @@ namespace AdsbCarMap.Map
                 lock (stateLock)
                 {
                     if (followedHex == followed)
+                    {
+                        centerLatitude = latitude;
+                        centerLongitude = longitude;
+                    }
+                }
+            }
+
+            if (followedAircraft == null && followed == null && centeredLocal != null && centeredLocal == drawnAirport)
+            {
+                double targetY = GetFramingTargetY(width, height, popupArea);
+                (double airportX, double airportY) = WebMercator.LatLonToWorldPixel(centeredLocal.Latitude, centeredLocal.Longitude, zoomLevel);
+                (double centerX, double centerY) = WebMercator.LatLonToWorldPixel(latitude, longitude, zoomLevel);
+
+                (latitude, longitude) = WebMercator.WorldPixelToLatLon(
+                    FollowFraming.Ease(centerX, airportX, deltaSeconds),
+                    FollowFraming.Ease(centerY, airportY + (height / 2.0) - targetY, deltaSeconds),
+                    zoomLevel);
+
+                lock (stateLock)
+                {
+                    if (centeredAirport == centeredLocal)
                     {
                         centerLatitude = latitude;
                         centerLongitude = longitude;

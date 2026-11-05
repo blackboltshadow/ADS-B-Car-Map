@@ -16,11 +16,10 @@ namespace AdsbCarMap.Map
         /// <param name="hasUserLocation">Whether the user position is known.</param>
         /// <param name="userLatitude">Latitude of the user.</param>
         /// <param name="userLongitude">Longitude of the user.</param>
-        /// <param name="frequencies">Radio frequencies of the airport, or null when they are not known.</param>
         /// <returns>Text lines.</returns>
-        public static List<string> BuildLines(Airport airport, IReadOnlyList<Runway> runways, bool hasUserLocation, double userLatitude, double userLongitude, IReadOnlyList<AirportFrequency>? frequencies = null)
+        public static List<string> BuildLines(Airport airport, IReadOnlyList<Runway> runways, bool hasUserLocation, double userLatitude, double userLongitude)
         {
-            return BuildLines(airport, runways, hasUserLocation, userLatitude, userLongitude, AppSettings.Units, frequencies);
+            return BuildLines(airport, runways, hasUserLocation, userLatitude, userLongitude, AppSettings.Units);
         }
     }
 }

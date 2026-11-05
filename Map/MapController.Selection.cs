@@ -293,6 +293,15 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
+        /// Stops the map from moving when the area that a view covers changes, which is wanted while that view fills the screen: the followed aircraft or the centered airport stays where it is until the view is brought back to its size.
+        /// </summary>
+        /// <param name="frozen">Whether the position at which the followed aircraft or the centered airport is kept is frozen.</param>
+        public void SetFramingFrozen(bool frozen)
+        {
+            Volatile.Write(ref framingFrozen, frozen ? 1 : 0);
+        }
+
+        /// <summary>
         /// Sets the area of the screen covered by a view drawn over the map. Aircraft in this area are not selectable.
         /// </summary>
         /// <param name="area">Covered area in map pixels, or null when nothing covers the map.</param>
@@ -412,6 +421,11 @@ namespace AdsbCarMap.Map
                 flingVelocityY = 0.0;
                 followedHex = snapshot.Hex;
                 followLocation = snapshot.FollowUser;
+
+                if (snapshot.Hex != null || snapshot.FollowUser)
+                {
+                    centeredAirport = null;
+                }
 
                 if (snapshot.FollowUser && hasUserLocation)
                 {
@@ -773,9 +787,15 @@ namespace AdsbCarMap.Map
                 selectedHexes = new HashSet<string>();
                 primaryHex = null;
                 isolateSelected = false;
+                flingVelocityX = 0.0;
+                flingVelocityY = 0.0;
+                followedHex = null;
+                followLocation = false;
+                centeredAirport = airport;
             }
 
             NotifySelectionChanged();
+            PublishFollow();
         }
 
         /// <summary>
@@ -857,6 +877,7 @@ namespace AdsbCarMap.Map
             flingVelocityY = 0.0;
             followedHex = null;
             followLocation = false;
+            centeredAirport = airport;
             centerLatitude = airport.Latitude;
             centerLongitude = airport.Longitude;
             zoomTarget = Math.Clamp(Math.Max(zoomTarget, AirportFocusZoom), AppSettings.MinZoom, AppSettings.MaxZoom);
@@ -896,6 +917,7 @@ namespace AdsbCarMap.Map
                 flingVelocityY = 0.0;
                 followLocation = true;
                 followedHex = null;
+                centeredAirport = null;
 
                 if (hasUserLocation)
                 {

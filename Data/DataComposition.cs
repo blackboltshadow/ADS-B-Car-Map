@@ -2,6 +2,7 @@ using AdsbCarMap.DataSources.Adsbdb;
 using AdsbCarMap.DataSources.AdsbLol;
 using AdsbCarMap.DataSources.AdsbFi;
 using AdsbCarMap.DataSources.AirplanesLive;
+using AdsbCarMap.DataSources.AviationWeather;
 using AdsbCarMap.DataSources.Hexdb;
 using AdsbCarMap.DataSources.Interfaces;
 using AdsbCarMap.DataSources.Management.Caching;
@@ -9,6 +10,7 @@ using AdsbCarMap.DataSources.Management.Enrichment;
 using AdsbCarMap.DataSources.Management.Privacy;
 using AdsbCarMap.DataSources.Management.RateLimiting;
 using AdsbCarMap.DataSources.Management.Selection;
+using AdsbCarMap.DataSources.Management.Weather;
 using AdsbCarMap.DataSources.Models;
 
 namespace AdsbCarMap.Data
@@ -37,6 +39,21 @@ namespace AdsbCarMap.Data
         /// Minimum time between two downloads of the full path of the same flying aircraft.
         /// </summary>
         public static readonly TimeSpan FlightTrackRefreshInterval = TimeSpan.FromSeconds(60);
+
+        /// <summary>
+        /// Time after which the weather report of an airport is downloaded again when the settings do not say.
+        /// </summary>
+        public static readonly TimeSpan DefaultWeatherMaxAge = TimeSpan.FromMinutes(10);
+
+        /// <summary>
+        /// Time after which the forecast of an airport is downloaded again when the settings do not say.
+        /// </summary>
+        public static readonly TimeSpan DefaultForecastMaxAge = TimeSpan.FromHours(1);
+
+        /// <summary>
+        /// Source of the weather reports and the forecasts, whose pause after limit responses is shown among the states of the sources.
+        /// </summary>
+        private readonly IRateLimitedWeatherSource weatherSource;
 
         /// <summary>
         /// Creates everything.
@@ -80,6 +97,19 @@ namespace AdsbCarMap.Data
 
             Enricher = new AircraftEnricher(AircraftSources, new List<IRateLimitedSource> { adsbdb, hexdb }, settings.DetailsEnabled, AircraftMemory);
             Keeper = new FlightCacheKeeper(RouteMemory, AircraftMemory);
+            RateLimitedWeatherSource weatherSource = new RateLimitedWeatherSource(new AviationWeatherClient(createHttpClient(AviationWeatherClient.DefaultBaseAddress)));
+            this.weatherSource = weatherSource;
+
+            Weather = new WeatherStore(
+                weatherSource,
+                CreateMemory<WeatherEntry>(flightCacheDirectory, "weather.json", WeatherStore.RetentionAge, () => WeatherStore.RetentionAge),
+                settings.WeatherMaxAge ?? (() => DefaultWeatherMaxAge),
+                settings.Report);
+            Forecast = new ForecastStore(
+                weatherSource,
+                CreateMemory<ForecastEntry>(flightCacheDirectory, "forecast.json", ForecastStore.RetentionAge, () => ForecastStore.RetentionAge),
+                settings.ForecastMaxAge ?? (() => DefaultForecastMaxAge),
+                settings.Report);
             Tracks = new FlightTrackStore(new RateLimitedTrackSource(new AdsbLolTrackClient(createHttpClient(AdsbLolTrackClient.DefaultBaseAddress))), FlightTrackRefreshInterval, null, Path.Combine(flightCacheDirectory, "tracks.json"), (message, exception) => settings.Report?.Invoke(SourceEventKind.Failure, message, exception));
         }
 
@@ -124,6 +154,16 @@ namespace AdsbCarMap.Data
         public FlightTrackStore Tracks { get; }
 
         /// <summary>
+        /// Weather reports of airports, downloaded again after the time chosen in the settings and kept in a file for longer, so that the last known report can be shown after a failed download.
+        /// </summary>
+        public WeatherStore Weather { get; }
+
+        /// <summary>
+        /// Forecasts (TAF) of airports, downloaded again after the time chosen in the settings and kept in a file for longer, so that the last known forecast can be shown after a failed download. It uses the same source, and so the same pause after limit responses, as <see cref="Weather"/>.
+        /// </summary>
+        public ForecastStore Forecast { get; }
+
+        /// <summary>
         /// Number of flights and aircraft whose information is kept in the memory, including the answers that nothing is known.
         /// </summary>
         public int FlightInfoCount => RouteMemory.Count + AircraftMemory.Count;
@@ -131,7 +171,7 @@ namespace AdsbCarMap.Data
         /// <summary>
         /// Reads the state of every aircraft and route source without sending any request.
         /// </summary>
-        /// <returns>The aircraft sources, then the route sources, each in the order of preference.</returns>
+        /// <returns>The aircraft sources, then the route sources, each in the order of preference, and the source of the weather and the forecasts.</returns>
         public IReadOnlyList<SourceState> GetSourceStates()
         {
             List<SourceState> states = new List<SourceState>();
@@ -147,6 +187,8 @@ namespace AdsbCarMap.Data
             {
                 states.Add(new SourceState("Trasy", source.Name, source.GetRateLimitStatus(), string.Equals(source.Name, lastRoute, StringComparison.Ordinal)));
             }
+
+            states.Add(new SourceState("Pogoda i prognozy", weatherSource.Name, weatherSource.GetRateLimitStatus(), false));
 
             return states;
         }

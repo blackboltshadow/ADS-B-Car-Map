@@ -96,6 +96,16 @@ namespace AdsbCarMap.Activities
         private readonly List<View> favoritesOnlyInactiveViews = new List<View>();
 
         /// <summary>
+        /// Views of the weather refresh time and of the range of the nearest station, which have no meaning while the weather of the airports is switched off.
+        /// </summary>
+        private readonly List<View> weatherIntervalViews = new List<View>();
+
+        /// <summary>
+        /// Views of the forecast refresh time, which have no meaning while the forecast of the airports is switched off.
+        /// </summary>
+        private readonly List<View> forecastIntervalViews = new List<View>();
+
+        /// <summary>
         /// Control that sets the range of zoom levels in which the airports are visible, created with the first of its two settings.
         /// </summary>
         private ZoomRangeView? zoomRangeView;
@@ -1433,6 +1443,20 @@ namespace AdsbCarMap.Activities
             bar.Max = (int)Math.Round((definition.Maximum - definition.Minimum) / definition.Step);
             card.AddView(bar);
 
+            if (definition == AppSettings.AirportWeatherCacheMinutesSetting || definition == AppSettings.AirportWeatherNearestKmSetting)
+            {
+                weatherIntervalViews.Add(titleRow);
+                weatherIntervalViews.Add(valueText);
+                weatherIntervalViews.Add(bar);
+            }
+
+            if (definition == AppSettings.AirportForecastCacheMinutesSetting)
+            {
+                forecastIntervalViews.Add(titleRow);
+                forecastIntervalViews.Add(valueText);
+                forecastIntervalViews.Add(bar);
+            }
+
             TextView? preview = null;
 
             if (definition == AppSettings.LabelTextSizeSetting)
@@ -2064,7 +2088,7 @@ namespace AdsbCarMap.Activities
                 });
             }
 
-            if (definition == AppSettings.AirportTypesSetting || definition == AppSettings.ShowAirportsSetting || definition == AppSettings.ShowOnlyFavoriteAirportsSetting || definition == AppSettings.ShowThreatsSetting || definition == AppSettings.DataSourceFallbackSetting || definition == AppSettings.PrivacyDevOverrideSetting)
+            if (definition == AppSettings.AirportTypesSetting || definition == AppSettings.ShowAirportsSetting || definition == AppSettings.ShowOnlyFavoriteAirportsSetting || definition == AppSettings.ShowAirportWeatherSetting || definition == AppSettings.ShowAirportForecastSetting || definition == AppSettings.ShowThreatsSetting || definition == AppSettings.DataSourceFallbackSetting || definition == AppSettings.PrivacyDevOverrideSetting)
             {
                 UpdateDependentControls();
             }
@@ -2141,6 +2165,16 @@ namespace AdsbCarMap.Activities
                         ApplyGroupState(child, threatsOn);
                     }
                 }
+            }
+
+            foreach (View weatherView in weatherIntervalViews)
+            {
+                ApplyGroupState(weatherView, airportsOn && AppSettings.ShowAirportWeather);
+            }
+
+            foreach (View forecastView in forecastIntervalViews)
+            {
+                ApplyGroupState(forecastView, airportsOn && AppSettings.ShowAirportForecast);
             }
 
             bool onlyFavorites = AppSettings.ShowOnlyFavoriteAirports;
@@ -2457,7 +2491,7 @@ namespace AdsbCarMap.Activities
                 return new AltitudeLegendPreview(this);
             }
 
-            if (AppSettings.AirportSettings.Contains(definition))
+            if (AppSettings.AirportSettings.Contains(definition) && !AppSettings.AirportCardSettings.Contains(definition))
             {
                 return new AirportsPreview(this);
             }

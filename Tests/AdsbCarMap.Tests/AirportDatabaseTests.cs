@@ -384,6 +384,77 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// The airports and runways are ready before the frequencies: the airports can be found and the Loaded event is raised while there are still no frequencies, and the frequencies appear after they are loaded.
+        /// </summary>
+        [Fact]
+        public void LoadAirports_ThenFrequencies_AirportsAreReadyFirst()
+        {
+            AirportDatabase database = new AirportDatabase();
+            int loaded = 0;
+            int frequenciesLoaded = 0;
+            database.Loaded += () => loaded++;
+            database.FrequenciesLoaded += () => frequenciesLoaded++;
+
+            database.LoadAirports(new string[] { AirportLine("EPWA", "WAW", "L", "Chopin", "Warsaw", 52.0, 21.0) }, new string[] { RunwayLine("EPWA", 11000, "ASP") });
+
+            Airport airport = database.Find("EPWA")!;
+
+            Assert.True(database.IsLoaded);
+            Assert.False(database.AreFrequenciesLoaded);
+            Assert.Equal(1, loaded);
+            Assert.Equal(0, frequenciesLoaded);
+            Assert.Single(database.GetRunways(airport));
+            Assert.True(airport.HasLongPavedRunway);
+            Assert.Empty(database.GetFrequencies(airport));
+
+            database.LoadFrequencies(new string[] { "EPWA\tTWR\tTower\t118.305" });
+
+            Assert.True(database.AreFrequenciesLoaded);
+            Assert.Equal(1, loaded);
+            Assert.Equal(1, frequenciesLoaded);
+            Assert.Equal(118.305, Assert.Single(database.GetFrequencies(airport)).Megahertz);
+        }
+
+        /// <summary>
+        /// Loading everything at once marks both parts as ready, and loading frequencies without lines leaves none.
+        /// </summary>
+        [Fact]
+        public void LoadFrom_MarksFrequenciesAsLoaded_AlsoWithoutLines()
+        {
+            AirportDatabase database = new AirportDatabase();
+            database.LoadFrom(new string[] { AirportLine("EPWA", "WAW", "L", "Chopin", "Warsaw", 52.0, 21.0) }, Array.Empty<string>());
+
+            Assert.True(database.IsLoaded);
+            Assert.True(database.AreFrequenciesLoaded);
+
+            database.LoadFrequencies(null);
+
+            Assert.Empty(database.GetFrequencies(database.Find("EPWA")!));
+        }
+
+        /// <summary>
+        /// The order of the file does not depend on the parallel parsing: a repeated ICAO code keeps the first airport of the file.
+        /// </summary>
+        [Fact]
+        public void LoadAirports_RepeatedCode_KeepsFirstAirportOfTheFile()
+        {
+            List<string> lines = new List<string>();
+
+            for (int index = 0; index < 400; index++)
+            {
+                lines.Add(AirportLine("E" + index.ToString("000"), string.Empty, "S", "Same name", "City", 50.0 + (index % 10) * 0.01, 20.0));
+            }
+
+            lines.Add(AirportLine("E005", string.Empty, "S", "Same name", "Duplicate", 51.0, 21.0));
+
+            AirportDatabase database = new AirportDatabase();
+            database.LoadAirports(lines, Array.Empty<string>());
+
+            Assert.Equal(401, database.Count);
+            Assert.Equal("City", database.Find("E005")!.Municipality);
+        }
+
+        /// <summary>
         /// A runway line with invalid coordinates is skipped.
         /// </summary>
         [Fact]

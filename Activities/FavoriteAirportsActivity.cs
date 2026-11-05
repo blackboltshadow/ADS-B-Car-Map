@@ -2,6 +2,7 @@ using AdsbCarMap.Localization;
 using AdsbCarMap.Data;
 using AdsbCarMap.Map;
 using AdsbCarMap.Services;
+using AdsbCarMap.Settings;
 using Android.App;
 using Android.Graphics;
 using Android.Graphics.Drawables;
@@ -336,17 +337,12 @@ namespace AdsbCarMap.Activities
         /// <param name="airport">Airport.</param>
         private void ShowDetails(Airport airport)
         {
-            (bool Known, double Latitude, double Longitude) user = LiveTraffic.GetUserLocation();
-            List<string> lines = new List<string> { AirportCardText.BuildDescriptor(airport) };
-
-            lines.AddRange(AirportCardText.BuildLines(airport, AppServices.Airports.GetRunways(airport), user.Known, user.Latitude, user.Longitude, AppServices.Airports.GetFrequencies(airport)));
-
             bool isFavorite = AppServices.Favorites.Contains(airport.Icao);
             string icao = airport.Icao;
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this)!;
             builder.SetTitle(AirportCardText.BuildTitle(airport));
-            builder.SetMessage(string.Join("\n", lines));
+            builder.SetMessage(BuildDetailsText(airport));
             builder.SetPositiveButton(Loc.T("Pokaż na mapie"), (sender, args) =>
             {
                 LiveTraffic.RequestAirportFocus(icao);
@@ -354,7 +350,53 @@ namespace AdsbCarMap.Activities
             });
             builder.SetNeutralButton(isFavorite ? Loc.T("Usuń z ulubionych") : Loc.T("Dodaj do ulubionych"), (sender, args) => AppServices.Favorites.Toggle(icao));
             builder.SetNegativeButton(Loc.T("Zamknij"), (sender, args) => { });
-            builder.Show();
+
+            AlertDialog dialog = builder.Create()!;
+            System.Action refresh = () => RunOnUiThread(() => dialog.SetMessage(BuildDetailsText(airport)));
+
+            AirportWeatherLoader.Updated += refresh;
+            dialog.DismissEvent += (sender, args) => AirportWeatherLoader.Updated -= refresh;
+            dialog.Show();
+        }
+
+        /// <summary>
+        /// Builds the text of the details of an airport: the descriptor, the lines of the card, the frequencies, and the weather and the forecast, when they are switched on. Asking for the weather starts the download when the report is missing or old, and the dialog is filled again when it ends.
+        /// </summary>
+        /// <param name="airport">Airport.</param>
+        /// <returns>The text with one item per line.</returns>
+        private static string BuildDetailsText(Airport airport)
+        {
+            (bool Known, double Latitude, double Longitude) user = LiveTraffic.GetUserLocation();
+            IReadOnlyList<Runway> runways = AppServices.Airports.GetRunways(airport);
+            List<string> lines = new List<string> { AirportCardText.BuildDescriptor(airport) };
+
+            lines.AddRange(AirportCardText.BuildLines(airport, runways, user.Known, user.Latitude, user.Longitude));
+
+            AirportWeatherLoader.Snapshot snapshot = AirportWeatherLoader.Request(airport);
+            DisplayUnits units = AppSettings.Units;
+
+            if (AppSettings.ShowAirportWeather)
+            {
+                lines.Add(string.Empty);
+                lines.AddRange(AirportWeatherText.BuildTextLines(snapshot.Weather, snapshot.WeatherLoading, units, DateTime.UtcNow, runways));
+            }
+
+            if (AppSettings.ShowAirportForecast)
+            {
+                lines.Add(string.Empty);
+                lines.AddRange(AirportForecastText.BuildTextLines(snapshot.Forecast, snapshot.ForecastLoading, units, AirportForecastText.GetZone(AppSettings.ForecastUsesLocalTime), DateTime.UtcNow));
+            }
+
+            List<string> frequencies = AirportCardText.BuildFrequencyLines(AppServices.Airports.GetFrequencies(airport));
+
+            if (AppSettings.ShowAirportFrequencies && frequencies.Count > 0)
+            {
+                lines.Add(string.Empty);
+                lines.Add(Loc.T("Częstotliwości (MHz):"));
+                lines.AddRange(frequencies);
+            }
+
+            return string.Join("\n", lines);
         }
 
         /// <summary>

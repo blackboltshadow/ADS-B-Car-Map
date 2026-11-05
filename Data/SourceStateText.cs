@@ -34,7 +34,7 @@ namespace AdsbCarMap.Data
                         builder.Append('\n');
                     }
 
-                    builder.Append(group).Append(":\n");
+                    builder.Append(Loc.T(group)).Append(":\n");
                 }
 
                 builder.Append("• ").Append(state.Name).Append(" — ").Append(DescribeAvailability(state.Status));

@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using AdsbCarMap.Data;
 using AdsbCarMap.DataSources.Management.Privacy;
+using AdsbCarMap.DataSources.Management.Weather;
 using AdsbCarMap.DataSources.Models;
 using Xunit;
 
@@ -112,6 +113,8 @@ namespace AdsbCarMap.Tests
             Assert.NotNull(composition.AircraftMemory);
             Assert.NotNull(composition.Enricher);
             Assert.NotNull(composition.Keeper);
+            Assert.NotNull(composition.Weather);
+            Assert.NotNull(composition.Forecast);
             Assert.Equal(0, composition.FlightInfoCount);
             Assert.True(Directory.Exists(directory));
         }
@@ -129,7 +132,7 @@ namespace AdsbCarMap.Tests
 
             IReadOnlyList<SourceState> states = composition.GetSourceStates();
 
-            Assert.Equal(6, states.Count);
+            Assert.Equal(7, states.Count);
             Assert.Equal("airplanes.live", states[0].Name);
             Assert.Equal(403, states[0].Status.LastFailure?.StatusCode);
             Assert.Null(states[1].Status.LastFailure);
@@ -137,6 +140,28 @@ namespace AdsbCarMap.Tests
             Assert.Equal("hexdb.io", states[3].Name);
             Assert.Equal("Trasy", states[3].Group);
             Assert.DoesNotContain(states, state => state.IsLastUsed);
+            Assert.Equal("Pogoda i prognozy", states[6].Group);
+            Assert.Equal("aviationweather.gov", states[6].Name);
+            Assert.True(states[6].Status.CanQuery);
+        }
+
+        /// <summary>
+        /// A limit response of the weather server shows up in its state as a pause, and the forecasts share it.
+        /// </summary>
+        [Fact]
+        public async Task GetSourceStates_ShowsThePauseOfTheWeatherSource()
+        {
+            RecordingHandler handler = new RecordingHandler(HttpStatusCode.TooManyRequests, "{}");
+            DataComposition composition = Create(handler, new List<string>(), new List<string>());
+
+            Assert.False(await composition.Weather.RefreshAsync(new List<string> { "EPWA" }, false, CancellationToken.None));
+
+            SourceState weather = composition.GetSourceStates().Single(state => state.Group == "Pogoda i prognozy");
+
+            Assert.False(weather.Status.CanQuery);
+            Assert.True(weather.Status.ConsecutiveRateLimits >= 1);
+            Assert.False(await composition.Forecast.RefreshAsync(new List<string> { "EPWA" }, false, CancellationToken.None));
+            Assert.Single(handler.Hosts);
         }
 
         /// <summary>
@@ -247,6 +272,73 @@ namespace AdsbCarMap.Tests
             Assert.Equal("LHR", route.DestinationCode);
             Assert.True(route.HasCoordinates);
             Assert.Equal("Warsaw", route.OriginCity);
+        }
+
+        /// <summary>
+        /// The weather store asks the aviationweather.gov host, keeps the answer and uses the interval from the settings.
+        /// </summary>
+        [Fact]
+        public async Task Weather_AsksTheWeatherHostAndUsesTheIntervalFromTheSettings()
+        {
+            RecordingHandler handler = new RecordingHandler(HttpStatusCode.OK, "[{\"icaoId\":\"EPWA\",\"obsTime\":1793867400,\"rawOb\":\"METAR EPWA\",\"fltCat\":\"VFR\"}]");
+            DataCompositionSettings settings = new DataCompositionSettings(() => new List<string>(), () => new List<string>(), () => true, () => true, () => TimeSpan.FromMinutes(10), WeatherMaxAge: () => TimeSpan.FromMinutes(25));
+            DataComposition composition = new DataComposition(directory, address => new HttpClient(handler) { BaseAddress = new Uri(address) }, new AirportDatabase(), settings);
+
+            Assert.True(await composition.Weather.RefreshAsync(new List<string> { "EPWA" }, false, CancellationToken.None));
+
+            WeatherEntry? entry = composition.Weather.Get("EPWA");
+
+            Assert.Equal("aviationweather.gov", Assert.Single(handler.Hosts));
+            Assert.Equal("VFR", entry?.Report?.FlightCategory);
+            Assert.True(composition.Weather.IsFresh(entry! with { FetchedUtc = DateTime.UtcNow - TimeSpan.FromMinutes(24) }));
+            Assert.False(composition.Weather.IsFresh(entry! with { FetchedUtc = DateTime.UtcNow - TimeSpan.FromMinutes(26) }));
+        }
+
+        /// <summary>
+        /// The forecast store asks the weather host, uses the interval from the settings and shares the pause after a limit response with the weather store.
+        /// </summary>
+        [Fact]
+        public async Task Forecast_AsksTheWeatherHostUsesTheIntervalAndSharesThePause()
+        {
+            RecordingHandler handler = new RecordingHandler(HttpStatusCode.OK, "[{\"icaoId\":\"EPWA\",\"validTimeFrom\":4000000000,\"validTimeTo\":4000086400,\"rawTAF\":\"TAF EPWA\"}]");
+            DataCompositionSettings settings = new DataCompositionSettings(() => new List<string>(), () => new List<string>(), () => true, () => true, () => TimeSpan.FromMinutes(10), ForecastMaxAge: () => TimeSpan.FromMinutes(90));
+            DataComposition composition = new DataComposition(directory, address => new HttpClient(handler) { BaseAddress = new Uri(address) }, new AirportDatabase(), settings);
+
+            Assert.True(await composition.Forecast.RefreshAsync(new List<string> { "EPWA" }, false, CancellationToken.None));
+
+            ForecastEntry? entry = composition.Forecast.Get("EPWA");
+
+            Assert.Equal("aviationweather.gov", Assert.Single(handler.Hosts));
+            Assert.Equal("/api/data/taf", Assert.Single(handler.Paths));
+            Assert.Equal("TAF EPWA", entry?.Forecast?.RawText);
+            Assert.True(composition.Forecast.IsFresh(entry! with { FetchedUtc = DateTime.UtcNow - TimeSpan.FromMinutes(89) }));
+            Assert.False(composition.Forecast.IsFresh(entry! with { FetchedUtc = DateTime.UtcNow - TimeSpan.FromMinutes(91) }));
+        }
+
+        /// <summary>
+        /// Without a setting for the forecast the answers stay fresh for an hour.
+        /// </summary>
+        [Fact]
+        public void Forecast_WithoutSetting_UsesOneHour()
+        {
+            DataComposition composition = Create(new RecordingHandler(HttpStatusCode.OK, "[]"), new List<string>(), new List<string>());
+            Taf forecast = new Taf("EPWA", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddHours(24), "TAF EPWA", new List<TafPeriod>());
+
+            Assert.True(composition.Forecast.IsFresh(new ForecastEntry(forecast, DateTime.UtcNow - TimeSpan.FromMinutes(59))));
+            Assert.False(composition.Forecast.IsFresh(new ForecastEntry(forecast, DateTime.UtcNow - TimeSpan.FromMinutes(61))));
+        }
+
+        /// <summary>
+        /// Without a setting for the weather the answers stay fresh for ten minutes.
+        /// </summary>
+        [Fact]
+        public void Weather_WithoutSetting_UsesTenMinutes()
+        {
+            DataComposition composition = Create(new RecordingHandler(HttpStatusCode.OK, "[]"), new List<string>(), new List<string>());
+            Metar report = new Metar("EPWA", DateTimeOffset.UtcNow, "METAR EPWA", null, null, false, null, null, null, false, new List<CloudLayer>(), null, null, null, null);
+
+            Assert.True(composition.Weather.IsFresh(new WeatherEntry(report, DateTime.UtcNow - TimeSpan.FromMinutes(9))));
+            Assert.False(composition.Weather.IsFresh(new WeatherEntry(report, DateTime.UtcNow - TimeSpan.FromMinutes(11))));
         }
 
         /// <summary>

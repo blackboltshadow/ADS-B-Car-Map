@@ -308,6 +308,8 @@ namespace AdsbCarMap.Activities
 
             controller.SurfaceBroken -= OnSurfaceBroken;
             controller.SurfaceBroken += OnSurfaceBroken;
+            AirportWeatherLoader.Updated -= OnAirportWeatherUpdated;
+            AirportWeatherLoader.Updated += OnAirportWeatherUpdated;
             AppServices.Threats.Changed -= OnThreatFeedChanged;
             AppServices.Threats.Changed += OnThreatFeedChanged;
             ApplyThreatFeed();
@@ -329,6 +331,7 @@ namespace AdsbCarMap.Activities
         protected override void OnPause()
         {
             controller.SurfaceBroken -= OnSurfaceBroken;
+            AirportWeatherLoader.Updated -= OnAirportWeatherUpdated;
             AppServices.Threats.Changed -= OnThreatFeedChanged;
             AppServices.Threats.Stop();
             AppServices.Airspace.Changed -= OnAirspaceFeedChanged;
@@ -452,6 +455,7 @@ namespace AdsbCarMap.Activities
 
                 aircraftCard.Visibility = ViewStates.Gone;
                 airportCard.Bind(airport, AppServices.Airports.GetRunways(airport), AppServices.Airports.GetFrequencies(airport), user.Known, user.Latitude, user.Longitude, AppServices.Favorites.Contains(airport.Icao));
+                UpdateAirportWeather(airport);
                 airportCard.Visibility = ViewStates.Visible;
                 UpdateCoveredArea();
 
@@ -460,6 +464,7 @@ namespace AdsbCarMap.Activities
 
             if (airportCard != null)
             {
+                airportCard.ResetSize();
                 airportCard.Visibility = ViewStates.Gone;
             }
 
@@ -489,10 +494,12 @@ namespace AdsbCarMap.Activities
         private void UpdateCoveredArea()
         {
             View? card = airportCard != null && airportCard.Visibility == ViewStates.Visible ? airportCard : aircraftCard;
+            bool frozen = airportCard != null && airportCard.Visibility == ViewStates.Visible && airportCard.IsMaximized;
 
             if (card == null || mapView == null || card.Visibility != ViewStates.Visible || card.Width == 0)
             {
                 controller.SetCoveredArea(null);
+                controller.SetFramingFrozen(frozen);
 
                 return;
             }
@@ -502,6 +509,7 @@ namespace AdsbCarMap.Activities
                 card.Top - mapView.Top,
                 card.Right - mapView.Left,
                 card.Bottom - mapView.Top));
+            controller.SetFramingFrozen(frozen);
         }
 
         /// <summary>
@@ -538,6 +546,31 @@ namespace AdsbCarMap.Activities
             }
 
             UpdateCard();
+        }
+
+        /// <summary>
+        /// Shows the stored weather and forecast of the selected airport and starts the downloads that are needed. The weather and the forecast are not touched while they are switched off in the settings.
+        /// </summary>
+        /// <param name="airport">Selected airport.</param>
+        private void UpdateAirportWeather(Airport airport)
+        {
+            if (airportCard == null)
+            {
+                return;
+            }
+
+            AirportWeatherLoader.Snapshot snapshot = AirportWeatherLoader.Request(airport);
+
+            airportCard.BindWeather(snapshot.Weather, snapshot.WeatherLoading);
+            airportCard.BindForecast(snapshot.Forecast, snapshot.ForecastLoading);
+        }
+
+        /// <summary>
+        /// Refreshes the card after a download of the weather or the forecast has ended.
+        /// </summary>
+        private void OnAirportWeatherUpdated()
+        {
+            RunOnUiThread(UpdateCard);
         }
 
         /// <summary>
@@ -724,6 +757,13 @@ namespace AdsbCarMap.Activities
             airportCard = new AirportCardView(this);
             airportCard.Visibility = ViewStates.Gone;
             airportCard.CenterClicked += () => controller.CenterOnSelectedAirport();
+            airportCard.MaximizedChanged += maximized =>
+            {
+                if (maximized)
+                {
+                    controller.SetFramingFrozen(true);
+                }
+            };
             airportCard.CloseClicked += () => controller.ClearSelection();
             airportCard.FavoriteClicked += () =>
             {

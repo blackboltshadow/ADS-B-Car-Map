@@ -73,14 +73,29 @@ namespace AdsbCarMap.Data
         private int loaded;
 
         /// <summary>
-        /// Event raised on a background thread when the data has been loaded.
+        /// Non-zero when the frequencies have been loaded, which happens after the airports and runways are ready.
+        /// </summary>
+        private int frequenciesLoaded;
+
+        /// <summary>
+        /// Event raised on a background thread when the airports and runways have been loaded, which is the moment the airports can be drawn.
         /// </summary>
         public event System.Action? Loaded;
+
+        /// <summary>
+        /// Event raised on a background thread when the frequencies have been loaded, after <see cref="Loaded"/>.
+        /// </summary>
+        public event System.Action? FrequenciesLoaded;
 
         /// <summary>
         /// Whether the data is ready to use.
         /// </summary>
         public bool IsLoaded => Volatile.Read(ref loaded) != 0;
+
+        /// <summary>
+        /// Whether the frequencies are ready; before that <see cref="GetFrequencies"/> returns none.
+        /// </summary>
+        public bool AreFrequenciesLoaded => Volatile.Read(ref frequenciesLoaded) != 0;
 
         /// <summary>
         /// Total number of airports, or 0 before the data is loaded.
@@ -363,26 +378,31 @@ namespace AdsbCarMap.Data
         public int RunwayCount => runways.Values.Sum(item => item.Length);
 
         /// <summary>
-        /// Builds the indexes from the lines of the airports and runways files and marks the data as ready. Invalid lines are skipped.
+        /// Builds all the indexes: the airports and runways first, then the frequencies. Invalid lines are skipped.
         /// </summary>
         /// <param name="airportLines">Tab separated lines of the airports file.</param>
         /// <param name="runwayLines">Tab separated lines of the runways file.</param>
         /// <param name="frequencyLines">Tab separated lines of the frequencies file, or null when there are none.</param>
         public void LoadFrom(IEnumerable<string> airportLines, IEnumerable<string> runwayLines, IEnumerable<string>? frequencyLines = null)
         {
-            List<Airport> list = new List<Airport>();
+            LoadAirports(airportLines, runwayLines);
+            LoadFrequencies(frequencyLines);
+        }
 
-            foreach (string line in airportLines)
-            {
-                Airport? airport = ParseAirport(line);
-
-                if (airport != null)
-                {
-                    list.Add(airport);
-                }
-            }
-
-            Airport[] sorted = list
+        /// <summary>
+        /// Builds the indexes of the airports and runways and marks the data as ready, so that the airports can be drawn and searched. The frequencies are not needed for that and are loaded later by <see cref="LoadFrequencies"/>. Invalid lines are skipped.
+        /// </summary>
+        /// <param name="airportLines">Tab separated lines of the airports file.</param>
+        /// <param name="runwayLines">Tab separated lines of the runways file.</param>
+        public void LoadAirports(IEnumerable<string> airportLines, IEnumerable<string> runwayLines)
+        {
+            Airport[] sorted = airportLines
+                .AsParallel()
+                .AsOrdered()
+                .Select(ParseAirport)
+                .Where(item => item != null)
+                .Select(item => item!)
+                .ToArray()
                 .OrderBy(item => item.Type)
                 .ThenByDescending(item => item.HasScheduledService)
                 .ThenBy(item => item.Name, StringComparer.Ordinal)
@@ -408,59 +428,24 @@ namespace AdsbCarMap.Data
 
             Dictionary<string, List<Runway>> runwayLists = new Dictionary<string, List<Runway>>();
 
-            foreach (string line in runwayLines)
+            foreach ((string Key, Runway Runway) item in runwayLines
+                .AsParallel()
+                .AsOrdered()
+                .Select(ParseRunwayLine)
+                .Where(item => item.HasValue)
+                .Select(item => item!.Value)
+                .ToArray())
             {
-                string[] fields = line.Split('\t');
-
-                if (fields.Length < RunwayColumns)
-                {
-                    continue;
-                }
-
-                Runway? runway = ParseRunway(fields);
-
-                if (runway == null)
-                {
-                    continue;
-                }
-
-                string key = fields[0].ToUpperInvariant();
-
-                if (!runwayLists.TryGetValue(key, out List<Runway>? runwayList))
+                if (!runwayLists.TryGetValue(item.Key, out List<Runway>? runwayList))
                 {
                     runwayList = new List<Runway>();
-                    runwayLists[key] = runwayList;
+                    runwayLists[item.Key] = runwayList;
                 }
 
-                runwayList.Add(runway);
-            }
-
-            Dictionary<string, List<AirportFrequency>> frequencyLists = new Dictionary<string, List<AirportFrequency>>();
-
-            foreach (string line in frequencyLines ?? Array.Empty<string>())
-            {
-                string[] fields = line.Split('\t');
-
-                if (fields.Length < FrequencyColumns
-                    || !double.TryParse(fields[3], NumberStyles.Float, CultureInfo.InvariantCulture, out double megahertz)
-                    || megahertz <= 0.0)
-                {
-                    continue;
-                }
-
-                string key = fields[0].ToUpperInvariant();
-
-                if (!frequencyLists.TryGetValue(key, out List<AirportFrequency>? frequencyList))
-                {
-                    frequencyList = new List<AirportFrequency>();
-                    frequencyLists[key] = frequencyList;
-                }
-
-                frequencyList.Add(new AirportFrequency(fields[1].Trim().ToUpperInvariant(), fields[2], megahertz));
+                runwayList.Add(item.Runway);
             }
 
             airports = sorted;
-            frequencies = frequencyLists.ToDictionary(item => item.Key, item => item.Value.ToArray());
             grid = cells.ToDictionary(item => item.Key, item => item.Value.ToArray());
             byIcao = codes;
             runways = runwayLists.ToDictionary(item => item.Key, item => item.Value.ToArray());
@@ -475,6 +460,36 @@ namespace AdsbCarMap.Data
 
             Volatile.Write(ref loaded, 1);
             Loaded?.Invoke();
+        }
+
+        /// <summary>
+        /// Builds the index of the radio frequencies. Until it is built <see cref="GetFrequencies"/> returns no frequencies. Invalid lines are skipped.
+        /// </summary>
+        /// <param name="frequencyLines">Tab separated lines of the frequencies file, or null when there are none.</param>
+        public void LoadFrequencies(IEnumerable<string>? frequencyLines)
+        {
+            Dictionary<string, List<AirportFrequency>> frequencyLists = new Dictionary<string, List<AirportFrequency>>();
+
+            foreach ((string Key, AirportFrequency Frequency) item in (frequencyLines ?? Array.Empty<string>())
+                .AsParallel()
+                .AsOrdered()
+                .Select(ParseFrequencyLine)
+                .Where(item => item.HasValue)
+                .Select(item => item!.Value)
+                .ToArray())
+            {
+                if (!frequencyLists.TryGetValue(item.Key, out List<AirportFrequency>? frequencyList))
+                {
+                    frequencyList = new List<AirportFrequency>();
+                    frequencyLists[item.Key] = frequencyList;
+                }
+
+                frequencyList.Add(item.Frequency);
+            }
+
+            frequencies = frequencyLists.ToDictionary(item => item.Key, item => item.Value.ToArray());
+            Volatile.Write(ref frequenciesLoaded, 1);
+            FrequenciesLoaded?.Invoke();
         }
 
         /// <summary>
@@ -518,6 +533,44 @@ namespace AdsbCarMap.Data
             int.TryParse(fields[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int width);
 
             return new Runway(length, width, fields[3], fields[4] == "1", fields[5], lowLatitude, lowLongitude, fields[8], highLatitude, highLongitude);
+        }
+
+        /// <summary>
+        /// Converts a line of the runways file to a runway with the code of its airport.
+        /// </summary>
+        /// <param name="line">Tab separated line.</param>
+        /// <returns>The airport code in upper case and the runway, or null when the line is not valid.</returns>
+        private static (string Key, Runway Runway)? ParseRunwayLine(string line)
+        {
+            string[] fields = line.Split('\t');
+
+            if (fields.Length < RunwayColumns)
+            {
+                return null;
+            }
+
+            Runway? runway = ParseRunway(fields);
+
+            return runway == null ? null : (fields[0].ToUpperInvariant(), runway);
+        }
+
+        /// <summary>
+        /// Converts a line of the frequencies file to a frequency with the code of its airport.
+        /// </summary>
+        /// <param name="line">Tab separated line.</param>
+        /// <returns>The airport code in upper case and the frequency, or null when the line is not valid.</returns>
+        private static (string Key, AirportFrequency Frequency)? ParseFrequencyLine(string line)
+        {
+            string[] fields = line.Split('\t');
+
+            if (fields.Length < FrequencyColumns
+                || !double.TryParse(fields[3], NumberStyles.Float, CultureInfo.InvariantCulture, out double megahertz)
+                || megahertz <= 0.0)
+            {
+                return null;
+            }
+
+            return (fields[0].ToUpperInvariant(), new AirportFrequency(fields[1].Trim().ToUpperInvariant(), fields[2], megahertz));
         }
 
         /// <summary>

@@ -17,6 +17,7 @@
     <ProjectReference Include="../../Sources/AdsbFi/AdsbCarMap.DataSources.AdsbFi/AdsbCarMap.DataSources.AdsbFi.csproj" />
     <ProjectReference Include="../../Sources/Adsbdb/AdsbCarMap.DataSources.Adsbdb/AdsbCarMap.DataSources.Adsbdb.csproj" />
     <ProjectReference Include="../../Sources/Hexdb/AdsbCarMap.DataSources.Hexdb/AdsbCarMap.DataSources.Hexdb.csproj" />
+    <ProjectReference Include="../../Sources/AviationWeather/AdsbCarMap.DataSources.AviationWeather/AdsbCarMap.DataSources.AviationWeather.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -126,6 +127,9 @@
     <Compile Include="..\..\Data\WarningAlertEngine.cs" Link="Linked\WarningAlertEngine.cs" />
     <Compile Include="..\..\Map\AirspaceText.cs" Link="Linked\AirspaceText.cs" />
     <Compile Include="..\..\Map\AirportCardText.cs" Link="Linked\AirportCardText.cs" />
+    <Compile Include="..\..\Map\AirportWeatherText.cs" Link="Linked\AirportWeatherText.cs" />
+    <Compile Include="..\..\Data\RunwayWind.cs" Link="Linked\RunwayWind.cs" />
+    <Compile Include="..\..\Map\AirportForecastText.cs" Link="Linked\AirportForecastText.cs" />
     <Compile Include="..\..\Map\SelectionState.cs" Link="Linked\SelectionState.cs" />
     <Compile Include="..\..\Settings\SettingDefinition.cs" Link="Linked\SettingDefinition.cs" />
     <Compile Include="..\..\Settings\SettingsHistory.cs" Link="Linked\SettingsHistory.cs" />
