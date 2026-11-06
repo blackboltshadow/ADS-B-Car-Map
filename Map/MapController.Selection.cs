@@ -593,6 +593,20 @@ namespace AdsbCarMap.Map
         /// <param name="y">Vertical tap position in pixels.</param>
         public void Tap(float x, float y)
         {
+            RectF? popup = Volatile.Read(ref popupBounds);
+
+            if (popup != null && IsCovered(PopupRenderer.GetCloseButtonArea(popup, density), x, y))
+            {
+                ClearSelection();
+
+                return;
+            }
+
+            if (TrySelectPopupTab(x, y))
+            {
+                return;
+            }
+
             if (IsCovered(Volatile.Read(ref popupBounds), x, y))
             {
                 Log.Info(LogTag, string.Format(CultureInfo.InvariantCulture, "Dotknięcie {0:0},{1:0} pominięte: obszar zasłonięty", x, y));
@@ -920,6 +934,7 @@ namespace AdsbCarMap.Map
                 userLongitude = longitude;
                 userLocationAtUtc = DateTime.UtcNow;
                 hasUserLocation = true;
+                UpdateBearingFromMovement(latitude, longitude);
 
                 if (followLocation)
                 {

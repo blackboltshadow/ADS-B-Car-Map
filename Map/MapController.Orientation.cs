@@ -1,3 +1,4 @@
+using AdsbCarMap.Data;
 using AdsbCarMap.Settings;
 using Android.Graphics;
 using AndroidPath = Android.Graphics.Path;
@@ -38,6 +39,26 @@ namespace AdsbCarMap.Map
         /// Direction of travel of the user in degrees from north, as reported by the last reliable location. Guarded by the state lock.
         /// </summary>
         private double bearingTarget;
+
+        /// <summary>
+        /// Distance in meters that the user must move from the reference position for the direction of travel to be derived from the movement.
+        /// </summary>
+        private const double MinimumMovementMeters = 20.0;
+
+        /// <summary>
+        /// Latitude of the position from which the direction of travel is derived. Guarded by the state lock.
+        /// </summary>
+        private double bearingReferenceLatitude;
+
+        /// <summary>
+        /// Longitude of the position from which the direction of travel is derived. Guarded by the state lock.
+        /// </summary>
+        private double bearingReferenceLongitude;
+
+        /// <summary>
+        /// Whether the reference position for the direction of travel is known. Guarded by the state lock.
+        /// </summary>
+        private bool hasBearingReference;
 
         /// <summary>
         /// Bearing that is shown at the top of the screen in degrees from north; it turns towards the direction of travel, or towards north when the map is not turned. Guarded by the state lock.
@@ -166,6 +187,34 @@ namespace AdsbCarMap.Map
             {
                 bearingTarget = MapRotation.Normalize(bearingDegrees);
             }
+        }
+
+        /// <summary>
+        /// Derives the direction of travel from the movement between two positions when the location itself reports no bearing, as it often happens in a car. Call under the state lock.
+        /// </summary>
+        /// <param name="latitude">Latitude of the new position.</param>
+        /// <param name="longitude">Longitude of the new position.</param>
+        private void UpdateBearingFromMovement(double latitude, double longitude)
+        {
+            if (!hasBearingReference)
+            {
+                bearingReferenceLatitude = latitude;
+                bearingReferenceLongitude = longitude;
+                hasBearingReference = true;
+
+                return;
+            }
+
+            double meters = GeoMath.DistanceKilometers(bearingReferenceLatitude, bearingReferenceLongitude, latitude, longitude) * 1000.0;
+
+            if (meters < MinimumMovementMeters)
+            {
+                return;
+            }
+
+            bearingTarget = MapRotation.Normalize(GeoMath.BearingDegrees(bearingReferenceLatitude, bearingReferenceLongitude, latitude, longitude));
+            bearingReferenceLatitude = latitude;
+            bearingReferenceLongitude = longitude;
         }
 
         /// <summary>

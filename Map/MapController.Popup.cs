@@ -18,6 +18,27 @@ using AndroidPath = Android.Graphics.Path;
 namespace AdsbCarMap.Map
 {
     /// <summary>
+    /// Tabs of the airport popup.
+    /// </summary>
+    internal enum AirportPopupTab
+    {
+        /// <summary>
+        /// Basic data, runways and the runway in use.
+        /// </summary>
+        Info,
+
+        /// <summary>
+        /// Current weather and forecast.
+        /// </summary>
+        Weather,
+
+        /// <summary>
+        /// Radio frequencies.
+        /// </summary>
+        Frequencies,
+    }
+
+    /// <summary>
     /// Selection popup content, measuring and drawing of the map controller.
     /// </summary>
     public sealed partial class MapController
@@ -44,6 +65,11 @@ namespace AdsbCarMap.Map
 
                 if (popupLines == null || popupHex != key || nowUtc - popupBuiltUtc >= PopupRefreshInterval)
                 {
+                    if (popupHex != key)
+                    {
+                        popupTab = AirportPopupTab.Info;
+                    }
+
                     popupLines = BuildAirportPopupLines(airport);
                     popupHex = key;
                     popupBuiltUtc = nowUtc;
@@ -51,6 +77,9 @@ namespace AdsbCarMap.Map
 
                 return popupLines;
             }
+
+            popupTabs = null;
+            popupTabIds = null;
 
             if (hex == null)
             {
@@ -85,7 +114,7 @@ namespace AdsbCarMap.Map
         }
 
         /// <summary>
-        /// Builds the popup lines from the data of the selected airport.
+        /// Builds the popup lines of the shown tab from the data of the selected airport and sets the tabs of the popup.
         /// </summary>
         /// <param name="airport">Selected airport.</param>
         /// <returns>Popup lines.</returns>
@@ -103,58 +132,111 @@ namespace AdsbCarMap.Map
                 longitude = userLongitude;
             }
 
+            IReadOnlyList<Runway> runways = AppServices.Airports.GetRunways(airport);
+            List<string> frequencies = AppSettings.ShowAirportFrequencies ? AirportCardText.BuildFrequencyLines(AppServices.Airports.GetFrequencies(airport)) : new List<string>();
+            bool hasWeather = AppSettings.ShowAirportWeather || AppSettings.ShowAirportForecast;
+            List<AirportPopupTab> tabIds = new List<AirportPopupTab> { AirportPopupTab.Info };
+            List<string> tabTitles = new List<string> { Loc.T("Informacje") };
+
+            if (hasWeather)
+            {
+                tabIds.Add(AirportPopupTab.Weather);
+                tabTitles.Add(Loc.T("Pogoda"));
+            }
+
+            if (frequencies.Count > 0)
+            {
+                tabIds.Add(AirportPopupTab.Frequencies);
+                tabTitles.Add(Loc.T("Częstotliwości"));
+            }
+
+            AirportPopupTab shown = tabIds.Contains(popupTab) ? popupTab : AirportPopupTab.Info;
+
+            popupTabIds = tabIds;
+            popupTabs = tabIds.Count > 1 ? tabTitles : null;
+
             lines.Add(new PopupLine(AirportCardText.BuildTitle(airport), PopupLineStyle.Bold, 0.0f));
-            lines.Add(new PopupLine(AirportCardText.BuildDescriptor(airport) + (AppServices.Favorites.Contains(airport.Icao) ? Loc.T(" · ★ ulubione") : string.Empty), PopupLineStyle.Accent, 0.0f));
 
-            foreach (string text in AirportCardText.BuildLines(airport, AppServices.Airports.GetRunways(airport), known, latitude, longitude))
+            if (shown == AirportPopupTab.Info)
             {
-                lines.Add(new PopupLine(text, PopupLineStyle.Normal, 0.0f));
-            }
+                lines.Add(new PopupLine(AirportCardText.BuildDescriptor(airport) + (AppServices.Favorites.Contains(airport.Icao) ? Loc.T(" · ★ ulubione") : string.Empty), PopupLineStyle.Accent, 0.0f));
 
-            string trafficLine = AirportRunwayTraffic.BuildLine(airport, AppServices.Airports.GetRunways(airport));
-
-            if (trafficLine.Length > 0)
-            {
-                lines.Add(new PopupLine(trafficLine, PopupLineStyle.Normal, 0.0f));
-            }
-
-            AirportWeatherLoader.Snapshot snapshot = AirportWeatherLoader.Request(airport);
-            DisplayUnits units = AppSettings.Units;
-
-            if (AppSettings.ShowAirportWeather)
-            {
-                List<string> weather = AirportWeatherText.BuildPopupLines(snapshot.Weather, snapshot.WeatherLoading, units, DateTime.UtcNow, AppServices.Airports.GetRunways(airport));
-
-                for (int index = 0; index < weather.Count; index++)
+                foreach (string text in AirportCardText.BuildLines(airport, runways, known, latitude, longitude))
                 {
-                    lines.Add(new PopupLine(weather[index], index == 0 ? PopupLineStyle.Accent : PopupLineStyle.Normal, 0.0f));
+                    lines.Add(new PopupLine(text, PopupLineStyle.Normal, 0.0f));
+                }
+
+                string trafficLine = AirportRunwayTraffic.BuildLine(airport, runways);
+
+                if (trafficLine.Length > 0)
+                {
+                    lines.Add(new PopupLine(trafficLine, PopupLineStyle.Normal, 0.0f));
                 }
             }
-
-            if (AppSettings.ShowAirportForecast)
+            else if (shown == AirportPopupTab.Weather)
             {
-                foreach (string text in AirportForecastText.BuildPopupLines(snapshot.Forecast, snapshot.ForecastLoading, units, AirportForecastText.GetZone(AppSettings.ForecastUsesLocalTime), DateTime.UtcNow))
+                AirportWeatherLoader.Snapshot snapshot = AirportWeatherLoader.Request(airport);
+                DisplayUnits units = AppSettings.Units;
+
+                if (AppSettings.ShowAirportWeather)
                 {
-                    lines.Add(new PopupLine(text, PopupLineStyle.Accent, 0.0f));
-                }
-            }
+                    List<string> weather = AirportWeatherText.BuildPopupLines(snapshot.Weather, snapshot.WeatherLoading, units, DateTime.UtcNow, runways);
 
-            if (AppSettings.ShowAirportFrequencies)
-            {
-                List<string> frequencies = AirportCardText.BuildFrequencyLines(AppServices.Airports.GetFrequencies(airport));
-
-                if (frequencies.Count > 0)
-                {
-                    lines.Add(new PopupLine(Loc.T("Częstotliwości (MHz):"), PopupLineStyle.Normal, 0.0f));
-
-                    foreach (string text in frequencies)
+                    for (int index = 0; index < weather.Count; index++)
                     {
-                        lines.Add(new PopupLine(text, PopupLineStyle.Normal, 0.0f));
+                        lines.Add(new PopupLine(weather[index], index == 0 ? PopupLineStyle.Accent : PopupLineStyle.Normal, 0.0f));
                     }
+                }
+
+                if (AppSettings.ShowAirportForecast)
+                {
+                    foreach (string text in AirportForecastText.BuildPopupLines(snapshot.Forecast, snapshot.ForecastLoading, units, AirportForecastText.GetZone(AppSettings.ForecastUsesLocalTime), DateTime.UtcNow))
+                    {
+                        lines.Add(new PopupLine(text, PopupLineStyle.Accent, 0.0f));
+                    }
+                }
+            }
+            else
+            {
+                lines.Add(new PopupLine(Loc.T("Częstotliwości (MHz):"), PopupLineStyle.Accent, 0.0f));
+
+                foreach (string text in frequencies)
+                {
+                    lines.Add(new PopupLine(text, PopupLineStyle.Normal, 0.0f));
                 }
             }
 
             return lines;
+        }
+
+        /// <summary>
+        /// Switches the tab of the airport popup when the tap hit its tab strip.
+        /// </summary>
+        /// <param name="x">Horizontal tap position in pixels.</param>
+        /// <param name="y">Vertical tap position in pixels.</param>
+        /// <returns>True when the tap was used to switch the tab.</returns>
+        private bool TrySelectPopupTab(float x, float y)
+        {
+            RectF? area = Volatile.Read(ref popupBounds);
+            IReadOnlyList<string>? tabs = popupTabs;
+            List<AirportPopupTab>? ids = popupTabIds;
+
+            if (area == null || tabs == null || ids == null)
+            {
+                return false;
+            }
+
+            int index = PopupRenderer.HitTab(area, tabs.Count, x, y, density);
+
+            if (index < 0 || index >= ids.Count)
+            {
+                return false;
+            }
+
+            popupTab = ids[index];
+            popupBuiltUtc = DateTime.MinValue;
+
+            return true;
         }
 
         /// <summary>

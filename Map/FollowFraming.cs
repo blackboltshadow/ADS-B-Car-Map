@@ -16,6 +16,16 @@ namespace AdsbCarMap.Map
         public const double BottomEdgeFraction = 0.9;
 
         /// <summary>
+        /// Smallest part of the screen height that a view must cover to count as a side sheet.
+        /// </summary>
+        public const double SideSheetHeightFraction = 0.5;
+
+        /// <summary>
+        /// Part of the screen width from which a view no longer counts as a side sheet, because it covers nearly the whole width.
+        /// </summary>
+        public const double SideSheetMaximumWidthFraction = 0.9;
+
+        /// <summary>
         /// Smallest distance of the aircraft from the top edge, as a part of the screen height, so that it never sits under the top buttons.
         /// </summary>
         public const double MinimumTopFraction = 0.12;
@@ -43,6 +53,47 @@ namespace AdsbCarMap.Map
             }
 
             return Math.Min(middle, Math.Max(highestTop / 2.0, height * MinimumTopFraction));
+        }
+
+        /// <summary>
+        /// Finds the horizontal position at which the followed aircraft should be drawn, so that it stays in the middle of the part of the map that a card on the left or the right side leaves free.
+        /// </summary>
+        /// <param name="width">Width of the map in pixels.</param>
+        /// <param name="height">Height of the map in pixels.</param>
+        /// <param name="covered">Rectangles of the map covered by views, as left, top, right and bottom; only tall views that do not span the whole width and are not bottom sheets count as side sheets.</param>
+        /// <returns>Position in pixels from the left edge: the middle of the free part, or the middle of the screen when no side sheet covers the map.</returns>
+        public static double GetTargetX(double width, double height, IEnumerable<(double Left, double Top, double Right, double Bottom)> covered)
+        {
+            double freeLeft = 0.0;
+            double freeRight = width;
+
+            foreach ((double Left, double Top, double Right, double Bottom) rectangle in covered)
+            {
+                double rectangleWidth = rectangle.Right - rectangle.Left;
+                bool bottomSheet = rectangleWidth >= width * MinimumWidthFraction && rectangle.Bottom >= height * BottomEdgeFraction;
+                bool tall = rectangle.Bottom - rectangle.Top >= height * SideSheetHeightFraction;
+
+                if (bottomSheet || !tall || rectangleWidth >= width * SideSheetMaximumWidthFraction)
+                {
+                    continue;
+                }
+
+                if (rectangle.Left <= width * (1.0 - BottomEdgeFraction))
+                {
+                    freeLeft = Math.Max(freeLeft, rectangle.Right);
+                }
+                else if (rectangle.Right >= width * BottomEdgeFraction)
+                {
+                    freeRight = Math.Min(freeRight, rectangle.Left);
+                }
+            }
+
+            if (freeRight <= freeLeft)
+            {
+                return width / 2.0;
+            }
+
+            return (freeLeft + freeRight) / 2.0;
         }
 
         /// <summary>

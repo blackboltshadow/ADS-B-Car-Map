@@ -103,14 +103,42 @@ namespace AdsbCarMap.Map
         /// <returns>Position in pixels from the top edge.</returns>
         private double GetFramingTargetY(int width, int height, RectF? popupArea)
         {
-            if (Volatile.Read(ref framingFrozen) != 0 && !double.IsNaN(lastFramingTargetY))
-            {
-                return lastFramingTargetY;
-            }
-
-            lastFramingTargetY = FollowFraming.GetTargetY(width, height, GetCoveringRectangles(popupArea));
+            UpdateFramingTarget(width, height, popupArea);
 
             return lastFramingTargetY;
+        }
+
+        /// <summary>
+        /// Finds the horizontal position at which the followed aircraft or the centered airport is kept, so that it stays in the free part next to a card on the side.
+        /// </summary>
+        /// <param name="width">Width of the map in pixels.</param>
+        /// <param name="height">Height of the map in pixels.</param>
+        /// <param name="popupArea">Area of the popup, or null.</param>
+        /// <returns>Position in pixels from the left edge.</returns>
+        private double GetFramingTargetX(int width, int height, RectF? popupArea)
+        {
+            UpdateFramingTarget(width, height, popupArea);
+
+            return lastFramingTargetX;
+        }
+
+        /// <summary>
+        /// Recalculates the framing target unless the framing is frozen, in which case the position found last is kept.
+        /// </summary>
+        /// <param name="width">Width of the map in pixels.</param>
+        /// <param name="height">Height of the map in pixels.</param>
+        /// <param name="popupArea">Area of the popup, or null.</param>
+        private void UpdateFramingTarget(int width, int height, RectF? popupArea)
+        {
+            if (Volatile.Read(ref framingFrozen) != 0 && !double.IsNaN(lastFramingTargetY) && !double.IsNaN(lastFramingTargetX))
+            {
+                return;
+            }
+
+            List<(double Left, double Top, double Right, double Bottom)> covering = GetCoveringRectangles(popupArea);
+
+            lastFramingTargetY = FollowFraming.GetTargetY(width, height, covering);
+            lastFramingTargetX = FollowFraming.GetTargetX(width, height, covering);
         }
 
         /// <summary>
@@ -217,7 +245,7 @@ namespace AdsbCarMap.Map
             WakeWhenUncovered(frameStartUtc, latitude, longitude, zoomLevel, width, height);
 
             IReadOnlyList<PopupLine>? popup = ShowSelectionPopup ? GetPopupLines(frameStartUtc) : null;
-            RectF? popupArea = popup == null ? null : popupRenderer.Measure(popup, width, height, screenDensity);
+            RectF? popupArea = popup == null ? null : popupRenderer.Measure(popup, width, height, screenDensity, popupTabs != null);
 
             double elapsedSeconds = (DateTime.UtcNow - snapshotTimestampUtc).TotalSeconds;
             Aircraft? followedAircraft = followed == null ? null : snapshot.FirstOrDefault(item => item.Hex == followed);
@@ -227,10 +255,13 @@ namespace AdsbCarMap.Map
                 (double Latitude, double Longitude) followedPosition = MapMath.Extrapolate(followedAircraft, elapsedSeconds);
                 double targetY = GetFramingTargetY(width, height, popupArea);
 
+                double targetX = GetFramingTargetX(width, height, popupArea);
+
                 followOffsetPixels = FollowFraming.Ease(followOffsetPixels, (height / 2.0) - targetY, deltaSeconds);
+                followOffsetXPixels = FollowFraming.Ease(followOffsetXPixels, (width / 2.0) - targetX, deltaSeconds);
 
                 (double worldX, double worldY) = WebMercator.LatLonToWorldPixel(followedPosition.Latitude, followedPosition.Longitude, zoomLevel);
-                (double X, double Y) shift = ScreenShiftToWorld(0.0, followOffsetPixels, rotation);
+                (double X, double Y) shift = ScreenShiftToWorld(followOffsetXPixels, followOffsetPixels, rotation);
                 (latitude, longitude) = WebMercator.WorldPixelToLatLon(worldX + shift.X, worldY + shift.Y, zoomLevel);
 
                 lock (stateLock)
@@ -248,7 +279,7 @@ namespace AdsbCarMap.Map
                 double targetY = GetFramingTargetY(width, height, popupArea);
                 (double airportX, double airportY) = WebMercator.LatLonToWorldPixel(centeredLocal.Latitude, centeredLocal.Longitude, zoomLevel);
                 (double centerX, double centerY) = WebMercator.LatLonToWorldPixel(latitude, longitude, zoomLevel);
-                (double X, double Y) airportShift = ScreenShiftToWorld(0.0, (height / 2.0) - targetY, rotation);
+                (double X, double Y) airportShift = ScreenShiftToWorld((width / 2.0) - GetFramingTargetX(width, height, popupArea), (height / 2.0) - targetY, rotation);
 
                 (latitude, longitude) = WebMercator.WorldPixelToLatLon(
                     FollowFraming.Ease(centerX, airportX + airportShift.X, deltaSeconds),
@@ -431,7 +462,7 @@ namespace AdsbCarMap.Map
 
             if (popup != null && popupArea != null)
             {
-                popupRenderer.Draw(canvas, popup, popupArea, screenDensity);
+                popupRenderer.Draw(canvas, popup, popupArea, screenDensity, popupTabs, popupTabIds?.IndexOf(popupTab) ?? 0);
             }
 
             DrawCompass(canvas, rotation, screenDensity);

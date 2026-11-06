@@ -18,6 +18,29 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// A card on the left side moves the aircraft to the middle of the free part on the right.
+        /// </summary>
+        [Fact]
+        public void GetTargetX_LeftCard_IsMiddleOfFreePart()
+        {
+            List<(double, double, double, double)> covered = new List<(double, double, double, double)> { (0.0, 0.0, 800.0, 1080.0) };
+
+            Assert.Equal(1360.0, FollowFraming.GetTargetX(1920.0, 1080.0, covered));
+        }
+
+        /// <summary>
+        /// Without a side card, or with a bottom card, the aircraft stays in the middle horizontally.
+        /// </summary>
+        [Fact]
+        public void GetTargetX_NoSideCard_IsMiddle()
+        {
+            List<(double, double, double, double)> bottom = new List<(double, double, double, double)> { (40.0, 1400.0, 1240.0, 2000.0) };
+
+            Assert.Equal(640.0, FollowFraming.GetTargetX(1280.0, 2000.0, new List<(double, double, double, double)>()));
+            Assert.Equal(640.0, FollowFraming.GetTargetX(1280.0, 2000.0, bottom));
+        }
+
+        /// <summary>
         /// A card at the bottom moves the aircraft to the middle of the part above it.
         /// </summary>
         [Fact]

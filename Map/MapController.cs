@@ -302,6 +302,16 @@ namespace AdsbCarMap.Map
         private double lastFramingTargetY = double.NaN;
 
         /// <summary>
+        /// Horizontal position at which the followed aircraft or the centered airport was kept in the last frame that was not frozen, in pixels from the left edge, or NaN before the first frame. Used only by the drawing thread.
+        /// </summary>
+        private double lastFramingTargetX = double.NaN;
+
+        /// <summary>
+        /// Distance in pixels by which the followed aircraft is drawn to the side of the middle of the screen, so that it stays in the free part next to a card on the side. It moves towards its target a little every frame and is used only by the drawing thread.
+        /// </summary>
+        private double followOffsetXPixels;
+
+        /// <summary>
         /// Center and radius in nautical miles of the area of the last aircraft request, or null before the first request. Guarded by the state lock.
         /// </summary>
         private (double Latitude, double Longitude, double RadiusNauticalMiles)? queriedArea;
@@ -480,6 +490,21 @@ namespace AdsbCarMap.Map
         /// Lines of the selected aircraft popup, rebuilt at most every <see cref="PopupRefreshInterval"/>. Null when no popup is shown.
         /// </summary>
         private IReadOnlyList<PopupLine>? popupLines;
+
+        /// <summary>
+        /// Titles of the tabs of the airport popup in the order they are drawn, or null when the popup has no tabs.
+        /// </summary>
+        private IReadOnlyList<string>? popupTabs;
+
+        /// <summary>
+        /// Identifiers of the tabs of the airport popup, parallel to <see cref="popupTabs"/>.
+        /// </summary>
+        private List<AirportPopupTab>? popupTabIds;
+
+        /// <summary>
+        /// Tab of the airport popup that is shown; it is reset to the first tab when another airport is selected.
+        /// </summary>
+        private AirportPopupTab popupTab = AirportPopupTab.Info;
 
         /// <summary>
         /// ICAO address of the aircraft <see cref="popupLines"/> were built for.

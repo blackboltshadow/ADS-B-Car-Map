@@ -87,6 +87,26 @@ namespace AdsbCarMap.Map
         private const float PopupBarHeight = 8.0f;
 
         /// <summary>
+        /// Height of the tab strip of the popup in dp.
+        /// </summary>
+        private const float TabStripHeight = 34.0f;
+
+        /// <summary>
+        /// Side of the square close button next to the popup in dp.
+        /// </summary>
+        private const float CloseButtonSize = 56.0f;
+
+        /// <summary>
+        /// Gap between the popup and its close button in dp.
+        /// </summary>
+        private const float CloseButtonGap = 8.0f;
+
+        /// <summary>
+        /// Paint used to draw the close button and its cross.
+        /// </summary>
+        private readonly Paint closeButtonPaint = new Paint(PaintFlags.AntiAlias);
+
+        /// <summary>
         /// Paint used to draw the background of the selected aircraft popup.
         /// </summary>
         private readonly Paint popupBackgroundPaint = new Paint(PaintFlags.AntiAlias);
@@ -119,6 +139,45 @@ namespace AdsbCarMap.Map
             popupBoldPaint.SetTypeface(Typeface.DefaultBold);
 
             popupAccentPaint.Color = PopupAccentColor;
+
+            closeButtonPaint.Color = PopupBackgroundColor;
+        }
+
+        /// <summary>
+        /// Finds the area of the close button, which sits to the right of the popup at its top edge.
+        /// </summary>
+        /// <param name="area">Area of the popup.</param>
+        /// <param name="screenDensity">Screen density factor.</param>
+        /// <returns>Area of the button in screen pixels.</returns>
+        public static RectF GetCloseButtonArea(RectF area, float screenDensity)
+        {
+            float left = area.Right + CloseButtonGap * screenDensity;
+
+            return new RectF(left, area.Top, left + CloseButtonSize * screenDensity, area.Top + CloseButtonSize * screenDensity);
+        }
+
+        /// <summary>
+        /// Draws the close button with a cross.
+        /// </summary>
+        /// <param name="canvas">Surface canvas.</param>
+        /// <param name="area">Area of the popup.</param>
+        /// <param name="screenDensity">Screen density factor.</param>
+        private void DrawCloseButton(Canvas canvas, RectF area, float screenDensity)
+        {
+            RectF button = GetCloseButtonArea(area, screenDensity);
+            float radius = 10.0f * screenDensity;
+            float inset = button.Width() * 0.3f;
+
+            closeButtonPaint.Color = PopupBackgroundColor;
+            closeButtonPaint.SetStyle(Paint.Style.Fill);
+            canvas.DrawRoundRect(button, radius, radius, closeButtonPaint);
+
+            closeButtonPaint.Color = Color.White;
+            closeButtonPaint.SetStyle(Paint.Style.Stroke);
+            closeButtonPaint.StrokeWidth = 4.0f * screenDensity;
+            closeButtonPaint.StrokeCap = Paint.Cap.Round;
+            canvas.DrawLine(button.Left + inset, button.Top + inset, button.Right - inset, button.Bottom - inset, closeButtonPaint);
+            canvas.DrawLine(button.Right - inset, button.Top + inset, button.Left + inset, button.Bottom - inset, closeButtonPaint);
         }
 
         /// <summary>
@@ -142,11 +201,12 @@ namespace AdsbCarMap.Map
         /// <param name="height">Surface height in pixels.</param>
         /// <param name="screenDensity">Screen density factor.</param>
         /// <returns>Area of the popup in screen pixels.</returns>
-        public RectF Measure(IReadOnlyList<PopupLine> lines, int width, int height, float screenDensity)
+        /// <param name="hasTabs">Whether the popup has a tab strip at the top.</param>
+        public RectF Measure(IReadOnlyList<PopupLine> lines, int width, int height, float screenDensity, bool hasTabs = false)
         {
             float margin = PopupMargin * screenDensity;
             float popupWidth = Math.Min(PopupMaxWidth * screenDensity, width * PopupMaxWidthFraction);
-            float popupHeight = 2.0f * margin;
+            float popupHeight = (2.0f * margin) + (hasTabs ? TabStripHeight * screenDensity : 0.0f);
 
             foreach (PopupLine line in lines)
             {
@@ -166,7 +226,9 @@ namespace AdsbCarMap.Map
         /// <param name="lines">Popup lines.</param>
         /// <param name="area">Area of the popup.</param>
         /// <param name="screenDensity">Screen density factor.</param>
-        public void Draw(Canvas canvas, IReadOnlyList<PopupLine> lines, RectF area, float screenDensity)
+        /// <param name="tabs">Titles of the tabs, or null when the popup has no tab strip.</param>
+        /// <param name="selectedTab">Index of the shown tab.</param>
+        public void Draw(Canvas canvas, IReadOnlyList<PopupLine> lines, RectF area, float screenDensity, IReadOnlyList<string>? tabs = null, int selectedTab = 0)
         {
             float margin = PopupMargin * screenDensity;
             float radius = 8.0f * screenDensity;
@@ -179,6 +241,32 @@ namespace AdsbCarMap.Map
             popupAccentPaint.TextSize = textSize;
 
             canvas.DrawRoundRect(area, radius, radius, popupBackgroundPaint);
+            DrawCloseButton(canvas, area, screenDensity);
+
+            if (tabs != null && tabs.Count > 0)
+            {
+                float tabWidth = textWidth / tabs.Count;
+                float stripHeight = TabStripHeight * screenDensity;
+
+                for (int index = 0; index < tabs.Count; index++)
+                {
+                    bool selected = index == selectedTab;
+                    Paint tabPaint = selected ? popupBoldPaint : popupPaint;
+                    float tabLeft = area.Left + margin + (index * tabWidth);
+                    string title = ClipText(tabPaint, tabs[index], tabWidth - (8.0f * screenDensity));
+
+                    tabPaint.Alpha = selected ? 255 : 160;
+                    canvas.DrawText(title, tabLeft + ((tabWidth - tabPaint.MeasureText(title)) / 2.0f), y + textSize + (2.0f * screenDensity), tabPaint);
+                    tabPaint.Alpha = 255;
+
+                    if (selected)
+                    {
+                        canvas.DrawRect(tabLeft + (4.0f * screenDensity), y + stripHeight - (6.0f * screenDensity), tabLeft + tabWidth - (4.0f * screenDensity), y + stripHeight - (3.0f * screenDensity), popupAccentPaint);
+                    }
+                }
+
+                y += stripHeight;
+            }
 
             foreach (PopupLine line in lines)
             {
@@ -213,6 +301,30 @@ namespace AdsbCarMap.Map
                 canvas.DrawText(ClipText(paint, line.Text, textWidth), area.Left + margin, y + textSize, paint);
                 y += PopupTextSize * PopupLineSpacing * screenDensity;
             }
+        }
+
+        /// <summary>
+        /// Finds the tab under a tap.
+        /// </summary>
+        /// <param name="area">Area of the popup in the last frame.</param>
+        /// <param name="tabCount">Number of tabs.</param>
+        /// <param name="x">Horizontal tap position in pixels.</param>
+        /// <param name="y">Vertical tap position in pixels.</param>
+        /// <param name="screenDensity">Screen density factor.</param>
+        /// <returns>Index of the tab, or -1 when the tap is outside the tab strip.</returns>
+        public static int HitTab(RectF area, int tabCount, float x, float y, float screenDensity)
+        {
+            float margin = PopupMargin * screenDensity;
+            float top = area.Top + margin;
+
+            if (tabCount <= 0 || x < area.Left || x > area.Right || y < top - margin || y > top + TabStripHeight * screenDensity)
+            {
+                return -1;
+            }
+
+            float tabWidth = (area.Width() - (2.0f * margin)) / tabCount;
+
+            return Math.Clamp((int)((x - area.Left - margin) / tabWidth), 0, tabCount - 1);
         }
 
         /// <summary>

@@ -1057,6 +1057,7 @@ namespace AdsbCarMap.Localization
             { "Panele karty lotniska domyślnie rozwinięte", "Airport card panels expanded by default" },
             { "Określa, czy panele pogody i częstotliwości na karcie lotniska otwierają się rozwinięte, czy zwinięte do jednej linii. Dotknięcie nagłówka panelu zmienia jego stan tylko na czas, gdy karta jest otwarta; przy następnej karcie panel wraca do stanu wybranego tutaj.", "Sets whether the weather and frequency panels of the airport card open expanded or collapsed to one line. Tapping the header of a panel changes its state only while the card is open; for the next card the panel returns to the state chosen here." },
             { "Pogoda", "Weather" },
+            { "Informacje", "Information" },
             { "brak danych", "no data" },
             { "brak raportu METAR dla tego lotniska", "no METAR report for this airport" },
             { "nieaktualne", "out of date" },
