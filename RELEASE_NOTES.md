@@ -2,6 +2,29 @@
 
 Opis tego, co zostało wydane w kolejnych wersjach, od najnowszej. Wersja ma postać `0.<druga>.<trzecia>` i jest w pliku `Build/Version.txt`: przy nowym wydaniu rośnie druga cyfra, a trzecia wraca do 0 (0.3.0), przy poprawce rośnie tylko trzecia (0.3.1); decyduje o tym osoba przygotowująca wydanie. Numer kompilacji (`versionCode`) nigdy nie jest zerowany. Do wersji 0.2.163 trzecia cyfra była numerem kompilacji. Od wersji 0.2.163 każdej wersji odpowiada tag w git (`v<wersja>`) i wiersz w `Build/release-history.csv` (commit, rozmiar i SHA-256 paczki). Podsumowanie commitów dla wersji można wygenerować skryptem `Scripts\Release-Notes.ps1`. Wcześniejsze wersje nie mają tagów.
 
+## 0.9.1 (2026-11-06)
+
+Poprawka wersji 0.9.0.
+
+**Telefon**
+- Karta lotniska lub samolotu stojąca z boku (układ poziomy) nie zasłania już śledzonego obiektu: samolot i lotnisko są centrowane także w poziomie, w środku wolnej części mapy.
+
+**Android Auto**
+- Popup lotniska ma zakładki Informacje, Pogoda i Częstotliwości, więc pogoda, prognoza i częstotliwości nie są już obcinane.
+- Duży przycisk zamknięcia obok popupu samolotu i lotniska.
+- Obrót mapy z kierunkiem jazdy działa także wtedy, gdy lokalizacja nie podaje kursu: kierunek jest liczony z przemieszczenia.
+
+**Inne**
+- Zaktualizowane dane lotnisk.
+
+Tekst „Co nowego” w Google Play dla tej wersji:
+
+```
+Karta lotniska z boku nie zasłania już śledzonego samolotu.
+Android Auto: zakładki Informacje, Pogoda i Częstotliwości w popupie lotniska, duży przycisk zamknięcia, poprawiony obrót mapy z kierunkiem jazdy.
+Zaktualizowane dane lotnisk.
+```
+
 ## 0.9.0 (2026-11-05)
 
 Zmiany od wersji 0.8.0.
