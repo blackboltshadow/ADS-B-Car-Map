@@ -56266,16 +56266,20 @@ SN10		S	Belle Plaine Farms Airport	Belle Plaine	US	37.395802	-97.209999	1190	0	0
 SN10		S	Fazenda Sol Nascente	Feliz Natal	BR	-12.23826	-54.731654	1142	0	0
 SN11		H	Caney Municipal Hospital Helicopter Pad Heliport	Caney	US	37.006500244140625	-95.93160247802734	755	0	0
 SN12		S	Fazenda Café da Roça Airport	Pium	BR	-10.349333	-49.856714	585	0	0
-SN13		S	Albers Airport	Cheney	US	37.65829849243164	-97.77449798583984	1380	0	0
+SN13		H	Fazenda da Barra Heliport	Curvelo	BR	-18.508717	-44.189694	1800	0	0
+SN13		S	Albers Airport	Cheney	US	37.658298	-97.774498	1380	0	0
+SN14		H	Gramazini BSF Heliport	Barra de São Francisco	BR	-18.677764	-40.816372	640	0	0
 SN16		S	Fazenda Furna Rica Airstrip	Alta Floresta d'Oeste	BR	-12.182689	-62.408467	703	0	0
 SN17		H	Condomínio Reserva 1727 Heliport	Pirenópolis	BR	-15.873701	-49.002892	2406	0	0
-SN18		S	Sills Air Park	Augusta	US	37.66669845581055	-97.01699829101562	1295	0	0
+SN18		S	Fazenda Piquiri 5B Airport	Juara	BR	-11.135914	-57.271172	890	0	0
+SN18		S	Sills Air Park	Augusta	US	37.668249	-97.026044	1295	0	0
 SN19		H	Patrimonium Contabilidade Heliport	Lagoa da Prata	BR	-20.018858	-45.553227	2090	0	0
 SN1A		H	ECJBSA Heliport	Itatiaiuçu	BR	-20.159106	-44.388056	2851	0	0
 SN1B		S	Fazenda Brejo Seco Airport	Baixa Grande do Ribeiro	BR	-8.596029	-45.205915	1615	0	0
 SN1C		S	Fazenda Colina Airstrip	Marinópolis	BR	-20.490556	-50.430528	1329	0	0
 SN1F		S	Fazenda Barreiro Holding Formoso Airstrip	Paraúna	BR	-17.008149	-50.430576	2221	0	0
 SN1H		H	Hamares Milagres Heliport	São Miguel dos Milagres	BR	-9.269592	-35.373951	43	0	0
+SN1J		S	Fazenda Jatobá Airport	São Desidério	BR	-12.994792	-45.308269	2508	0	0
 SN1K		H	Artivinco Skyport Heliport	Itatiba	BR	-22.982872	-46.739606	2451	0	0
 SN1L		H	Domoluz Heliport	Bom Jesus dos Perdões	BR	-23.210437	-46.500174	3868	0	0
 SN1M		S	Riacho do Mel Airstrip	São José da Tapera	BR	-9.593878	-37.409671	753	0	0
@@ -56408,7 +56412,9 @@ SN50		H	Mercy Hospital Pittsburg Heliport	Pittsburg	US	37.37973	-94.685532	915	0
 SN50		S	Fazenda Ranchinho Airport	Aporé	BR	-18.83638	-51.793077	1888	0	0
 SN51		S	Fazenda 51	Formosa do Rio Preto	BR	-11.032194	-46.253086	2628	0	0
 SN52		S	Pilot Pointe Estates Airport	Douglass	US	37.47949	-97.012666	1237	0	0
-SN54		H	Overland Park Regional Medical Center Heliport	Overland Park	US	38.936905	-94.725906	961	0	0
+SN53		S	Fazenda São José do Corrente Airport	Itarumã	BR	-19.107346	-51.08877	1280	0	0
+SN54		H	Overland Park Regional Medical Center Heliport	Overland Park	US	38.936898	-94.725965	961	0	0
+SN54		S	Fazenda Conquista Airport	Gameleira de Goiás	BR	-16.382869	-48.571294	3064	0	0
 SN55		S	R J C Farms Inc Airport	Friend	US	38.215301513671875	-101.00299835205078	2900	0	0
 SN56		S	Fazenda Sonho Meu Airport	Cumaru do Norte	BR	-9.128719	-51.209253	1074	0	0
 SN57		S	Grupo Barcelona Airport	Água Azul do Norte	BR	-7.093441	-50.428314	1247	0	0
