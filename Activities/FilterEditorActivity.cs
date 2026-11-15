@@ -873,6 +873,7 @@ namespace AdsbCarMap.Activities
                     condition.Field = chosen;
                     condition.Text = string.Empty;
                     condition.Family = false;
+                    condition.MatchMode = null;
                     condition.Minimum = null;
                     condition.Maximum = null;
                     RenderTree();
@@ -928,6 +929,33 @@ namespace AdsbCarMap.Activities
                 condition.Text = input.Text ?? string.Empty;
                 UpdatePreview();
             };
+
+            IReadOnlyList<FilterMatchMode> modes = FilterFieldInfo.GetMatchModes(condition.Field);
+
+            if (modes.Count > 0)
+            {
+                FilterMatchMode current = FilterFieldInfo.NormalizeMatchMode(condition.Field, condition.MatchMode);
+
+                Spinner modeSpinner = new Spinner(this);
+                modeSpinner.Adapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, modes.Select((FilterMatchMode mode) => FilterFieldInfo.GetMatchModeLabel(mode)).ToList());
+                modeSpinner.SetSelection(modes.ToList().IndexOf(current));
+                modeSpinner.Enabled = !readOnly;
+                modeSpinner.ItemSelected += (sender, args) =>
+                {
+                    if (modes[args.Position] != FilterFieldInfo.NormalizeMatchMode(condition.Field, condition.MatchMode))
+                    {
+                        condition.MatchMode = modes[args.Position];
+                        UpdatePreview();
+                    }
+                };
+
+                LinearLayout modeColumn = new LinearLayout(this);
+                modeColumn.Orientation = Orientation.Vertical;
+                modeColumn.AddView(modeSpinner);
+                modeColumn.AddView(input);
+
+                return modeColumn;
+            }
 
             if (condition.Field != FilterField.TypeCode)
             {

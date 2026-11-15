@@ -43,8 +43,8 @@ namespace AdsbCarMap.Data
                 FilterField.Kind => Loc.T("Rodzaj samolotu"),
                 FilterField.Manufacturer => Loc.T("Producent"),
                 FilterField.TypeCode => Loc.T("Typ (kod ICAO lub IATA)"),
-                FilterField.CallsignPrefix => Loc.T("Linia (początek znaku)"),
-                FilterField.Registration => Loc.T("Rejestracja (cała lub początek)"),
+                FilterField.CallsignPrefix => Loc.T("Znak wywoławczy (linia)"),
+                FilterField.Registration => Loc.T("Rejestracja"),
                 FilterField.Altitude => Loc.T("Wysokość [") + AltitudeFormatter.Symbol(altitudeUnit) + "]",
                 FilterField.Origin => Loc.T("Lotnisko wylotu"),
                 FilterField.Destination => Loc.T("Lotnisko docelowe"),
@@ -65,7 +65,7 @@ namespace AdsbCarMap.Data
             {
                 FilterField.TypeCode => Loc.T("np. B738 lub 738"),
                 FilterField.CallsignPrefix => Loc.T("np. LOT"),
-                FilterField.Registration => Loc.T("np. SP-YBC lub SP-"),
+                FilterField.Registration => Loc.T("np. SP-YBC, YB lub BC"),
                 FilterField.Origin => Loc.T("kod lub miasto, np. WAW"),
                 FilterField.Destination => Loc.T("kod lub miasto, np. RZE"),
                 FilterField.Squawk => Loc.T("np. 7700"),
@@ -93,6 +93,79 @@ namespace AdsbCarMap.Data
                 FilterField.Destination => FilterOperandType.Text,
                 FilterField.Squawk => FilterOperandType.Text,
                 _ => FilterOperandType.None,
+            };
+        }
+
+        /// <summary>
+        /// Lists the match modes a field supports. Fields that compare the text in a fixed way return an empty list.
+        /// </summary>
+        /// <param name="field">Field.</param>
+        /// <returns>Supported modes in the order shown to the user.</returns>
+        public static IReadOnlyList<FilterMatchMode> GetMatchModes(FilterField field)
+        {
+            switch (field)
+            {
+                case FilterField.CallsignPrefix:
+                case FilterField.Registration:
+                    return new List<FilterMatchMode>
+                    {
+                        FilterMatchMode.StartsWith,
+                        FilterMatchMode.Contains,
+                        FilterMatchMode.EndsWith,
+                        FilterMatchMode.Exact,
+                    };
+                case FilterField.Squawk:
+                    return new List<FilterMatchMode>
+                    {
+                        FilterMatchMode.Exact,
+                        FilterMatchMode.StartsWith,
+                    };
+                default:
+                    return new List<FilterMatchMode>();
+            }
+        }
+
+        /// <summary>
+        /// Returns the match mode a field used before modes could be chosen.
+        /// </summary>
+        /// <param name="field">Field.</param>
+        /// <returns>The default mode.</returns>
+        public static FilterMatchMode GetDefaultMatchMode(FilterField field)
+        {
+            IReadOnlyList<FilterMatchMode> modes = GetMatchModes(field);
+
+            return modes.Count > 0 ? modes[0] : FilterMatchMode.Exact;
+        }
+
+        /// <summary>
+        /// Returns a mode supported by the field: the given one or the default when it is missing or not supported.
+        /// </summary>
+        /// <param name="field">Field.</param>
+        /// <param name="mode">Requested mode or null.</param>
+        /// <returns>The mode to use.</returns>
+        public static FilterMatchMode NormalizeMatchMode(FilterField field, FilterMatchMode? mode)
+        {
+            if (mode.HasValue && GetMatchModes(field).Contains(mode.Value))
+            {
+                return mode.Value;
+            }
+
+            return GetDefaultMatchMode(field);
+        }
+
+        /// <summary>
+        /// Returns the name of a match mode shown to the user.
+        /// </summary>
+        /// <param name="mode">Match mode.</param>
+        /// <returns>Polish name of the mode.</returns>
+        public static string GetMatchModeLabel(FilterMatchMode mode)
+        {
+            return mode switch
+            {
+                FilterMatchMode.StartsWith => Loc.T("Zaczyna się od"),
+                FilterMatchMode.Contains => Loc.T("Zawiera"),
+                FilterMatchMode.EndsWith => Loc.T("Kończy się na"),
+                _ => Loc.T("Dokładnie"),
             };
         }
 

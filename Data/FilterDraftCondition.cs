@@ -27,6 +27,11 @@ namespace AdsbCarMap.Data
         public bool Family { get; set; }
 
         /// <summary>
+        /// How the text operand is compared; null means the default mode of the field, and so does a mode the field does not support.
+        /// </summary>
+        public FilterMatchMode? MatchMode { get; set; }
+
+        /// <summary>
         /// Lower bound of the altitude in meters or null when there is none.
         /// </summary>
         public double? Minimum { get; set; }
@@ -42,7 +47,7 @@ namespace AdsbCarMap.Data
         /// <returns>The condition, wrapped in a negation when the node is negated.</returns>
         public override FilterNode ToNode()
         {
-            return ApplyNegation(FilterCondition.Create(Field, Text.Trim(), Kind, Minimum, Maximum, Family));
+            return ApplyNegation(FilterCondition.Create(Field, Text.Trim(), Kind, Minimum, Maximum, Family, MatchMode));
         }
 
         /// <summary>
@@ -58,6 +63,7 @@ namespace AdsbCarMap.Data
             copy.Text = Text;
             copy.Kind = Kind;
             copy.Family = Family;
+            copy.MatchMode = MatchMode;
             copy.Minimum = Minimum;
             copy.Maximum = Maximum;
 

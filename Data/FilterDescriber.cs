@@ -98,9 +98,9 @@ namespace AdsbCarMap.Data
                 case FilterField.TypeCode:
                     return (condition.Family ? Loc.T("rodzina typu ") : Loc.T("typ ")) + condition.Text;
                 case FilterField.CallsignPrefix:
-                    return Loc.T("linia ") + condition.Text;
+                    return Loc.T("linia ") + DescribeShortMode(condition) + condition.Text;
                 case FilterField.Registration:
-                    return Loc.T("rejestracja ") + condition.Text;
+                    return Loc.T("rejestracja ") + DescribeShortMode(condition) + condition.Text;
                 case FilterField.Altitude:
                     return DescribeRange(condition.Minimum, condition.Maximum, altitudeUnit);
                 case FilterField.Origin:
@@ -108,7 +108,7 @@ namespace AdsbCarMap.Data
                 case FilterField.Destination:
                     return Loc.T("lotnisko docelowe ") + condition.Text;
                 case FilterField.Squawk:
-                    return "squawk " + condition.Text;
+                    return "squawk " + DescribeShortMode(condition) + condition.Text;
                 case FilterField.VerticalRate:
                     return Loc.T("prędkość pionowa ") + (FormatVerticalRange(condition.Minimum, condition.Maximum, verticalSpeedUnit) ?? "dowolna");
                 default:
@@ -337,9 +337,9 @@ namespace AdsbCarMap.Data
 
                     return (negated ? Loc.T("nie ma typu ") : Loc.T("ma typ ")) + condition.Text;
                 case FilterField.CallsignPrefix:
-                    return (negated ? Loc.T("nie ma znaku zaczynającego się od ") : Loc.T("ma znak zaczynający się od ")) + condition.Text;
+                    return DescribeCallsignLeaf(condition, negated);
                 case FilterField.Registration:
-                    return (negated ? Loc.T("nie ma rejestracji zaczynającej się od ") : Loc.T("ma rejestrację zaczynającą się od ")) + condition.Text;
+                    return DescribeRegistrationLeaf(condition, negated);
                 case FilterField.Altitude:
                     string? range = FormatRange(condition.Minimum, condition.Maximum, altitudeUnit);
 
@@ -354,6 +354,11 @@ namespace AdsbCarMap.Data
                 case FilterField.Destination:
                     return (negated ? Loc.T("nie leci do lotniska ") : Loc.T("leci do lotniska ")) + condition.Text;
                 case FilterField.Squawk:
+                    if (condition.MatchMode == FilterMatchMode.StartsWith)
+                    {
+                        return (negated ? Loc.T("nie ma squawka zaczynającego się od ") : Loc.T("ma squawk zaczynający się od ")) + condition.Text;
+                    }
+
                     return (negated ? Loc.T("nie ma squawka ") : Loc.T("ma squawk ")) + condition.Text;
                 case FilterField.VerticalRate:
                     string? rate = FormatVerticalRange(condition.Minimum, condition.Maximum, verticalSpeedUnit);
@@ -366,6 +371,69 @@ namespace AdsbCarMap.Data
                     return (negated ? Loc.T("nie ma prędkości pionowej ") : Loc.T("ma prędkość pionową ")) + rate;
                 default:
                     return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Describes the match mode of a condition for the short form. The default mode of the field gives an empty text.
+        /// </summary>
+        /// <param name="condition">Condition.</param>
+        /// <returns>For example "zawiera " or an empty text.</returns>
+        private static string DescribeShortMode(FilterCondition condition)
+        {
+            if (condition.MatchMode == FilterFieldInfo.GetDefaultMatchMode(condition.Field))
+            {
+                return string.Empty;
+            }
+
+            return condition.MatchMode switch
+            {
+                FilterMatchMode.Contains => Loc.T("zawiera "),
+                FilterMatchMode.EndsWith => Loc.T("kończy się na "),
+                FilterMatchMode.StartsWith => Loc.T("zaczyna się od "),
+                _ => Loc.T("dokładnie "),
+            };
+        }
+
+        /// <summary>
+        /// Describes a callsign condition as a verb phrase.
+        /// </summary>
+        /// <param name="condition">Condition.</param>
+        /// <param name="negated">Whether the condition is negated.</param>
+        /// <returns>For example "ma znak zawierający LOT".</returns>
+        private static string DescribeCallsignLeaf(FilterCondition condition, bool negated)
+        {
+            switch (condition.MatchMode)
+            {
+                case FilterMatchMode.Contains:
+                    return (negated ? Loc.T("nie ma znaku zawierającego ") : Loc.T("ma znak zawierający ")) + condition.Text;
+                case FilterMatchMode.EndsWith:
+                    return (negated ? Loc.T("nie ma znaku kończącego się na ") : Loc.T("ma znak kończący się na ")) + condition.Text;
+                case FilterMatchMode.Exact:
+                    return (negated ? Loc.T("nie ma znaku równego ") : Loc.T("ma znak równy ")) + condition.Text;
+                default:
+                    return (negated ? Loc.T("nie ma znaku zaczynającego się od ") : Loc.T("ma znak zaczynający się od ")) + condition.Text;
+            }
+        }
+
+        /// <summary>
+        /// Describes a registration condition as a verb phrase.
+        /// </summary>
+        /// <param name="condition">Condition.</param>
+        /// <param name="negated">Whether the condition is negated.</param>
+        /// <returns>For example "ma rejestrację zawierającą YB".</returns>
+        private static string DescribeRegistrationLeaf(FilterCondition condition, bool negated)
+        {
+            switch (condition.MatchMode)
+            {
+                case FilterMatchMode.Contains:
+                    return (negated ? Loc.T("nie ma rejestracji zawierającej ") : Loc.T("ma rejestrację zawierającą ")) + condition.Text;
+                case FilterMatchMode.EndsWith:
+                    return (negated ? Loc.T("nie ma rejestracji kończącej się na ") : Loc.T("ma rejestrację kończącą się na ")) + condition.Text;
+                case FilterMatchMode.Exact:
+                    return (negated ? Loc.T("nie ma rejestracji równej ") : Loc.T("ma rejestrację równą ")) + condition.Text;
+                default:
+                    return (negated ? Loc.T("nie ma rejestracji zaczynającej się od ") : Loc.T("ma rejestrację zaczynającą się od ")) + condition.Text;
             }
         }
 

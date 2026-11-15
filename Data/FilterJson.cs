@@ -141,6 +141,11 @@ namespace AdsbCarMap.Data
                     writer.WriteBoolean("family", true);
                 }
 
+                if (condition.MatchMode != FilterFieldInfo.GetDefaultMatchMode(condition.Field))
+                {
+                    writer.WriteString("match", condition.MatchMode.ToString());
+                }
+
                 if (condition.Minimum.HasValue)
                 {
                     writer.WriteNumber("min", condition.Minimum.Value);
@@ -266,7 +271,14 @@ namespace AdsbCarMap.Data
 
             bool family = element.TryGetProperty("family", out JsonElement familyValue) && familyValue.ValueKind == JsonValueKind.True;
 
-            return FilterCondition.Create(field, GetString(element, "text"), kind, GetNumber(element, "min"), GetNumber(element, "max"), family);
+            FilterMatchMode? matchMode = null;
+
+            if (Enum.TryParse(GetString(element, "match"), out FilterMatchMode parsedMode) && Enum.IsDefined(parsedMode))
+            {
+                matchMode = parsedMode;
+            }
+
+            return FilterCondition.Create(field, GetString(element, "text"), kind, GetNumber(element, "min"), GetNumber(element, "max"), family, matchMode);
         }
 
         /// <summary>

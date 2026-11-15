@@ -75,6 +75,7 @@
     <Compile Include="..\..\Data\AircraftFilterEvaluator.cs" Link="Linked\AircraftFilterEvaluator.cs" />
     <Compile Include="..\..\Data\FilterOperandType.cs" Link="Linked\FilterOperandType.cs" />
     <Compile Include="..\..\Data\FilterFieldInfo.cs" Link="Linked\FilterFieldInfo.cs" />
+    <Compile Include="..\..\Data\FilterMatchMode.cs" Link="Linked\FilterMatchMode.cs" />
     <Compile Include="..\..\Data\FilterDescriber.cs" Link="Linked\FilterDescriber.cs" />
     <Compile Include="..\..\Data\FilterDraftNode.cs" Link="Linked\FilterDraftNode.cs" />
     <Compile Include="..\..\Data\FilterDraftCondition.cs" Link="Linked\FilterDraftCondition.cs" />

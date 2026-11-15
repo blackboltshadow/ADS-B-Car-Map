@@ -27,8 +27,10 @@ namespace AdsbCarMap.Data
         /// <param name="minimum">Lower bound of the altitude in meters or null.</param>
         /// <param name="maximum">Upper bound of the altitude in meters or null.</param>
         /// <param name="family">Whether a type condition covers the whole family of the type.</param>
-        private FilterCondition(FilterField field, string? text, AircraftKind kind, double? minimum, double? maximum, bool family = false)
+        /// <param name="matchMode">How the text is compared; a mode the field does not support gives the default one.</param>
+        private FilterCondition(FilterField field, string? text, AircraftKind kind, double? minimum, double? maximum, bool family = false, FilterMatchMode? matchMode = null)
         {
+            MatchMode = FilterFieldInfo.NormalizeMatchMode(field, matchMode);
             Family = family;
             Field = field;
             Text = text;
@@ -51,6 +53,11 @@ namespace AdsbCarMap.Data
         /// Aircraft kind operand, used by the kind condition.
         /// </summary>
         public AircraftKind Kind { get; }
+
+        /// <summary>
+        /// How the text operand is compared with the value of the aircraft; only the callsign, registration and squawk conditions use it.
+        /// </summary>
+        public FilterMatchMode MatchMode { get; }
 
         /// <summary>
         /// Whether the condition tests the route of the flight.
@@ -81,8 +88,9 @@ namespace AdsbCarMap.Data
         /// <param name="minimum">Lower bound of the altitude in meters or null.</param>
         /// <param name="maximum">Upper bound of the altitude in meters or null.</param>
         /// <param name="family">Whether a type condition covers the whole family; ignored for other fields.</param>
+        /// <param name="matchMode">How the text is compared; null or a mode the field does not support gives the default one.</param>
         /// <returns>The condition.</returns>
-        public static FilterCondition Create(FilterField field, string? text, AircraftKind kind, double? minimum, double? maximum, bool family = false)
+        public static FilterCondition Create(FilterField field, string? text, AircraftKind kind, double? minimum, double? maximum, bool family = false, FilterMatchMode? matchMode = null)
         {
             switch (FilterFieldInfo.GetOperandType(field))
             {
@@ -92,7 +100,7 @@ namespace AdsbCarMap.Data
                     return new FilterCondition(field, null, AircraftKind.Unknown, minimum, maximum);
                 case FilterOperandType.Text:
                 case FilterOperandType.Manufacturer:
-                    return new FilterCondition(field, text, AircraftKind.Unknown, null, null, field == FilterField.TypeCode && family);
+                    return new FilterCondition(field, text, AircraftKind.Unknown, null, null, field == FilterField.TypeCode && family, matchMode);
                 default:
                     return new FilterCondition(field, null, AircraftKind.Unknown, null, null);
             }
@@ -206,7 +214,30 @@ namespace AdsbCarMap.Data
                 return FilterResult.Unknown;
             }
 
-            return ToResult(NormalizeRegistration(aircraft.Registration).StartsWith(wanted, StringComparison.Ordinal));
+            return ToResult(Matches(NormalizeRegistration(aircraft.Registration), wanted, MatchMode, StringComparison.Ordinal));
+        }
+
+        /// <summary>
+        /// Compares a value with the wanted text in a given mode.
+        /// </summary>
+        /// <param name="value">Value of the aircraft.</param>
+        /// <param name="wanted">Text of the condition.</param>
+        /// <param name="mode">Match mode.</param>
+        /// <param name="comparison">String comparison.</param>
+        /// <returns>True when the value matches.</returns>
+        private static bool Matches(string value, string wanted, FilterMatchMode mode, StringComparison comparison)
+        {
+            switch (mode)
+            {
+                case FilterMatchMode.Contains:
+                    return value.Contains(wanted, comparison);
+                case FilterMatchMode.EndsWith:
+                    return value.EndsWith(wanted, comparison);
+                case FilterMatchMode.Exact:
+                    return string.Equals(value, wanted, comparison);
+                default:
+                    return value.StartsWith(wanted, comparison);
+            }
         }
 
         /// <summary>
@@ -286,13 +317,13 @@ namespace AdsbCarMap.Data
                 case FilterField.CallsignPrefix:
                     return string.IsNullOrWhiteSpace(aircraft.Callsign) || string.IsNullOrEmpty(Text)
                         ? FilterResult.Unknown
-                        : ToResult(aircraft.Callsign.Trim().StartsWith(Text, StringComparison.OrdinalIgnoreCase));
+                        : ToResult(Matches(aircraft.Callsign.Trim(), Text, MatchMode, StringComparison.OrdinalIgnoreCase));
                 case FilterField.Registration:
                     return EvaluateRegistration(aircraft);
                 case FilterField.Squawk:
                     return string.IsNullOrWhiteSpace(aircraft.Squawk) || string.IsNullOrWhiteSpace(Text)
                         ? FilterResult.Unknown
-                        : ToResult(string.Equals(aircraft.Squawk.Trim(), Text.Trim(), StringComparison.Ordinal));
+                        : ToResult(Matches(aircraft.Squawk.Trim(), Text.Trim(), MatchMode, StringComparison.Ordinal));
                 case FilterField.Altitude:
                     return EvaluateAltitude(aircraft);
                 case FilterField.VerticalRate:

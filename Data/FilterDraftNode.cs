@@ -73,6 +73,7 @@ namespace AdsbCarMap.Data
                 draftCondition.Text = condition.Text ?? string.Empty;
                 draftCondition.Kind = condition.Kind == AircraftKind.Unknown ? AircraftKind.Airliner : condition.Kind;
                 draftCondition.Family = condition.Family;
+                draftCondition.MatchMode = condition.MatchMode;
                 draftCondition.Minimum = condition.Minimum;
                 draftCondition.Maximum = condition.Maximum;
 
