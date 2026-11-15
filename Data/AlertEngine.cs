@@ -274,7 +274,7 @@ namespace AdsbCarMap.Data
         /// <returns>True when the aircraft satisfies the condition.</returns>
         private static bool SatisfiesCondition(AlertRule rule, Aircraft aircraft, Func<string?, FlightRoute?> routeLookup)
         {
-            if (rule.WatchedHex != null && !string.Equals(rule.WatchedHex, aircraft.Hex, StringComparison.OrdinalIgnoreCase))
+            if (rule.IsWatch && !rule.WatchesAircraft(aircraft.Hex, aircraft.Registration))
             {
                 return false;
             }

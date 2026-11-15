@@ -262,7 +262,7 @@ namespace AdsbCarMap.Services
                 text = AlertText.Body(match, AppSettings.Units);
                 AlertHistoryStore.Add(new AlertHistoryEntry(DateTime.UtcNow, match.Rule.Name, match.Aircraft.Hex, match.Aircraft.Callsign?.Trim(), match.Trigger, text));
 
-                if (match.Rule.WatchedHex != null)
+                if (match.Rule.IsWatch)
                 {
                     AircraftHistoryStore.Record(match.Aircraft.Hex, match.Aircraft.Callsign, match.Aircraft.Registration, match.Aircraft.TypeCode, true);
                 }

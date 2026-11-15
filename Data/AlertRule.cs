@@ -1,3 +1,5 @@
+using AdsbCarMap.DataSources.Models;
+
 namespace AdsbCarMap.Data
 {
     /// <summary>
@@ -21,8 +23,12 @@ namespace AdsbCarMap.Data
         /// <param name="importance">How loudly the notifications of the rule are shown.</param>
         /// <param name="notifyOnExit">Whether to notify when an aircraft leaves the area.</param>
         /// <param name="watchedHex">ICAO address of the only aircraft the rule is about, or null when the rule is about every aircraft that satisfies the condition.</param>
-        public AlertRule(string id, string name, bool isEnabled, AlertArea area, FilterNode? condition, bool notifyOnEntry, bool notifyOnAppearance, int cooldownMinutes, string? conditionFilterId = null, AlertSchedule? schedule = null, AlertImportance importance = AlertImportance.High, bool notifyOnExit = false, string? watchedHex = null)
+        /// <param name="watchedRegistration">Registration of the only aircraft the rule is about, or null. When both the address and the registration are given, the rule is about the aircraft that has the address or the registration.</param>
+        public AlertRule(string id, string name, bool isEnabled, AlertArea area, FilterNode? condition, bool notifyOnEntry, bool notifyOnAppearance, int cooldownMinutes, string? conditionFilterId = null, AlertSchedule? schedule = null, AlertImportance importance = AlertImportance.High, bool notifyOnExit = false, string? watchedHex = null, string? watchedRegistration = null)
         {
+            string normalizedRegistration = string.IsNullOrWhiteSpace(watchedRegistration) ? string.Empty : FilterCondition.NormalizeRegistration(watchedRegistration);
+
+            WatchedRegistration = normalizedRegistration.Length == 0 ? null : normalizedRegistration;
             NotifyOnExit = notifyOnExit;
             WatchedHex = string.IsNullOrWhiteSpace(watchedHex) ? null : watchedHex.Trim().ToLowerInvariant();
             Schedule = schedule ?? AlertSchedule.Always;
@@ -89,6 +95,44 @@ namespace AdsbCarMap.Data
         public string? WatchedHex { get; }
 
         /// <summary>
+        /// Registration of the only aircraft the rule is about, upper case and without dashes (for example "SPYBC"), or null.
+        /// </summary>
+        public string? WatchedRegistration { get; }
+
+        /// <summary>
+        /// Whether the rule is about one particular aircraft, identified by its address or its registration.
+        /// </summary>
+        public bool IsWatch => WatchedHex != null || WatchedRegistration != null;
+
+        /// <summary>
+        /// Checks whether the aircraft is the one the rule watches: it has the watched address or the watched registration.
+        /// </summary>
+        /// <param name="hex">ICAO address of the aircraft.</param>
+        /// <param name="registration">Registration of the aircraft or null when unknown.</param>
+        /// <returns>True when the rule is a watch rule and the aircraft is the watched one.</returns>
+        public bool WatchesAircraft(string hex, string? registration)
+        {
+            if (WatchedHex != null && string.Equals(WatchedHex, hex, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return WatchedRegistration != null
+                && !string.IsNullOrWhiteSpace(registration)
+                && string.Equals(WatchedRegistration, FilterCondition.NormalizeRegistration(registration), StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Creates a copy of a watch rule that additionally watches a registration. The copy keeps the identifier, so it replaces the original.
+        /// </summary>
+        /// <param name="registration">Registration to watch.</param>
+        /// <returns>The copy.</returns>
+        public AlertRule WithWatchedRegistration(string registration)
+        {
+            return new AlertRule(Id, Name, IsEnabled, Area, Condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance, NotifyOnExit, WatchedHex, registration);
+        }
+
+        /// <summary>
         /// Minimum time between two notifications about the same aircraft.
         /// </summary>
         public int CooldownMinutes { get; }
@@ -110,7 +154,7 @@ namespace AdsbCarMap.Data
         /// <returns>The copy.</returns>
         public AlertRule WithCondition(FilterNode? condition)
         {
-            return new AlertRule(Id, Name, IsEnabled, Area, condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance, NotifyOnExit, WatchedHex);
+            return new AlertRule(Id, Name, IsEnabled, Area, condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance, NotifyOnExit, WatchedHex, WatchedRegistration);
         }
 
         /// <summary>
@@ -120,7 +164,7 @@ namespace AdsbCarMap.Data
         /// <returns>The copy.</returns>
         public AlertRule WithEnabled(bool enabled)
         {
-            return new AlertRule(Id, Name, enabled, Area, Condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance, NotifyOnExit, WatchedHex);
+            return new AlertRule(Id, Name, enabled, Area, Condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance, NotifyOnExit, WatchedHex, WatchedRegistration);
         }
 
         /// <summary>
@@ -131,7 +175,7 @@ namespace AdsbCarMap.Data
         /// <returns>The copy.</returns>
         public AlertRule WithIdentity(string id, string name)
         {
-            return new AlertRule(id, name, IsEnabled, Area, Condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance, NotifyOnExit, WatchedHex);
+            return new AlertRule(id, name, IsEnabled, Area, Condition, NotifyOnEntry, NotifyOnAppearance, CooldownMinutes, ConditionFilterId, Schedule, Importance, NotifyOnExit, WatchedHex, WatchedRegistration);
         }
     }
 }

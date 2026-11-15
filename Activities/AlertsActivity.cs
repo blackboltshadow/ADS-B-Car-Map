@@ -438,9 +438,9 @@ namespace AdsbCarMap.Activities
         /// <returns>Text for the list.</returns>
         private static string DescribeRule(AlertRule rule)
         {
-            string filter = rule.WatchedHex != null ? Loc.T("Samolot: ") + rule.WatchedHex.ToUpperInvariant() : Loc.T("Każdy samolot");
+            string filter = rule.IsWatch ? Loc.T("Samolot: ") + string.Join(" / ", new List<string?> { rule.WatchedRegistration, rule.WatchedHex?.ToUpperInvariant() }.Where((string? part) => part != null)) : Loc.T("Każdy samolot");
 
-            if (rule.WatchedHex == null && rule.ConditionFilterId != null)
+            if (!rule.IsWatch && rule.ConditionFilterId != null)
             {
                 AircraftFilter? found = AppServices.Filters.Find(rule.ConditionFilterId);
 

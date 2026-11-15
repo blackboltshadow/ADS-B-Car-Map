@@ -43,6 +43,7 @@
     <Compile Include="..\..\Data\AircraftSightings.cs" Link="Linked\AircraftSightings.cs" />
     <Compile Include="..\..\Data\AlertHistory.cs" Link="Linked\AlertHistory.cs" />
     <Compile Include="..\..\Data\AlertRule.cs" Link="Linked\AlertRule.cs" />
+    <Compile Include="..\..\Data\WatchRules.cs" Link="Linked\WatchRules.cs" />
     <Compile Include="..\..\Data\AlertMatch.cs" Link="Linked\AlertMatch.cs" />
     <Compile Include="..\..\Data\AlertEngine.cs" Link="Linked\AlertEngine.cs" />
     <Compile Include="..\..\Data\AlertRuleJson.cs" Link="Linked\AlertRuleJson.cs" />

@@ -231,6 +231,22 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// The watched registration survives a round trip.
+        /// </summary>
+        [Fact]
+        public void RoundTrip_KeepsWatchedRegistration()
+        {
+            AlertArea area = new AlertArea(AlertAreaKind.AroundMe, 30.0);
+            AlertRule watch = new AlertRule("w", "Obserwuj", true, area, null, true, true, 60, null, null, AlertImportance.High, false, "48a124", "SP-YBC");
+
+            List<AlertRule> parsed = AlertRuleJson.Parse(AlertRuleJson.Serialize(new List<AlertRule> { watch, CreateRule(area) }));
+
+            Assert.Equal("SPYBC", parsed[0].WatchedRegistration);
+            Assert.Equal("48a124", parsed[0].WatchedHex);
+            Assert.Null(parsed[1].WatchedRegistration);
+        }
+
+        /// <summary>
         /// A rule written before the exit option existed is read with the option off.
         /// </summary>
         [Fact]

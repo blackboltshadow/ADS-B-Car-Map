@@ -71,6 +71,11 @@ namespace AdsbCarMap.Data
                         writer.WriteString("hex", rule.WatchedHex);
                     }
 
+                    if (rule.WatchedRegistration != null)
+                    {
+                        writer.WriteString("registration", rule.WatchedRegistration);
+                    }
+
                     if (rule.Importance != AlertImportance.High)
                     {
                         writer.WriteString("importance", rule.Importance.ToString());
@@ -206,7 +211,8 @@ namespace AdsbCarMap.Data
                 ParseSchedule(element),
                 Enum.TryParse(ReadString(element, "importance"), out AlertImportance importance) ? importance : AlertImportance.High,
                 ReadBoolean(element, "exit", false),
-                ReadString(element, "hex"));
+                ReadString(element, "hex"),
+                ReadString(element, "registration"));
         }
 
         /// <summary>

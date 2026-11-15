@@ -164,12 +164,13 @@ namespace AdsbCarMap.Data
         /// <param name="id">Identifier of the new rule.</param>
         /// <param name="name">Name of the rule.</param>
         /// <param name="hex">ICAO address of the aircraft.</param>
+        /// <param name="registration">Registration of the aircraft or null when it is not known; the rule then watches the address alone.</param>
         /// <returns>The rule.</returns>
-        public static AlertRule CreateWatchRule(string id, string name, string hex)
+        public static AlertRule CreateWatchRule(string id, string name, string hex, string? registration = null)
         {
             AlertArea area = new AlertArea(AlertAreaKind.AroundMe, WatchRadiusKilometers, null, null);
 
-            return new AlertRule(id, name, true, area, null, true, true, 60, null, null, AlertImportance.High, false, hex);
+            return new AlertRule(id, name, true, area, null, true, true, 60, null, null, AlertImportance.High, false, hex, registration);
         }
     }
 }

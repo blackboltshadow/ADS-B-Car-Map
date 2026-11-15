@@ -99,6 +99,8 @@ namespace AdsbCarMap.Data
                     return (condition.Family ? Loc.T("rodzina typu ") : Loc.T("typ ")) + condition.Text;
                 case FilterField.CallsignPrefix:
                     return Loc.T("linia ") + condition.Text;
+                case FilterField.Registration:
+                    return Loc.T("rejestracja ") + condition.Text;
                 case FilterField.Altitude:
                     return DescribeRange(condition.Minimum, condition.Maximum, altitudeUnit);
                 case FilterField.Origin:
@@ -336,6 +338,8 @@ namespace AdsbCarMap.Data
                     return (negated ? Loc.T("nie ma typu ") : Loc.T("ma typ ")) + condition.Text;
                 case FilterField.CallsignPrefix:
                     return (negated ? Loc.T("nie ma znaku zaczynającego się od ") : Loc.T("ma znak zaczynający się od ")) + condition.Text;
+                case FilterField.Registration:
+                    return (negated ? Loc.T("nie ma rejestracji zaczynającej się od ") : Loc.T("ma rejestrację zaczynającą się od ")) + condition.Text;
                 case FilterField.Altitude:
                     string? range = FormatRange(condition.Minimum, condition.Maximum, altitudeUnit);
 

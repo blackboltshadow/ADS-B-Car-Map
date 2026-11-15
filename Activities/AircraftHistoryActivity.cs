@@ -217,8 +217,21 @@ namespace AdsbCarMap.Activities
 
             listLayout.RemoveAllViews();
 
-            HashSet<string> watchedNow = new HashSet<string>(
-                AppServices.Alerts.Rules.Where((AlertRule rule) => rule.WatchedHex != null).Select((AlertRule rule) => rule.WatchedHex!.ToLowerInvariant()));
+            HashSet<string> watchedNow = new HashSet<string>();
+
+            foreach (AircraftHistoryEntry known in AircraftHistoryStore.GetForDisplay(null, AircraftHistoryFilterMode.All, watchedNow))
+            {
+                foreach (AlertRule extended in WatchRules.Extend(AppServices.Alerts.Rules, known.Hex, known.Registration))
+                {
+                    AppServices.Alerts.Save(extended);
+                }
+
+                if (WatchRules.Find(AppServices.Alerts.Rules, known.Hex, known.Registration).Count > 0)
+                {
+                    watchedNow.Add(known.Hex);
+                }
+            }
+
             int total = AircraftHistoryStore.GetForDisplay(null, AircraftHistoryFilterMode.All, watchedNow).Count;
             List<AircraftHistoryEntry> entries = AircraftHistoryStore.GetForDisplay(searchInput?.Text, mode, watchedNow);
 
@@ -365,7 +378,7 @@ namespace AdsbCarMap.Activities
         {
             if (watchedNow)
             {
-                foreach (AlertRule rule in AppServices.Alerts.Rules.Where((AlertRule item) => string.Equals(item.WatchedHex, entry.Hex, StringComparison.OrdinalIgnoreCase)).ToList())
+                foreach (AlertRule rule in WatchRules.Find(AppServices.Alerts.Rules, entry.Hex, entry.Registration))
                 {
                     AppServices.Alerts.Remove(rule.Id);
                 }
@@ -376,7 +389,7 @@ namespace AdsbCarMap.Activities
             {
                 string name = string.IsNullOrWhiteSpace(entry.Callsign) ? entry.Hex.ToUpperInvariant() : entry.Callsign!;
 
-                AppServices.Alerts.Save(AlertBundle.CreateWatchRule(AlertRuleStore.CreateId(), Loc.T("Obserwuj: ") + name, entry.Hex));
+                AppServices.Alerts.Save(AlertBundle.CreateWatchRule(AlertRuleStore.CreateId(), Loc.T("Obserwuj: ") + name, entry.Hex, entry.Registration));
                 AircraftHistoryStore.MarkWatched(entry.Hex);
                 Toast.MakeText(this, Loc.T("Alert obserwowania dodany (Alerty → edytuj, by zmienić obszar i zdarzenia)"), ToastLength.Long)?.Show();
             }

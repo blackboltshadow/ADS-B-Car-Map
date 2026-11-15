@@ -579,6 +579,62 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// A rule with a watched registration fires for the aircraft with that registration, whatever its address and the notation of the registration, and for no other.
+        /// </summary>
+        [Fact]
+        public void Evaluate_WatchedRegistration_FiresForThatRegistrationOnly()
+        {
+            AlertEngine engine = new AlertEngine();
+            AlertArea area = new AlertArea(AlertAreaKind.Circle, 50.0, Center);
+            AlertRule rule = new AlertRule("r1", "Rule", true, area, null, true, true, 30, null, null, AlertImportance.High, false, null, "SP-YBC");
+            List<Aircraft> aircraft = new List<Aircraft>
+            {
+                CreateAircraftWithRegistration("b2", 0.1, "SP-ABC"),
+                CreateAircraftWithRegistration("c3", 0.1, null),
+                CreateAircraftWithRegistration("a1", 0.2, "spybc"),
+            };
+
+            List<AlertMatch> matches = Run(engine, rule, aircraft);
+
+            Assert.Single(matches);
+            Assert.Equal("a1", matches[0].Aircraft.Hex);
+        }
+
+        /// <summary>
+        /// A rule that watches an address and a registration fires for either of them.
+        /// </summary>
+        [Fact]
+        public void Evaluate_WatchedHexOrRegistration_FiresForEither()
+        {
+            AlertEngine engine = new AlertEngine();
+            AlertArea area = new AlertArea(AlertAreaKind.Circle, 50.0, Center);
+            AlertRule rule = new AlertRule("r1", "Rule", true, area, null, true, true, 30, null, null, AlertImportance.High, false, "a1", "SP-YBC");
+            List<Aircraft> aircraft = new List<Aircraft>
+            {
+                CreateAircraftWithRegistration("a1", 0.1, null),
+                CreateAircraftWithRegistration("d4", 0.2, "SP-YBC"),
+                CreateAircraftWithRegistration("b2", 0.3, "SP-ABC"),
+            };
+
+            List<AlertMatch> matches = Run(engine, rule, aircraft);
+
+            Assert.Equal(2, matches.Count);
+            Assert.DoesNotContain(matches, (AlertMatch match) => match.Aircraft.Hex == "b2");
+        }
+
+        /// <summary>
+        /// Creates an aircraft near the center with a registration.
+        /// </summary>
+        /// <param name="hex">Address.</param>
+        /// <param name="latitudeOffset">Offset of the latitude from the center.</param>
+        /// <param name="registration">Registration or null.</param>
+        /// <returns>The aircraft.</returns>
+        private static Aircraft CreateAircraftWithRegistration(string hex, double latitudeOffset, string? registration)
+        {
+            return new Aircraft(hex, "TEST1", Center.Latitude + latitudeOffset, Center.Longitude, 30000, false, 400.0, 90.0, 0.0, "B738", registration, "A3", false);
+        }
+
+        /// <summary>
         /// The count used for the preview respects the watched address.
         /// </summary>
         [Fact]

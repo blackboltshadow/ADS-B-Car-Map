@@ -1,5 +1,5 @@
+using System.Text;
 using AdsbCarMap.DataSources.Models;
-
 
 namespace AdsbCarMap.Data
 {
@@ -158,6 +158,58 @@ namespace AdsbCarMap.Data
         }
 
         /// <summary>
+        /// Creates the condition that the registration of the aircraft equals or starts with a given text, for example "SP-YBC" or "SP-".
+        /// </summary>
+        /// <param name="registration">Registration or its beginning; case and dashes are ignored.</param>
+        /// <returns>The condition.</returns>
+        public static FilterCondition RegistrationIs(string registration)
+        {
+            return new FilterCondition(FilterField.Registration, registration, AircraftKind.Unknown, null, null);
+        }
+
+        /// <summary>
+        /// Removes everything except letters and digits and converts the text to upper case, so that "sp-ybc" and "SPYBC" are equal.
+        /// </summary>
+        /// <param name="text">Registration or its beginning.</param>
+        /// <returns>Normalized text.</returns>
+        public static string NormalizeRegistration(string text)
+        {
+            StringBuilder builder = new StringBuilder(text.Length);
+
+            foreach (char letter in text)
+            {
+                if (char.IsLetterOrDigit(letter))
+                {
+                    builder.Append(char.ToUpperInvariant(letter));
+                }
+            }
+
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// Evaluates the registration condition. An aircraft with an unknown registration gives an unknown result.
+        /// </summary>
+        /// <param name="aircraft">Aircraft to test.</param>
+        /// <returns>Result in three-valued logic.</returns>
+        private FilterResult EvaluateRegistration(Aircraft aircraft)
+        {
+            if (string.IsNullOrWhiteSpace(aircraft.Registration) || string.IsNullOrWhiteSpace(Text))
+            {
+                return FilterResult.Unknown;
+            }
+
+            string wanted = NormalizeRegistration(Text);
+
+            if (wanted.Length == 0)
+            {
+                return FilterResult.Unknown;
+            }
+
+            return ToResult(NormalizeRegistration(aircraft.Registration).StartsWith(wanted, StringComparison.Ordinal));
+        }
+
+        /// <summary>
         /// Creates the condition that the transponder code equals a given squawk.
         /// </summary>
         /// <param name="squawk">Four-digit squawk, for example "7700".</param>
@@ -235,6 +287,8 @@ namespace AdsbCarMap.Data
                     return string.IsNullOrWhiteSpace(aircraft.Callsign) || string.IsNullOrEmpty(Text)
                         ? FilterResult.Unknown
                         : ToResult(aircraft.Callsign.Trim().StartsWith(Text, StringComparison.OrdinalIgnoreCase));
+                case FilterField.Registration:
+                    return EvaluateRegistration(aircraft);
                 case FilterField.Squawk:
                     return string.IsNullOrWhiteSpace(aircraft.Squawk) || string.IsNullOrWhiteSpace(Text)
                         ? FilterResult.Unknown

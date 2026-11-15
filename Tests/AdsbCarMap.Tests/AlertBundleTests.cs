@@ -146,6 +146,41 @@ namespace AdsbCarMap.Tests
             Assert.True(rule.NotifyOnEntry);
             Assert.True(rule.NotifyOnAppearance);
             Assert.False(rule.NotifyOnExit);
+            Assert.Null(rule.WatchedRegistration);
+        }
+
+        /// <summary>
+        /// The watch rule keeps the registration without dashes and in upper case, next to the address.
+        /// </summary>
+        [Fact]
+        public void CreateWatchRule_WithRegistration_WatchesAddressAndRegistration()
+        {
+            AlertRule rule = AlertBundle.CreateWatchRule("w", "Obserwuj: SP-YBC", "48A124", "sp-ybc");
+
+            Assert.Equal("48a124", rule.WatchedHex);
+            Assert.Equal("SPYBC", rule.WatchedRegistration);
+            Assert.True(rule.IsWatch);
+        }
+
+        /// <summary>
+        /// A rule that watched the address alone is extended with the registration, keeping its identifier; a rule that already has one is left alone.
+        /// </summary>
+        [Fact]
+        public void WatchRules_Extend_AddsRegistrationToAddressOnlyRules()
+        {
+            AlertRule addressOnly = AlertBundle.CreateWatchRule("w1", "A", "48A124");
+            AlertRule complete = AlertBundle.CreateWatchRule("w2", "B", "48A124", "SP-YBC");
+            AlertRule other = AlertBundle.CreateWatchRule("w3", "C", "111111");
+            List<AlertRule> rules = new List<AlertRule> { addressOnly, complete, other };
+
+            List<AlertRule> extended = WatchRules.Extend(rules, "48a124", "SP-YBC");
+
+            Assert.Single(extended);
+            Assert.Equal("w1", extended[0].Id);
+            Assert.Equal("SPYBC", extended[0].WatchedRegistration);
+            Assert.Empty(WatchRules.Extend(rules, "48a124", null));
+            Assert.Equal(2, WatchRules.Find(rules, "48a124", null).Count);
+            Assert.Single(WatchRules.Find(rules, "ffffff", "SPYBC"));
         }
     }
 }

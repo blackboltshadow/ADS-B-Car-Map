@@ -60,5 +60,10 @@ namespace AdsbCarMap.Data
         /// Vertical rate in feet per minute: positive when climbing, negative when descending.
         /// </summary>
         VerticalRate,
+
+        /// <summary>
+        /// Registration (tail number) of the aircraft, whole or its beginning, compared without case and without dashes.
+        /// </summary>
+        Registration,
     }
 }

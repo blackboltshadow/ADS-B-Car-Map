@@ -85,6 +85,11 @@ namespace AdsbCarMap.Activities
         private string? watchedHex;
 
         /// <summary>
+        /// Registration of the aircraft the edited rule watches, or null. The editor does not change it, only keeps it.
+        /// </summary>
+        private string? watchedRegistration;
+
+        /// <summary>
         /// Chosen kind of the area.
         /// </summary>
         private AlertAreaKind areaKind = AlertAreaKind.AroundMe;
@@ -521,10 +526,11 @@ namespace AdsbCarMap.Activities
             appearanceBox!.Checked = rule.NotifyOnAppearance;
             exitBox!.Checked = rule.NotifyOnExit;
             watchedHex = rule.WatchedHex;
+            watchedRegistration = rule.WatchedRegistration;
 
-            if (watchedHex != null)
+            if (rule.IsWatch)
             {
-                watchedText!.Text = Loc.T("Obserwowany samolot: ") + watchedHex.ToUpperInvariant();
+                watchedText!.Text = Loc.T("Obserwowany samolot: ") + string.Join(" / ", new List<string?> { watchedRegistration, watchedHex?.ToUpperInvariant() }.Where((string? part) => part != null));
                 watchedText.Visibility = ViewStates.Visible;
             }
 
@@ -975,7 +981,7 @@ namespace AdsbCarMap.Activities
                 return null;
             }
 
-            return new AlertRule(ruleId, name, ruleEnabled, area, null, entryBox!.Checked, appearanceBox!.Checked, cooldown, filterId, schedule, ImportanceLevels[Math.Clamp(importanceSpinner!.SelectedItemPosition, 0, ImportanceLevels.Length - 1)], exitBox!.Checked, watchedHex);
+            return new AlertRule(ruleId, name, ruleEnabled, area, null, entryBox!.Checked, appearanceBox!.Checked, cooldown, filterId, schedule, ImportanceLevels[Math.Clamp(importanceSpinner!.SelectedItemPosition, 0, ImportanceLevels.Length - 1)], exitBox!.Checked, watchedHex, watchedRegistration);
         }
 
         /// <summary>

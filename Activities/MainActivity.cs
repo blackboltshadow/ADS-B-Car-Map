@@ -489,7 +489,14 @@ namespace AdsbCarMap.Activities
             AppServices.Routes.Prioritize(callsign);
 
             aircraftCard.Bind(info, route, AppServices.Routes.GetState(callsign));
-            aircraftCard.SetWatched(AppServices.Alerts.Rules.Any((AlertRule rule) => rule.WatchedHex == info.Hex.ToLowerInvariant()));
+            string? registration = info.Aircraft?.Registration;
+
+            foreach (AlertRule extended in WatchRules.Extend(AppServices.Alerts.Rules, info.Hex, registration))
+            {
+                AppServices.Alerts.Save(extended);
+            }
+
+            aircraftCard.SetWatched(WatchRules.Find(AppServices.Alerts.Rules, info.Hex, registration).Count > 0);
             aircraftCard.Visibility = ViewStates.Visible;
         }
 
@@ -518,9 +525,9 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
-        /// Creates the alert that watches the primary selected aircraft, or removes it when it already exists.
+        /// Creates the alert that watches the primary selected aircraft by its registration (and its address), or removes it when it already exists. An aircraft without a known registration is looked up first; when it is still unknown the alert watches the address alone and is extended later.
         /// </summary>
-        private void OnWatchClicked()
+        private async void OnWatchClicked()
         {
             SelectedAircraftInfo? info = controller.GetPrimaryInfo();
 
@@ -530,7 +537,8 @@ namespace AdsbCarMap.Activities
             }
 
             string hex = info.Hex.ToLowerInvariant();
-            List<AlertRule> existing = AppServices.Alerts.Rules.Where((AlertRule rule) => rule.WatchedHex == hex).ToList();
+            string? registration = info.Aircraft?.Registration;
+            List<AlertRule> existing = WatchRules.Find(AppServices.Alerts.Rules, hex, registration);
 
             if (existing.Count > 0)
             {
@@ -540,16 +548,39 @@ namespace AdsbCarMap.Activities
                 }
 
                 Toast.MakeText(this, Loc.T("Alert obserwowania usunięty"), ToastLength.Short)?.Show();
+                UpdateCard();
+
+                return;
             }
-            else
+
+            Aircraft? aircraft = info.Aircraft;
+
+            if (aircraft != null && string.IsNullOrWhiteSpace(registration))
             {
-                string name = info.Aircraft == null ? hex.ToUpperInvariant() : AircraftSearch.GetName(info.Aircraft);
+                try
+                {
+                    using CancellationTokenSource timeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+                    Aircraft? enriched = await AppServices.Enricher.LookupAsync(aircraft, timeout.Token);
 
-                AppServices.Alerts.Save(AlertBundle.CreateWatchRule(AlertRuleStore.CreateId(), Loc.T("Obserwuj: ") + name, hex));
-                AircraftHistoryStore.MarkWatched(hex);
-                Toast.MakeText(this, Loc.T("Alert obserwowania dodany (Alerty → edytuj, by zmienić obszar i zdarzenia)"), ToastLength.Long)?.Show();
+                    registration = enriched?.Registration;
+                }
+                catch (Exception)
+                {
+                    registration = null;
+                }
             }
 
+            string name = aircraft == null ? hex.ToUpperInvariant() : AircraftSearch.GetName(aircraft);
+
+            if (WatchRules.Find(AppServices.Alerts.Rules, hex, registration).Count == 0)
+            {
+                AppServices.Alerts.Save(AlertBundle.CreateWatchRule(AlertRuleStore.CreateId(), Loc.T("Obserwuj: ") + name, hex, registration));
+                AircraftHistoryStore.MarkWatched(hex);
+            }
+
+            Toast.MakeText(this, string.IsNullOrWhiteSpace(registration)
+                ? Loc.T("Alert obserwowania dodany po adresie (brak rejestracji; zostanie rozszerzony, gdy rejestracja będzie znana)")
+                : Loc.T("Alert obserwowania dodany dla rejestracji ") + FilterCondition.NormalizeRegistration(registration) + Loc.T(" (Alerty → edytuj, by zmienić obszar i zdarzenia)"), ToastLength.Long)?.Show();
             UpdateCard();
         }
 

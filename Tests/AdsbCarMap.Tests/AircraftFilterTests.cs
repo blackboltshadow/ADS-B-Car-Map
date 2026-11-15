@@ -108,6 +108,26 @@ namespace AdsbCarMap.Tests
         }
 
         /// <summary>
+        /// The registration condition ignores letter case and dashes, matches the beginning and is unknown without a registration.
+        /// </summary>
+        [Theory]
+        [InlineData("SP-YBC", "SP-YBC", FilterResult.True)]
+        [InlineData("SP-YBC", "spybc", FilterResult.True)]
+        [InlineData("SPYBC", "SP-YBC", FilterResult.True)]
+        [InlineData("SP-YBC", "SP-", FilterResult.True)]
+        [InlineData("SP-YBC", "SP-YBD", FilterResult.False)]
+        [InlineData("D-AIUA", "SP-", FilterResult.False)]
+        [InlineData(null, "SP-YBC", FilterResult.Unknown)]
+        [InlineData("SP-YBC", "", FilterResult.Unknown)]
+        [InlineData("SP-YBC", "--", FilterResult.Unknown)]
+        public void Condition_Registration(string? registration, string wanted, FilterResult expected)
+        {
+            Aircraft aircraft = new Aircraft("489123", "LOT281", 52.0, 21.0, 35000, false, 450.0, 90.0, 0.0, "B738", registration);
+
+            Assert.Equal(expected, FilterCondition.RegistrationIs(wanted).Evaluate(aircraft, NoRoutes));
+        }
+
+        /// <summary>
         /// The squawk condition matches the whole code and is unknown when the aircraft transmits none.
         /// </summary>
         [Theory]
