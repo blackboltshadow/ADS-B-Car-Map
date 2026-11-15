@@ -45,12 +45,12 @@ namespace AdsbCarMap.Settings
         /// <summary>
         /// Minimum zoom level.
         /// </summary>
-        public static readonly SettingDefinition MinZoomSetting = new SettingDefinition("min_zoom", "Minimalny zoom", 4.0, 1.0, 18.0, true, Help: "Najmniejsze dozwolone przybliżenie mapy. Niski poziom pokazuje duży obszar (4 to mniej więcej cały kraj lub kontynent), wysoki to pojedyncze miasta. Obszar, z którego pobierane są samoloty, zależy od widocznego fragmentu mapy, więc po oddaleniu aplikacja prosi serwer o większy zasięg, aż do jego limitu.");
+        public static readonly SettingDefinition MinZoomSetting = new SettingDefinition("min_zoom", "Minimalny zoom", 4.0, 1.0, 18.0, true, SettingKind.ZoomLimits, Help: "Najmniejsze dozwolone przybliżenie mapy. Niski poziom pokazuje duży obszar (4 to mniej więcej cały kraj lub kontynent), wysoki to pojedyncze miasta. Obszar, z którego pobierane są samoloty, zależy od widocznego fragmentu mapy, więc po oddaleniu aplikacja prosi serwer o większy zasięg, aż do jego limitu.");
 
         /// <summary>
         /// Maximum zoom level.
         /// </summary>
-        public static readonly SettingDefinition MaxZoomSetting = new SettingDefinition("max_zoom", "Maksymalny zoom", 13.0, 1.0, 18.0, true, Help: "Największe dozwolone przybliżenie mapy. Poziom 13 pokazuje pojedyncze dzielnice i lotniska z dużą szczegółowością, wyższe poziomy wymagają pobierania znacznie więcej kafelków mapy. Jeśli minimalny zoom jest większy od maksymalnego, aplikacja używa mniejszej z tych dwóch wartości jako minimum.");
+        public static readonly SettingDefinition MaxZoomSetting = new SettingDefinition("max_zoom", "Maksymalny zoom", 13.0, 1.0, 18.0, true, SettingKind.ZoomLimits, Help: "Największe dozwolone przybliżenie mapy. Poziom 13 pokazuje pojedyncze dzielnice i lotniska z dużą szczegółowością, wyższe poziomy wymagają pobierania znacznie więcej kafelków mapy. Oba końce ustawia się na jednym suwaku i nie mogą się minąć.");
 
         /// <summary>
         /// Maximum number of decoded tiles kept in memory.
@@ -160,7 +160,7 @@ namespace AdsbCarMap.Settings
         /// <summary>
         /// Opacity of the black layer that dims the map tiles.
         /// </summary>
-        public static readonly SettingDefinition MapDimSetting = new SettingDefinition("map_dim_alpha", "Przyciemnienie mapy (0-220)", 90.0, 0.0, 220.0, true, Help: "Siła czarnej warstwy nakładanej na kafelki mapy: 0 to mapa bez przyciemnienia, 220 to bardzo ciemna. Przyciemniona mapa sprawia, że kolorowe ikony i ślady samolotów są lepiej widoczne, szczególnie w samochodzie lub w nocy.");
+        public static readonly SettingDefinition MapDimSetting = SettingDefinition.CreateSlider("map_dim_alpha", "Przyciemnienie mapy (0-220)", 90.0, 0.0, 220.0, 1.0, "", "Siła czarnej warstwy nakładanej na kafelki mapy: 0 to mapa bez przyciemnienia, 220 to bardzo ciemna. Przyciemniona mapa sprawia, że kolorowe ikony i ślady samolotów są lepiej widoczne, szczególnie w samochodzie lub w nocy.");
 
         /// <summary>
         /// Switch for the airports drawn on the map.

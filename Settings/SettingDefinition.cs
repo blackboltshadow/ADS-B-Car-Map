@@ -39,6 +39,11 @@ namespace AdsbCarMap.Settings
         /// One end of a range of zoom levels. The two settings of a range are edited together in a single range control.
         /// </summary>
         ZoomRange,
+
+        /// <summary>
+        /// One end of the zoom limits of the map. The two settings are edited together in a single range control whose handles cannot cross.
+        /// </summary>
+        ZoomLimits,
     }
 
     /// <summary>

@@ -116,6 +116,21 @@ namespace AdsbCarMap.Activities
         private int zoomRangeBounds;
 
         /// <summary>
+        /// Control that sets the lowest and the highest zoom level of the map, created with the first of its two settings.
+        /// </summary>
+        private MapZoomLimitsView? mapZoomLimitsView;
+
+        /// <summary>
+        /// Number of settings already connected to <see cref="mapZoomLimitsView"/>.
+        /// </summary>
+        private int mapZoomLimitsBounds;
+
+        /// <summary>
+        /// Live preview of the map dimming.
+        /// </summary>
+        private MapDimPreview? mapDimPreview;
+
+        /// <summary>
         /// Card shared by all trail settings, created with the first of them.
         /// </summary>
         private LinearLayout? trailCard;
@@ -435,6 +450,9 @@ namespace AdsbCarMap.Activities
                         break;
                     case SettingKind.ZoomRange:
                         AddZoomRangeBound(appearance, definition);
+                        break;
+                    case SettingKind.ZoomLimits:
+                        AddMapZoomLimitsBound(appearance, definition);
                         break;
                     case SettingKind.Scale:
                         AddScaleThreshold(appearance, definition);
@@ -850,6 +868,11 @@ namespace AdsbCarMap.Activities
             if (definition == AppSettings.ShowAltitudeLegendSetting)
             {
                 return GetAltitudeCard(container);
+            }
+
+            if (definition == AppSettings.MapDimSetting)
+            {
+                return GetTitledCard("map", Loc.T("Mapa"), container);
             }
 
             return null;
@@ -1275,6 +1298,60 @@ namespace AdsbCarMap.Activities
         }
 
         /// <summary>
+        /// Connects one end of the map zoom limits to the shared range control, creating the control with its title and info button at the first end.
+        /// </summary>
+        /// <param name="root">Container of the screen.</param>
+        /// <param name="definition">Setting that holds one end of the limits.</param>
+        private void AddMapZoomLimitsBound(LinearLayout root, SettingDefinition definition)
+        {
+            if (mapZoomLimitsView == null)
+            {
+                LinearLayout card = GetTitledCard("map", Loc.T("Mapa"), root);
+
+                LinearLayout titleRow = new LinearLayout(this);
+                titleRow.Orientation = Orientation.Horizontal;
+                titleRow.SetGravity(GravityFlags.CenterVertical);
+                titleRow.SetMinimumHeight(Dp(28));
+                titleRow.SetPadding(0, Dp(10), 0, 0);
+                card.AddView(titleRow);
+
+                TextView label = new TextView(this);
+                label.Text = Loc.T("Zakres zoomu mapy");
+                StyleTitle(label);
+                StyleSubTitle(label);
+                titleRow.AddView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
+                AddInfoButton(titleRow, AppSettings.MinZoomSetting);
+
+                mapZoomLimitsView = new MapZoomLimitsView(this);
+                mapZoomLimitsView.RangeChanged += SaveMapZoomLimits;
+                card.AddView(mapZoomLimitsView);
+            }
+
+            MapZoomLimitsView view = mapZoomLimitsView;
+            int index = mapZoomLimitsBounds++;
+
+            settingReaders[definition] = () => view.GetValue(index);
+            settingWriters[definition] = value => view.SetValue(index, (int)Math.Round(value));
+        }
+
+        /// <summary>
+        /// Saves the map zoom limits after the user moved a handle.
+        /// </summary>
+        private void SaveMapZoomLimits()
+        {
+            if (mapZoomLimitsView == null)
+            {
+                return;
+            }
+
+            AppSettings.Save(new Dictionary<SettingDefinition, double>
+            {
+                { AppSettings.MinZoomSetting, mapZoomLimitsView.GetValue(0) },
+                { AppSettings.MaxZoomSetting, mapZoomLimitsView.GetValue(1) },
+            });
+        }
+
+        /// <summary>
         /// Saves the zoom range after the user moved a handle.
         /// </summary>
         private void SaveZoomRange()
@@ -1457,6 +1534,15 @@ namespace AdsbCarMap.Activities
                 forecastIntervalViews.Add(bar);
             }
 
+            if (definition == AppSettings.MapDimSetting)
+            {
+                mapDimPreview = new MapDimPreview(this);
+
+                LinearLayout.LayoutParams dimPreviewParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
+                dimPreviewParams.SetMargins(0, Dp(8), 0, 0);
+                card.AddView(mapDimPreview, dimPreviewParams);
+            }
+
             TextView? preview = null;
 
             if (definition == AppSettings.LabelTextSizeSetting)
@@ -1530,6 +1616,12 @@ namespace AdsbCarMap.Activities
                 if (aircraftIconsPreview != null && definition == AppSettings.AircraftCockpitSetting)
                 {
                     aircraftIconsPreview.CockpitStrength = (float)(value / 100.0);
+                }
+
+                if (mapDimPreview != null && definition == AppSettings.MapDimSetting)
+                {
+                    mapDimPreview.Dim = (int)Math.Round(value);
+                    mapDimPreview.Invalidate();
                 }
 
                 preview?.SetTextSize(Android.Util.ComplexUnitType.Dip, (float)value);
@@ -2096,6 +2188,11 @@ namespace AdsbCarMap.Activities
             if (AppSettings.AirportSettings.Contains(definition) || definition == AppSettings.IconScaleSetting)
             {
                 airportsPreview?.Invalidate();
+            }
+
+            if (definition == AppSettings.MapThemeSetting)
+            {
+                mapDimPreview?.Invalidate();
             }
 
             if (definition == AppSettings.LanguageSetting)

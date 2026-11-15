@@ -171,7 +171,7 @@ Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązuj�
 |---|---|---|---|
 | Odświeżanie samolotów [s] | 3 | 1–60 | odstęp między zapytaniami o samoloty |
 | Odstęp klatek mapy [ms] | 33 | 16–1000 | tempo rysowania (33 ms to ok. 30 klatek/s) |
-| Minimalny zoom | 4 | 1–18 | największe oddalenie |
+| Minimalny zoom | 4 | 1–18 | największe oddalenie; oba zoomy ustawia się na jednym suwaku z dwoma uchwytami („Zakres zoomu mapy”), które nie mogą się minąć (odstęp co najmniej 1) |
 | Maksymalny zoom | 13 | 1–18 | największe przybliżenie |
 | Kafelki w pamięci | 128 | 16–1024 | liczba zdekodowanych kafelków w pamięci (zawsze co najmniej tyle, ile widać na ekranie plus zapas) |
 | Ponowienie kafelka [s] | 15 | 1–600 | po jakim czasie ponawiane jest nieudane pobranie kafelka |
@@ -197,7 +197,7 @@ Menu → „Ustawienia”. Wartości są zapisywane na urządzeniu i obowiązuj�
 | Obwódka śladu [dp] | 1 | 0–10 | ciemna obwódka pod śladem, suwak co 0,5 dp |
 | Krycie obwódki | 140 | 0–255 | |
 | Motyw mapy | Automatyczny | Automatyczny / Jasny / Ciemny | ciemny motyw odwraca jasność kafelków z zachowaniem barw (woda niebieska, zieleń zielona); „Automatyczny” włącza go, gdy system telefonu lub Android Auto (tryb nocny hosta) jest w trybie nocnym; działa na telefonie i w samochodzie, można go łączyć z przyciemnieniem |
-| Przyciemnienie mapy | 90 | 0–220 | krycie czarnej warstwy nad kafelkami (0 wyłącza), im więcej, tym ciemniejsza mapa |
+| Przyciemnienie mapy | 90 | 0–220 | krycie czarnej warstwy nad kafelkami (0 wyłącza), im więcej, tym ciemniejsza mapa; suwak co 1 z podglądem na żywo (uproszczona mapa w bieżącym motywie z trzema ikonami samolotów, zmienia się w trakcie przesuwania suwaka) |
 | Rozmiar ikon samolotów | ×1,0 | ×0,6–×2,0 | suwak co 0,1, mnoży rozmiar wszystkich ikon, kółek zaznaczenia i śledzenia oraz odsunięcie etykiety, na telefonie i w Android Auto. Grubość obwódki nie zmienia się z rozmiarem ikony. |
 | Obwódka samolotów [dp] | 1,2 | 0–6 | suwak co 0,1 dp (0 wyłącza obwódkę). Oba suwaki są w jednej ramce „Ikony samolotów” po skali kolorów wysokości, nad suwakami jest podgląd wszystkich ikon samolotów w bieżącym rozmiarze i grubości obwódki. |
 | Cień samolotów [%] | 40 | 0–100 | suwak co 5 % (0 wyłącza cień), miękki cień ikony w prawo i w dół, odsuwany proporcjonalnie do rozmiaru ikony; nie dotyczy znacznika obiektu naziemnego. |
